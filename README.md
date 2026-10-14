@@ -2,7 +2,7 @@
 
 옛날 DOS 게임과 슈퍼패미컴(SFC) 게임을 브라우저에서 하는 웹 런처입니다. 여러 게임을 등록해 두고 라이브러리에서 골라 플레이합니다.
 
-> 게임 파일은 이 저장소에 들어 있지 않습니다. 본인이 가진 게임 파일을 직접 등록해서 씁니다. 등록한 파일은 브라우저 저장소(OPFS)에만 저장되고 서버로 올라가지 않습니다.
+> 게임 파일은 이 저장소에 들어 있지 않습니다. 본인이 가진 게임 파일을 직접 등록해서 씁니다. 등록한 게임 파일은 브라우저 저장소(OPFS)에만 저장되고 서버로 올라가지 않습니다. 서버에는 세이브만 올라갑니다.
 
 ## 기능
 
@@ -41,7 +41,15 @@ npm install
 npm run dev
 ```
 
-`npm run build`를 하면 `dist/`에 정적 파일이 만들어집니다. 이 저장소는 `main`에 푸시하면 GitHub Actions가 GitHub Pages로 배포합니다.
+`npm run build`를 하면 `dist/`에 정적 파일이 만들어집니다.
+
+### 로그인과 세이브 동기화 (Cloudflare)
+
+사이트는 Cloudflare Pages에 올리고, Cloudflare Access(구글 로그인)를 사이트 전체에 겁니다. 로그인한 사용자마다 세이브와 상태 슬롯이 R2의 `users/{사용자}/` 아래에 따로 저장되고, 기기 사이에서 자동으로 동기화됩니다. 게임 파일은 서버에 올리지 않습니다.
+
+- `npm run deploy`: 빌드한 뒤 Cloudflare Pages 프로젝트 `retron`에 배포합니다.
+- `npm run dev:cf`: 로컬 R2와 가짜 사용자로 서버 API까지 띄웁니다.
+- `wrangler.toml`의 `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`에 Access 애플리케이션 값을 넣어야 API가 로그인을 받아 줍니다. 비어 있으면 아무도 통과시키지 않습니다.
 
 ## 구성
 
@@ -51,6 +59,7 @@ npm run dev
 | DOS | [js-dos 8](https://js-dos.com) `emulators` (DOSBox-X, Worker). js-dos 기본 UI는 쓰지 않고 화면, 소리, 입력을 직접 연결합니다 |
 | SFC | [EmulatorJS](https://emulatorjs.org) 4.2.3 (snes9x), iframe으로 띄웁니다 |
 | 저장소 | OPFS (게임 파일, 세이브, 상태, 썸네일) |
+| 로그인·동기화 | Cloudflare Access(구글), Pages Functions, R2 |
 
 ```
 src/
@@ -58,7 +67,9 @@ src/
   platforms/
     dos/        js-dos 연결, 세이브 감시, 게임 프로필
     sfc/        EmulatorJS 페이지와 플레이어
-  ui/           라이브러리, 게임 메뉴, 화면 방향, 가상 키
+  sync/         서버와 세이브 동기화
+  ui/           라이브러리, 게임 메뉴, 설정, 화면 방향, 가상 키
+functions/api/  서버 API (Access JWT 검증, 사용자별 R2 저장)
 ```
 
 ## 참고
