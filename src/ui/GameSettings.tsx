@@ -7,6 +7,8 @@ import { DOS_KEY_LIST, toDosKey } from "../platforms/dos/create-dos";
 import { DEFAULT_PAD, PAD_BUTTONS } from "../platforms/dos/gamepad";
 import { HDD_DIR, exeCandidates } from "../platforms/dos/profiles";
 import { markDirty } from "../sync/sync";
+import { deleteRemoteGame, updateRemoteGame } from "../cloud/games";
+import { authState } from "../cloud/google-auth";
 
 const CYCLES = [
   { value: "", label: "게임 기본값" },
@@ -63,11 +65,13 @@ export function GameSettings({ game, onClose, onChanged }: { game: Game; onClose
   }, [capturing]);
 
   const save = async () => {
-    await putGame({
+    const updated: Game = {
       ...game,
       title: title.trim() || game.title,
       dos: game.dos && { ...game.dos, exe: exe || game.dos.exe, cycles: cycles || undefined, input },
-    });
+    };
+    await putGame(updated);
+    void updateRemoteGame(updated).catch(() => undefined);
     onChanged();
     onClose();
   };
@@ -96,7 +100,10 @@ export function GameSettings({ game, onClose, onChanged }: { game: Game; onClose
   };
 
   const remove = async () => {
-    if (!confirm(`${game.title}을(를) 삭제할까요? 세이브와 상태 슬롯도 함께 지워집니다.`)) return;
+    if (!confirm(`${game.title}을(를) 이 기기에서 삭제할까요? 이 기기의 세이브와 상태 슬롯도 함께 지워집니다.`)) return;
+    if (authState().signedIn && game.syncKey && confirm("구글 드라이브에 올린 게임 파일도 지울까요? (세이브는 드라이브에 남깁니다. 지운 파일은 드라이브 휴지통에서 30일 안에 되살릴 수 있습니다)")) {
+      await deleteRemoteGame(game.syncKey).catch(() => undefined);
+    }
     await removeGame(game.id);
     onChanged();
     onClose();

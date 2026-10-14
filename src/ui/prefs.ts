@@ -33,6 +33,14 @@ export function setPrefs(patch: Partial<Prefs>) {
   listeners.forEach((l) => l(current));
 }
 
+export const getPrefs = () => current;
+
+/** 설정이 바뀔 때마다 불린다 (드라이브 저장용) */
+export function onPrefsChange(cb: (p: Prefs) => void): () => void {
+  listeners.add(cb);
+  return () => void listeners.delete(cb);
+}
+
 export function usePrefs(): Prefs {
   const [p, setP] = useState(current);
   useEffect(() => {

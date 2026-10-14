@@ -193,3 +193,13 @@ button.danger { background: transparent; border: 1px solid rgba(255, 110, 100, 0
 .sync-chip.warn { color: #ff8a80; }
 .sync-chip.off { color: var(--muted); font-weight: 500; }
 @media (max-width: 600px) { .account { order: 3; width: 100%; margin: 0; } .account .email { max-width: 140px; } }
+
+/* 구글 로그인, 드라이브 진행 상황 */
+.account button.logout { background: none; border: 0; padding: 0; font-size: 13px; color: var(--muted); cursor: pointer; }
+.account button.logout:hover { color: var(--text); }
+.google { padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+li.remote .card { opacity: 0.85; }
+li.remote .thumb img { filter: saturate(0.6); }
+.transfer { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 22px; border-radius: 999px; overflow: hidden; background: rgba(0, 0, 0, 0.55); font-size: 11px; display: grid; place-items: center; pointer-events: none; }
+.transfer .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 179, 64, 0.55); transition: width 0.3s; }
+.transfer span { position: relative; }

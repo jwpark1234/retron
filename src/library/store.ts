@@ -77,3 +77,11 @@ export async function removeDir(path: string) {
   const d = await dir(dirs, false);
   await d?.removeEntry(name, { recursive: true }).catch(() => undefined);
 }
+
+/** 내려받는 스트림을 메모리에 다 올리지 않고 바로 쓴다 */
+export async function writeStream(path: string, stream: ReadableStream<Uint8Array>) {
+  const { dirs, name } = split(path);
+  const d = (await dir(dirs, true))!;
+  const w = await (await d.getFileHandle(name, { create: true })).createWritable();
+  await stream.pipeTo(w);
+}

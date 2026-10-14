@@ -8,8 +8,7 @@
     "prebuild": "node scripts/copy-emulators.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name retron",
-    "dev:cf": "npm run build && wrangler pages dev dist --binding DEV_USER=dev@example.com"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name retron"
   },
   "dependencies": {
     "emulators": "8.4.1",
@@ -17,7 +16,6 @@
     "preact": "10.24.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261006.1",
     "@preact/preset-vite": "2.9.1",
     "typescript": "5.6.3",
     "vite": "5.4.10",

@@ -1,15 +1,4 @@
+# Cloudflare Pages: 정적 파일 서빙만 한다. 게임·세이브·설정은 각 사용자의 구글 드라이브에 저장한다.
 name = "retron"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "dist"
-
-# 사용자별 세이브 저장소 (users/{사용자}/saves/{게임}.zip)
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "retron"
-
-# Cloudflare Access(구글 로그인) 검증용. 대시보드의 Access 애플리케이션 값으로 채운다.
-#   ACCESS_TEAM_DOMAIN: 예) myteam.cloudflareaccess.com
-#   ACCESS_AUD: Access 애플리케이션의 Application Audience (AUD) Tag
-[vars]
-ACCESS_TEAM_DOMAIN = "jwpark-retron.cloudflareaccess.com"
-ACCESS_AUD = "3059433b8e48bd4f6465a8ba2a44f581edf3acb18bc78f34dbef2c060fd35084"
