@@ -1,0 +1,19 @@
+{
+  "name": "retron",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "js-dos": "8.4.1"
+  },
+  "devDependencies": {
+    "emulators": "8.4.1",
+    "ffmpeg-static": "5.2.0"
+  }
+}
