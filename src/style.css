@@ -181,3 +181,15 @@ button.small { padding: 5px 12px; font-size: 13px; align-self: flex-start; }
 button.primary { background: var(--tint); color: #111; border-color: var(--tint); }
 button.danger { background: transparent; border: 1px solid rgba(255, 110, 100, 0.5); color: #ff8a80; }
 .dialog .row button, .settings > button { text-align: center; }
+
+/* 계정·동기화 상태 */
+.account { display: flex; align-items: center; gap: 10px; margin-right: auto; margin-left: 8px; min-width: 0; font-size: 13px; }
+.account .email { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.account .logout { color: var(--muted); text-decoration: none; white-space: nowrap; }
+.account .logout:hover { color: var(--text); }
+.sync-chip { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: rgba(255, 255, 255, 0.12); }
+.sync-chip.ok { color: #7ee2a0; }
+.sync-chip.pending { color: var(--tint); }
+.sync-chip.warn { color: #ff8a80; }
+.sync-chip.off { color: var(--muted); font-weight: 500; }
+@media (max-width: 600px) { .account { order: 3; width: 100%; margin: 0; } .account .email { max-width: 140px; } }

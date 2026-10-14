@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { listGames, thumbnailUrl, type Game } from "../library/library";
 import { importFiles } from "../library/import";
 import { GameSettings } from "./GameSettings";
+import { useSync } from "../sync/sync";
 
 type View = "grid" | "list";
 const PLATFORM_LABEL = { dos: "DOS", sfc: "SFC" } as const;
@@ -22,6 +23,7 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Game | null>(null);
+  const sync = useSync();
   const [choice, setChoice] = useState<{ candidates: string[]; resolve: (v: string | null) => void } | null>(null);
 
   const refresh = async () => {
@@ -74,6 +76,27 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
     <div class="library">
       <header class="glass">
         <h1>retron</h1>
+        <div class="account">
+          {sync.enabled ? (
+            <>
+              <span class={`sync-chip ${sync.conflict ? "warn" : sync.pending ? "pending" : "ok"}`}>
+                {sync.conflict ? "⚠ 충돌 있음" : sync.pending ? `↑ ${sync.pending}개 대기` : "✓ 동기화됨"}
+              </span>
+              <span class="email" title={sync.email}>
+                {sync.email}
+              </span>
+              <a class="logout" href="/cdn-cgi/access/logout">
+                로그아웃
+              </a>
+            </>
+          ) : sync.needLogin ? (
+            <a class="logout" href=".">
+              다시 로그인
+            </a>
+          ) : (
+            <span class="sync-chip off">이 기기에만 저장</span>
+          )}
+        </div>
         <div class="actions">
           <div class="seg glass">
             <button class={view === "grid" ? "on" : ""} onClick={() => changeView("grid")}>

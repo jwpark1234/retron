@@ -1,17 +1,17 @@
-// 세이브 백업: 게임 안 세이브, 상태 슬롯, SRAM을 zip 하나로 내보내고 다시 넣는다.
+// 세이브 묶음: 게임 안 세이브, 상태 슬롯, SRAM을 zip 하나로 만든다.
+// 파일로 내보내고 가져오는 백업과, 서버 동기화가 같은 형식을 쓴다.
 import { strToU8, unzipSync, zipSync, type Zippable } from "fflate";
 import { gameDir, type Game } from "./library";
 import { getFile, listFiles, removeDir, writeFile } from "./store";
 
 const MANIFEST = "retron-backup.json";
-const PARTS = ["saves", "states"]; // 폴더째 백업하는 것
-const SINGLE = ["sram.srm"]; // 파일 하나로 백업하는 것
+const PARTS = ["saves", "states"]; // 폴더째 묶는 것
+const SINGLE = ["sram.srm"]; // 파일 하나로 묶는 것
 
-export async function exportBackup(game: Game): Promise<{ name: string; blob: Blob }> {
+/** 세이브가 하나도 없으면 null */
+export async function buildBundle(game: Game): Promise<Uint8Array | null> {
   const dir = gameDir(game.id);
-  const files: Zippable = {
-    [MANIFEST]: strToU8(JSON.stringify({ title: game.title, platform: game.platform, exportedAt: new Date().toISOString() })),
-  };
+  const files: Zippable = {};
   for (const part of PARTS) {
     for (const [p, f] of await listFiles(`${dir}/${part}`)) files[`${part}/${p}`] = new Uint8Array(await f.arrayBuffer());
   }
@@ -19,22 +19,34 @@ export async function exportBackup(game: Game): Promise<{ name: string; blob: Bl
     const f = await getFile(`${dir}/${name}`);
     if (f) files[name] = new Uint8Array(await f.arrayBuffer());
   }
-  if (Object.keys(files).length === 1) throw new Error("백업할 세이브가 아직 없습니다");
-  const date = new Date().toISOString().slice(0, 10);
-  return { name: `${game.title}-세이브-${date}.zip`, blob: new Blob([zipSync(files)], { type: "application/zip" }) };
+  if (!Object.keys(files).length) return null;
+  files[MANIFEST] = strToU8(JSON.stringify({ title: game.title, platform: game.platform, exportedAt: new Date().toISOString() }));
+  return zipSync(files, { level: 6 });
 }
 
-export async function importBackup(game: Game, zip: File) {
-  const files = unzipSync(new Uint8Array(await zip.arrayBuffer()));
+/** 묶음 내용으로 이 기기의 세이브를 바꾼다 */
+export async function applyBundle(game: Game, zip: Uint8Array) {
+  const files = unzipSync(zip);
   const manifest = files[MANIFEST] && JSON.parse(new TextDecoder().decode(files[MANIFEST]));
   if (!manifest) throw new Error("retron 세이브 백업 파일이 아닙니다");
   if (manifest.platform !== game.platform) throw new Error(`${manifest.platform.toUpperCase()} 게임의 백업입니다`);
   const dir = gameDir(game.id);
-  for (const part of PARTS) await removeDir(`${dir}/${part}`); // 백업 시점으로 되돌린다
+  for (const part of PARTS) await removeDir(`${dir}/${part}`);
   for (const [p, data] of Object.entries(files)) {
     const allowed = PARTS.some((part) => p.startsWith(`${part}/`)) || SINGLE.includes(p);
     if (allowed && !p.endsWith("/") && !p.includes("..")) await writeFile(`${dir}/${p}`, data);
   }
+}
+
+export async function exportBackup(game: Game): Promise<{ name: string; blob: Blob }> {
+  const zip = await buildBundle(game);
+  if (!zip) throw new Error("백업할 세이브가 아직 없습니다");
+  const date = new Date().toISOString().slice(0, 10);
+  return { name: `${game.title}-세이브-${date}.zip`, blob: new Blob([zip], { type: "application/zip" }) };
+}
+
+export async function importBackup(game: Game, zip: File) {
+  await applyBundle(game, new Uint8Array(await zip.arrayBuffer()));
 }
 
 export function download(name: string, blob: Blob) {

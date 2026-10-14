@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { AUTO_SLOT, SLOTS, listSlots, readSlot, writeSlot, type SlotInfo } from "../library/states";
 import type { OrientationMode } from "./orientation";
 import { setPrefs, usePrefs, type ScreenFilter } from "./prefs";
+import { markDirty } from "../sync/sync";
 
 export interface StateBridge {
   save(): Promise<{ state: Uint8Array; thumb: Blob | null }>;
@@ -76,6 +77,7 @@ export function GameMenu({
     try {
       const { state, thumb } = await bridge.save();
       await writeSlot(gameId, AUTO_SLOT, state, thumb);
+      markDirty(gameId);
     } catch {
       // 게임이 아직 시작 전이면 저장할 것이 없다
     } finally {
@@ -116,6 +118,7 @@ export function GameMenu({
     run("저장 중…", async () => {
       const { state, thumb } = await bridge!.save();
       await writeSlot(gameId, slot, state, thumb);
+      markDirty(gameId);
       await refresh();
       flash(`슬롯 ${slot}에 저장했습니다`);
     });

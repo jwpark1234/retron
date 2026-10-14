@@ -8,6 +8,7 @@ import { rotatedStyle } from "../../ui/RotatedStage";
 import { toLocal, useOrientation } from "../../ui/orientation";
 import { effectiveVolume, usePrefs } from "../../ui/prefs";
 import { VirtualKeys } from "../../ui/VirtualKeys";
+import { markDirty } from "../../sync/sync";
 import { attachAudio, attachVideo, createDos, loadDosState, saveDosState, toDosKey } from "./create-dos";
 import { watchGamepad } from "./gamepad";
 import { CD_DIR, HDD_DIR, buildConf, withCycles } from "./profiles";
@@ -102,6 +103,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         onChange: async (now: FileMap) => {
           for (const p of (await listFiles(`${dir}/saves`)).keys()) if (!now.has(p)) await removeFile(`${dir}/saves/${p}`);
           for (const [p, d] of now) await writeFile(`${dir}/saves/${p}`, d);
+          markDirty(game.id);
           setToast("저장되었습니다");
           setTimeout(() => setToast(""), 2000);
         },

@@ -6,6 +6,7 @@ import { listFiles } from "../library/store";
 import { DOS_KEY_LIST, toDosKey } from "../platforms/dos/create-dos";
 import { DEFAULT_PAD, PAD_BUTTONS } from "../platforms/dos/gamepad";
 import { HDD_DIR, exeCandidates } from "../platforms/dos/profiles";
+import { markDirty } from "../sync/sync";
 
 const CYCLES = [
   { value: "", label: "게임 기본값" },
@@ -87,6 +88,7 @@ export function GameSettings({ game, onClose, onChanged }: { game: Game; onClose
     if (!file || !confirm("지금 세이브와 상태 슬롯을 백업 파일 내용으로 바꿀까요?")) return;
     try {
       await importBackup(game, file);
+      markDirty(game.id);
       setMessage("세이브를 가져왔습니다");
     } catch (err) {
       setMessage((err as Error).message);

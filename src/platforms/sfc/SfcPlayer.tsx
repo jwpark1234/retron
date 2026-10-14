@@ -4,6 +4,7 @@ import { GameMenu, type StateBridge } from "../../ui/GameMenu";
 import { rotatedStyle } from "../../ui/RotatedStage";
 import { useOrientation } from "../../ui/orientation";
 import { effectiveVolume, usePrefs } from "../../ui/prefs";
+import { markDirty } from "../../sync/sync";
 
 export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -21,6 +22,7 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       if (e.origin !== location.origin) return;
       const d = e.data ?? {};
       if (d.type === "saved") {
+        markDirty(game.id);
         setToast("저장되었습니다");
         clearTimeout(timer);
         timer = setTimeout(() => setToast(""), 2000);

@@ -37,6 +37,7 @@ export interface Game {
   dos?: DosInfo;
   sfc?: SfcInfo;
   thumbVersion?: number; // 2 = 1:1 썸네일
+  syncKey?: string; // 기기 사이에서 같은 게임을 알아보는 키 (ROM/실행 파일 해시)
 }
 
 const LIBRARY = "library.json";
