@@ -1,3 +1,4 @@
 node_modules/
 dist/
 game-data/
+public/emulators/
