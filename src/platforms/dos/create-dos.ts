@@ -9,7 +9,17 @@ declare global {
   const emulators: Emulators;
 }
 
+export const STATE_FILE = "STATE.SAV";
+
+// DOSBox-X 상태 저장은 [dosbox] savefile에 쓰고 읽는다
+function withStateFile(conf: string) {
+  const line = `savefile=${STATE_FILE}`;
+  const section = /^\[dosbox\][ \t]*$/m;
+  return section.test(conf) ? conf.replace(section, `[dosbox]\n${line}`) : `[dosbox]\n${line}\n${conf}`;
+}
+
 export async function createDos(hdd: FileMap, cd: FileMap, conf: string): Promise<CommandInterface> {
+  conf = withStateFile(conf);
   const init = [
     ...[...hdd].map(([p, contents]) => ({ path: `${HDD_DIR}/${p}`, contents })),
     ...[...cd].map(([p, contents]) => ({ path: `${CD_DIR}/${p}`, contents })),
@@ -89,6 +99,30 @@ export function attachAudio(ci: CommandInterface): () => void {
     document.removeEventListener("pointerdown", unlock);
     document.removeEventListener("keydown", unlock);
   };
+}
+
+const trigger = (ci: CommandInterface, event: string) => ci.sendBackendEvent({ type: "wc-trigger-event", event });
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** DOSBox-X 상태 저장. 파일이 다 써질 때까지(크기가 그대로일 때까지) 기다린다 */
+export async function saveDosState(ci: CommandInterface): Promise<Uint8Array> {
+  await ci.fsDeleteFile(STATE_FILE).catch(() => false);
+  trigger(ci, "hand_savestate");
+  let last = -1;
+  for (let i = 0; i < 50; i++) {
+    await sleep(200);
+    const tree = await ci.fsTree();
+    const size = tree.nodes?.find((n) => n.name === STATE_FILE)?.size ?? -1;
+    if (size > 0 && size === last) return ci.fsReadFile(STATE_FILE);
+    last = size;
+  }
+  throw new Error("상태 저장 시간이 초과되었습니다");
+}
+
+export async function loadDosState(ci: CommandInterface, state: Uint8Array) {
+  await ci.fsWriteFile(STATE_FILE, state);
+  trigger(ci, "hand_loadstate");
+  await sleep(500);
 }
 
 // KeyboardEvent.code → js-dos 키 코드

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { CommandInterface } from "emulators";
 import { gameDir, saveThumbnail, type Game } from "../../library/library";
 import { listFiles, readDir, removeFile, writeFile, type FileMap } from "../../library/store";
+import { GameMenu, type StateBridge } from "../../ui/GameMenu";
 import { VirtualKeys } from "../../ui/VirtualKeys";
-import { attachAudio, attachVideo, createDos, toDosKey } from "./create-dos";
+import { attachAudio, attachVideo, createDos, loadDosState, saveDosState, toDosKey } from "./create-dos";
 import { CD_DIR, HDD_DIR } from "./profiles";
 import { watchSaves } from "./save-watch";
 
 const LONG_PRESS_MS = 500;
+const MIN_PRESS_MS = 80;
 const KEYS = [
   { label: "ESC", key: 256 },
   { label: "Enter", key: 257 },
@@ -15,7 +17,7 @@ const KEYS = [
   { label: "Y", key: 89 },
   { label: "N", key: 78 },
 ];
-const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".vkeys, .toolbar");
+const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".vkeys, .menu-button, .menu-backdrop");
 
 export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -23,12 +25,24 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const ci = useRef<CommandInterface | null>(null);
   const [status, setStatus] = useState("불러오는 중…");
   const [toast, setToast] = useState("");
+  const [bridge, setBridge] = useState<StateBridge | null>(null);
   const dir = gameDir(game.id);
 
-  const capture = () =>
-    new Promise<void>((resolve) =>
-      canvas.current?.toBlob((b) => (b ? saveThumbnail(game.id, b).then(resolve) : resolve()), "image/png") ?? resolve(),
-    );
+  const snapshot = () => new Promise<Blob | null>((resolve) => (canvas.current ? canvas.current.toBlob(resolve, "image/png") : resolve(null)));
+  // 화면 전환 중(거의 검은 화면)이면 썸네일을 바꾸지 않는다
+  const mostlyBlack = () => {
+    const c = canvas.current;
+    if (!c || !c.width) return true;
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let lit = 0;
+    for (let i = 0; i < d.length; i += 4 * 64) if (d[i] + d[i + 1] + d[i + 2] > 48) lit++;
+    return lit < d.length / (4 * 64) / 20;
+  };
+  const capture = async () => {
+    if (mostlyBlack()) return;
+    const b = await snapshot();
+    if (b) await saveThumbnail(game.id, b);
+  };
 
   const exit = async () => {
     await capture();
@@ -49,6 +63,10 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       ci.current = dos;
       cleanups.push(attachVideo(dos, canvas.current!), attachAudio(dos));
       setStatus("");
+      setBridge({
+        save: async () => ({ state: await saveDosState(dos), thumb: await snapshot() }),
+        load: (state) => loadDosState(dos, state),
+      });
       const stopWatch = await watchSaves(dos, {
         pattern: game.dos!.savePattern,
         previous: [...saves.keys()],
@@ -86,10 +104,14 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     };
     let longPress: ReturnType<typeof setTimeout> | undefined;
     let longPressed = false;
+    let pressedAt = 0;
     const down = (e: PointerEvent) => {
       if (isUi(e.target)) return;
       move(e);
-      if (e.pointerType === "mouse") return ci.current?.sendMouseButton(e.button === 2 ? 1 : 0, true);
+      if (e.pointerType === "mouse") {
+        pressedAt = performance.now();
+        return ci.current?.sendMouseButton(e.button === 2 ? 1 : 0, true);
+      }
       longPressed = false;
       longPress = setTimeout(() => {
         longPressed = true;
@@ -97,7 +119,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       }, LONG_PRESS_MS);
     };
     const up = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") return ci.current?.sendMouseButton(e.button === 2 ? 1 : 0, false);
+      if (e.pointerType === "mouse") {
+        // 아주 빠른 클릭은 게임이 버튼 상태를 읽기 전에 끝나버리므로 최소한 누른 상태를 유지한다
+        const button = e.button === 2 ? 1 : 0;
+        const wait = Math.max(0, MIN_PRESS_MS - (performance.now() - pressedAt));
+        return void setTimeout(() => ci.current?.sendMouseButton(button, false), wait);
+      }
       clearTimeout(longPress);
       if (!longPressed && !isUi(e.target)) click(0);
     };
@@ -132,12 +159,10 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   return (
     <div class="game" ref={wrap}>
       <canvas ref={canvas} />
-      <div class="toolbar">
-        <button onClick={exit}>나가기</button>
-      </div>
+      <GameMenu gameId={game.id} bridge={bridge} onExit={exit} />
       <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
       {status && <div class="overlay">{status}</div>}
-      {toast && <div class="toast">{toast}</div>}
+      {toast && <div class="glass toast">{toast}</div>}
     </div>
   );
 }

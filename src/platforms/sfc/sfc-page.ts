@@ -20,6 +20,11 @@ w.EJS_gameUrl = URL.createObjectURL(new File([rom], game.sfc!.rom));
 w.EJS_pathtodata = `https://cdn.emulatorjs.org/${EJS_VERSION}/data/`;
 w.EJS_language = "ko-KR";
 w.EJS_defaultOptions = { "save-save-interval": "5" }; // 5초마다 SRAM을 FS에 기록 → saveSaveFiles 이벤트
+// 저장/불러오기와 나가기는 retron 메뉴가 맡으므로 EmulatorJS 자체 버튼은 숨긴다
+w.EJS_Buttons = {
+  saveState: false, loadState: false, quickSave: false, quickLoad: false, saveSavFiles: false, loadSavFiles: false,
+  exitEmulation: false, cacheManager: false, netplay: false, screenRecord: false, screenshot: false, cheat: false,
+};
 
 let lastSave: Uint8Array | null = null;
 const same = (a: Uint8Array, b: Uint8Array | null) => !!b && a.length === b.length && a.every((x, i) => x === b[i]);
@@ -43,6 +48,35 @@ w.EJS_onGameStart = async () => {
   });
 };
 
+const screenshot = async (): Promise<Blob | null> => {
+  try {
+    const png: Uint8Array = await Promise.race([w.EJS_emulator.gameManager.screenshot(), new Promise<never>((_, j) => setTimeout(j, 2000))]);
+    return new Blob([png], { type: "image/png" });
+  } catch {
+    return null;
+  }
+};
+
+// 부모(SfcPlayer) 메뉴의 상태 저장/불러오기
+window.addEventListener("message", async (e) => {
+  if (e.origin !== location.origin) return;
+  const { type, reqId } = e.data ?? {};
+  if (type !== "save-state" && type !== "load-state") return;
+  try {
+    const gm = w.EJS_emulator?.gameManager;
+    if (!gm || !w.EJS_emulator.started) throw new Error("게임을 먼저 시작하세요");
+    if (type === "save-state") {
+      const state: Uint8Array = gm.getState();
+      parent.postMessage({ type: "result", reqId, state, thumb: await screenshot() }, location.origin);
+    } else {
+      gm.loadState(e.data.state);
+      parent.postMessage({ type: "result", reqId }, location.origin);
+    }
+  } catch (err) {
+    parent.postMessage({ type: "result", reqId, error: (err as Error).message }, location.origin);
+  }
+});
+
 // 부모(SfcPlayer)가 나가기 전에 부른다: 세이브를 마저 쓰고 썸네일을 남긴다
 window.addEventListener("message", async (e) => {
   if (e.origin !== location.origin || e.data?.type !== "exit") return;
@@ -51,8 +85,8 @@ window.addEventListener("message", async (e) => {
     if (gm && w.EJS_emulator.started) {
       gm.saveSaveFiles();
       await new Promise((r) => setTimeout(r, 300));
-      const png: Uint8Array = await Promise.race([gm.screenshot(), new Promise<never>((_, j) => setTimeout(j, 2000))]);
-      await saveThumbnail(id, new Blob([png], { type: "image/png" }));
+      const png = await screenshot();
+      if (png) await saveThumbnail(id, png);
     }
   } catch {
     // 썸네일은 없어도 된다

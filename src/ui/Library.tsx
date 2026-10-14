@@ -75,10 +75,10 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
 
   return (
     <div class="library">
-      <header>
+      <header class="glass">
         <h1>retron</h1>
         <div class="actions">
-          <div class="seg">
+          <div class="seg glass">
             <button class={view === "grid" ? "on" : ""} onClick={() => changeView("grid")}>
               그리드
             </button>
@@ -86,11 +86,11 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
               목록
             </button>
           </div>
-          <label class="pick">
+          <label class="pick glass">
             폴더 추가
             <input type="file" {...{ webkitdirectory: true }} onChange={onPick} hidden disabled={!!progress} />
           </label>
-          <label class="pick">
+          <label class="pick glass">
             파일 추가
             <input type="file" multiple accept=".zip,.sfc,.smc,.fig,.swc" onChange={onPick} hidden disabled={!!progress} />
           </label>
@@ -109,17 +109,17 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
       <ul class={view}>
         {games?.map((g) => (
           <li key={g.id}>
-            <button class="card" onClick={() => onPlay(g)}>
+            <button class="card glass" onClick={() => onPlay(g)}>
               <div class="thumb">{thumbs[g.id] ? <img src={thumbs[g.id]} alt="" /> : <span>{g.title}</span>}</div>
               <div class="meta">
                 <strong>{g.title}</strong>
                 <small>
-                  {PLATFORM_LABEL[g.platform]}
-                  {g.lastPlayedAt ? ` · ${new Date(g.lastPlayedAt).toLocaleDateString()} 플레이` : ""}
+                  <span class="badge">{PLATFORM_LABEL[g.platform]}</span>
+                  {g.lastPlayedAt ? `${new Date(g.lastPlayedAt).toLocaleDateString()} 플레이` : "새로 추가됨"}
                 </small>
               </div>
             </button>
-            <button class="remove" title="삭제" onClick={() => remove(g)}>
+            <button class="remove glass" title="삭제" onClick={() => remove(g)}>
               ✕
             </button>
           </li>
@@ -128,10 +128,11 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
 
       {choice && (
         <div class="modal">
-          <div class="dialog">
+          <div class="dialog glass">
             <h2>실행할 파일을 고르세요</h2>
             {choice.candidates.map((c) => (
               <button
+                class="glass"
                 key={c}
                 onClick={() => {
                   choice.resolve(c);
