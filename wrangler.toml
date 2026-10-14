@@ -11,5 +11,5 @@ bucket_name = "retron"
 #   ACCESS_TEAM_DOMAIN: 예) myteam.cloudflareaccess.com
 #   ACCESS_AUD: Access 애플리케이션의 Application Audience (AUD) Tag
 [vars]
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+ACCESS_TEAM_DOMAIN = "jwpark-retron.cloudflareaccess.com"
+ACCESS_AUD = "3059433b8e48bd4f6465a8ba2a44f581edf3acb18bc78f34dbef2c060fd35084"
