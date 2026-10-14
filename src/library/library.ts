@@ -21,6 +21,7 @@ export interface Game {
   lastPlayedAt?: number;
   dos?: DosInfo;
   sfc?: SfcInfo;
+  thumbVersion?: number; // 2 = 1:1 썸네일
 }
 
 const LIBRARY = "library.json";

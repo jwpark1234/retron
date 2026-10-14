@@ -7,6 +7,7 @@ export interface DosProfile {
   entry: string; // 이 파일이 있으면 이 게임으로 본다
   settings: string; // [autoexec] 앞부분
   savePattern?: string; // 세이브 파일 정규식 (없으면 자동 추적)
+  icon?: string; // 썸네일로 쓸 아이콘 파일
 }
 
 const DEFAULT_SETTINGS = `[sdl]
@@ -39,6 +40,7 @@ export const PROFILES: DosProfile[] = [
     // 원본 번들(Daum SVN DOSBox)의 설정에서 필요한 부분만 옮겼다
     title: "창세기전2",
     entry: "GENE2.COM",
+    icon: "GENESIS2.ICO",
     savePattern: "^(BLACKBOX\\.SV\\d|GENESIS\\.QSV)$",
     settings: `[sdl]
 autolock=false

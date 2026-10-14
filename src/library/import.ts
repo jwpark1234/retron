@@ -3,7 +3,8 @@
 // - DOS: 실행 파일이 있는 폴더를 C:로, bin/cue나 iso가 있으면 D:(CD)로
 import { CD_DIR, DEFAULT_SETTINGS, HDD_DIR, buildConf, exeCandidates, findProfile, type DosProfile } from "../platforms/dos/profiles";
 import { convertBinCue, parseCue } from "./cue";
-import { gameDir, newGameId, putGame, type Game } from "./library";
+import { gameDir, newGameId, putGame, saveThumbnail, type Game } from "./library";
+import { imageFileToSquare, pickIcon } from "./thumbnail";
 import { listFiles, removeDir, writeFile } from "./store";
 import { extractZip } from "./zip";
 
@@ -118,6 +119,17 @@ async function writeDosGame(
     cd = "CD.ISO";
     ui.progress("CD 이미지 복사 중");
     await writeFile(`${gameDir(id)}/${CD_DIR}/${cd}`, isoEntry.file);
+  }
+
+  // 게임 아이콘이 있으면 썸네일로 쓴다 (없으면 첫 실행 때 화면을 캡처한다)
+  const paths = entries.map((e) => e.path);
+  const icon = profile?.icon ? paths.find((p) => base(p).toUpperCase() === profile.icon) : pickIcon(paths, exePath);
+  if (icon) {
+    try {
+      await saveThumbnail(id, await imageFileToSquare(entries.find((e) => e.path === icon)!.file));
+    } catch {
+      // 브라우저가 못 읽는 아이콘이면 첫 실행 캡처로 넘어간다
+    }
   }
 
   const game: Game = {

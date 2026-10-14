@@ -1,6 +1,7 @@
 // 라이브러리 도입 전 버전은 창세기전2를 OPFS genesis2/ 아래에 바로 두었다. 새 구조로 옮긴다.
 import { CD_DIR, HDD_DIR, PROFILES, buildConf } from "../platforms/dos/profiles";
-import { gameDir, newGameId, putGame } from "./library";
+import { gameDir, listGames, newGameId, putGame, saveThumbnail } from "./library";
+import { imageFileToSquare } from "./thumbnail";
 import { getFile, listFiles, removeDir, writeFile } from "./store";
 
 export async function migrateLegacy() {
@@ -18,4 +19,22 @@ export async function migrateLegacy() {
     dos: { conf: buildConf(profile.settings, profile.entry, "GENE2.CUE"), savePattern: profile.savePattern },
   });
   await removeDir("genesis2");
+}
+
+/** 예전 4:3 썸네일을 1:1로 바꾼다. 알려진 DOS 게임은 아이콘으로 교체한다 */
+export async function migrateThumbnails() {
+  for (const game of await listGames()) {
+    if (game.thumbVersion === 2) continue;
+    try {
+      const exe = game.dos?.conf.trim().split("\n").pop()?.toUpperCase(); // autoexec 마지막 줄 = 실행 파일
+      const profile = PROFILES.find((p) => p.entry === exe);
+      const icon = profile?.icon ? await getFile(`${gameDir(game.id)}/${HDD_DIR}/${profile.icon}`) : null;
+      const old = await getFile(`${gameDir(game.id)}/thumb.png`);
+      if (icon) await saveThumbnail(game.id, await imageFileToSquare(icon));
+      else if (old) await saveThumbnail(game.id, await imageFileToSquare(old));
+    } catch {
+      // 썸네일을 못 바꿔도 게임은 그대로 쓸 수 있다
+    }
+    await putGame({ ...game, thumbVersion: 2 });
+  }
 }

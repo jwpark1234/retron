@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { touchGame, type Game } from "./library/library";
-import { migrateLegacy } from "./library/migrate";
+import { migrateLegacy, migrateThumbnails } from "./library/migrate";
 import { DosPlayer } from "./platforms/dos/DosPlayer";
 import { SfcPlayer } from "./platforms/sfc/SfcPlayer";
 import { Library } from "./ui/Library";
@@ -10,7 +10,9 @@ export function App() {
   const [playing, setPlaying] = useState<Game | null>(null);
 
   useEffect(() => {
-    migrateLegacy().finally(() => setReady(true));
+    migrateLegacy()
+      .then(migrateThumbnails)
+      .finally(() => setReady(true));
   }, []);
 
   if (!ready) return <div class="overlay">불러오는 중…</div>;

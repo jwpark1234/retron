@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Game } from "../../library/library";
 import { GameMenu, type StateBridge } from "../../ui/GameMenu";
+import { rotatedStyle } from "../../ui/RotatedStage";
+import { useOrientation } from "../../ui/orientation";
 
 export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const pending = useRef(new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>());
   const [toast, setToast] = useState("");
+  const orientation = useOrientation();
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -44,6 +47,7 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         return { state: r.state, thumb: r.thumb };
       },
       load: async (state) => void (await call({ type: "load-state", state })),
+      setFastForward: async (on) => void (await call({ type: "fast-forward", on })),
     };
   }, []);
 
@@ -53,9 +57,9 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   };
 
   return (
-    <div class="game">
-      <iframe ref={frame} class="sfc-frame" src={`/sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" />
-      <GameMenu gameId={game.id} bridge={bridge} onExit={exit} />
+    <div class="game" style={rotatedStyle(orientation.rotation)}>
+      <iframe ref={frame} class="sfc-frame" src={`${import.meta.env.BASE_URL}sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" />
+      <GameMenu gameId={game.id} bridge={bridge} onExit={exit} orientation={orientation} />
       {toast && <div class="glass toast">{toast}</div>}
     </div>
   );

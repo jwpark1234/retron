@@ -3,6 +3,7 @@ import { gameDir } from "./library";
 import { getFile, readJson, writeFile, writeJson } from "./store";
 
 export const SLOTS = [1, 2, 3, 4];
+export const AUTO_SLOT = 0; // 웹을 닫거나 나갈 때 자동으로 저장하는 슬롯
 
 export interface SlotInfo {
   slot: number;
@@ -12,9 +13,9 @@ export interface SlotInfo {
 
 const path = (id: string, slot: number, ext: string) => `${gameDir(id)}/states/${slot}.${ext}`;
 
-export async function listSlots(id: string): Promise<(SlotInfo | null)[]> {
+export async function listSlots(id: string, slots: number[]): Promise<(SlotInfo | null)[]> {
   return Promise.all(
-    SLOTS.map(async (slot) => {
+    slots.map(async (slot) => {
       const meta = await readJson<{ savedAt: number } | null>(path(id, slot, "json"), null);
       if (!meta) return null;
       const png = await getFile(path(id, slot, "png"));

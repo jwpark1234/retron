@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CommandInterface } from "emulators";
-import { gameDir, saveThumbnail, type Game } from "../../library/library";
+import { gameDir, type Game } from "../../library/library";
 import { listFiles, readDir, removeFile, writeFile, type FileMap } from "../../library/store";
 import { GameMenu, type StateBridge } from "../../ui/GameMenu";
+import { saveFirstRunThumbnail } from "../../library/thumbnail";
+import { rotatedStyle } from "../../ui/RotatedStage";
+import { toLocal, useOrientation } from "../../ui/orientation";
 import { VirtualKeys } from "../../ui/VirtualKeys";
 import { attachAudio, attachVideo, createDos, loadDosState, saveDosState, toDosKey } from "./create-dos";
 import { CD_DIR, HDD_DIR } from "./profiles";
@@ -27,9 +30,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const [toast, setToast] = useState("");
   const [bridge, setBridge] = useState<StateBridge | null>(null);
   const dir = gameDir(game.id);
+  const orientation = useOrientation();
+  const rotation = useRef(0);
+  rotation.current = orientation.rotation;
 
   const snapshot = () => new Promise<Blob | null>((resolve) => (canvas.current ? canvas.current.toBlob(resolve, "image/png") : resolve(null)));
-  // 화면 전환 중(거의 검은 화면)이면 썸네일을 바꾸지 않는다
+  // 화면 전환 중(거의 검은 화면)은 썸네일로 쓰지 않는다
   const mostlyBlack = () => {
     const c = canvas.current;
     if (!c || !c.width) return true;
@@ -37,16 +43,6 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     let lit = 0;
     for (let i = 0; i < d.length; i += 4 * 64) if (d[i] + d[i + 1] + d[i + 2] > 48) lit++;
     return lit < d.length / (4 * 64) / 20;
-  };
-  const capture = async () => {
-    if (mostlyBlack()) return;
-    const b = await snapshot();
-    if (b) await saveThumbnail(game.id, b);
-  };
-
-  const exit = async () => {
-    await capture();
-    onExit();
   };
 
   useEffect(() => {
@@ -63,6 +59,15 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       ci.current = dos;
       cleanups.push(attachVideo(dos, canvas.current!), attachAudio(dos));
       setStatus("");
+      // 아이콘이 없던 게임은 첫 실행 화면을 썸네일로 쓴다 (로고가 지나간 뒤, 검은 화면이 아닐 때)
+      const startedAt = Date.now();
+      const thumbTimer = setInterval(() => {
+        if (Date.now() - startedAt < 8000 || mostlyBlack()) return;
+        clearInterval(thumbTimer);
+        const c = canvas.current!;
+        void saveFirstRunThumbnail(game.id, c, c.width, c.height);
+      }, 2000);
+      cleanups.push(() => clearInterval(thumbTimer));
       setBridge({
         save: async () => ({ state: await saveDosState(dos), thumb: await snapshot() }),
         load: (state) => loadDosState(dos, state),
@@ -73,7 +78,6 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         onChange: async (now: FileMap) => {
           for (const p of (await listFiles(`${dir}/saves`)).keys()) if (!now.has(p)) await removeFile(`${dir}/saves/${p}`);
           for (const [p, d] of now) await writeFile(`${dir}/saves/${p}`, d);
-          await capture();
           setToast("저장되었습니다");
           setTimeout(() => setToast(""), 2000);
         },
@@ -93,9 +97,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   useEffect(() => {
     const el = wrap.current!;
     const move = (e: PointerEvent) => {
-      const r = canvas.current!.getBoundingClientRect();
-      const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-      const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      const { x, y } = toLocal(e, canvas.current!.getBoundingClientRect(), rotation.current);
       ci.current?.sendMouseMotion(x, y);
     };
     const click = (button: number) => {
@@ -137,14 +139,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     const kd = key(true);
     const ku = key(false);
     const noMenu = (e: Event) => e.preventDefault();
-    const leave = (e: BeforeUnloadEvent) => e.preventDefault();
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerdown", down);
     el.addEventListener("pointerup", up);
     el.addEventListener("contextmenu", noMenu);
     window.addEventListener("keydown", kd);
     window.addEventListener("keyup", ku);
-    window.addEventListener("beforeunload", leave);
     return () => {
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerdown", down);
@@ -152,14 +152,13 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       el.removeEventListener("contextmenu", noMenu);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
-      window.removeEventListener("beforeunload", leave);
     };
   }, []);
 
   return (
-    <div class="game" ref={wrap}>
+    <div class="game" ref={wrap} style={rotatedStyle(orientation.rotation)}>
       <canvas ref={canvas} />
-      <GameMenu gameId={game.id} bridge={bridge} onExit={exit} />
+      <GameMenu gameId={game.id} bridge={bridge} onExit={onExit} orientation={orientation} />
       <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
       {status && <div class="overlay">{status}</div>}
       {toast && <div class="glass toast">{toast}</div>}

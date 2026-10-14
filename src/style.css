@@ -2,8 +2,8 @@
 :root {
   --text: #f5f5f7;
   --muted: rgba(245, 245, 247, 0.6);
-  --glass: rgba(255, 255, 255, 0.08);
-  --glass-strong: rgba(255, 255, 255, 0.14);
+  --glass: rgba(22, 22, 28, 0.5);
+  --glass-strong: rgba(60, 60, 72, 0.5);
   --glass-line: rgba(255, 255, 255, 0.22);
   --glass-hi: rgba(255, 255, 255, 0.45);
   --tint: #ffb340;
@@ -79,12 +79,12 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
 li:hover .remove, .remove:focus-visible { opacity: 1; }
 @media (pointer: coarse) { .remove { opacity: 0.85; } }
 
-ul.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
+ul.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }
 ul.grid .card { flex-direction: column; }
-ul.grid .thumb { aspect-ratio: 4 / 3; }
+ul.grid .thumb { aspect-ratio: 1; }
 ul.list { display: flex; flex-direction: column; gap: 10px; }
 ul.list .card { flex-direction: row; align-items: center; gap: 6px; }
-ul.list .thumb { width: 104px; aspect-ratio: 4 / 3; flex-shrink: 0; font-size: 11px; }
+ul.list .thumb { width: 72px; aspect-ratio: 1; flex-shrink: 0; font-size: 11px; }
 ul.list .meta { padding: 4px 8px; }
 
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); display: grid; place-items: center; padding: 16px; z-index: 20; }
@@ -94,14 +94,14 @@ ul.list .meta { padding: 4px 8px; }
 .dialog .cancel { text-align: center; background: transparent; border: 0; box-shadow: none; color: var(--muted); }
 
 /* 플레이 화면 */
-.game { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
-.game canvas { width: min(100vw, calc(100vh * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated; }
+.game { position: fixed; inset: 0; container-type: size; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+.game canvas { width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated; }
 .sfc-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .vkeys { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 14px; }
 .vkeys button { min-width: 58px; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .toast { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
-@media (orientation: portrait) { .game:not(:has(iframe)) { justify-content: flex-start; padding-top: 64px; } }
+@media (orientation: portrait) { .game:not(:has(iframe)):not([style]) { justify-content: flex-start; padding-top: 64px; } }
 
 /* 게임 메뉴 */
 .menu-button {
@@ -134,3 +134,14 @@ ul.list .meta { padding: 4px 8px; }
   .actions > * { flex-shrink: 0; }
   ul.grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
+
+/* 메뉴 설정 줄, 스위치, 빨리가기 표시 */
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px; }
+.menu-row > span { font-size: 15px; font-weight: 500; }
+.menu-row .seg button { font-size: 13px; padding: 5px 12px; }
+.switch { position: relative; width: 52px; height: 32px; padding: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.18); border: 1px solid var(--glass-line); }
+.switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.switch.on { background: #34c759; border-color: #34c759; }
+.switch.on i { transform: translateX(20px); }
+.slot.auto { background: rgba(255, 179, 64, 0.1); border-color: rgba(255, 179, 64, 0.25); }
+.ff-badge { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 64px; z-index: 25; padding: 10px 14px; border-radius: 999px; font-size: 13px; letter-spacing: -2px; }

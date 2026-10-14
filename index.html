@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>retron</title>
-    <script src="/emulators/emulators.js"></script>
-    <script>emulators.pathPrefix = "/emulators/";</script>
+    <script src="./emulators/emulators.js"></script>
+    <script>emulators.pathPrefix = new URL("emulators/", document.baseURI).href;</script>
   </head>
   <body>
     <div id="app"></div>
