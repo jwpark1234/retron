@@ -1,12 +1,27 @@
 // 등록한 게임 목록. OPFS의 library.json에 두고, 게임 파일은 games/{id}/ 아래에 둔다.
+import { splitConf } from "../platforms/dos/profiles";
 import { getFile, readJson, removeDir, writeFile, writeJson } from "./store";
 
 export type Platform = "dos" | "sfc";
 
+/** 게임패드 버튼에 연결할 동작: DOS 키 코드 또는 마우스 버튼 */
+export type PadAction = number | "mouse-left" | "mouse-right";
+
+export interface DosInput {
+  keys?: Record<string, number>; // KeyboardEvent.code → DOS 키 (키 재배치)
+  pad?: Record<string, PadAction>; // 게임패드 버튼 번호 → 동작
+  leftStick?: "arrows" | "mouse";
+}
+
 export interface DosInfo {
-  conf: string; // [autoexec] 포함 전체 dosbox.conf
+  settings: string; // dosbox.conf의 [autoexec] 앞부분
+  exe: string; // C: 기준 실행 파일 경로 (예: GENE2.COM, GAME/START.BAT)
+  cd?: string; // CD 폴더 안의 이미지 (CD.CUE / CD.ISO)
+  cycles?: string; // 비우면 settings 그대로. auto / max / 숫자
   /** 세이브로 감시할 파일 패턴(정규식 문자열). 비어 있으면 실행 중 바뀐 파일을 자동으로 추적한다 */
   savePattern?: string;
+  input?: DosInput;
+  conf?: string; // 예전 형식 (normalize에서 위 필드로 옮긴다)
 }
 
 export interface SfcInfo {
@@ -29,7 +44,14 @@ const LIBRARY = "library.json";
 export const gameDir = (id: string) => `games/${id}`;
 
 export async function listGames(): Promise<Game[]> {
-  return readJson<Game[]>(LIBRARY, []);
+  return (await readJson<Game[]>(LIBRARY, [])).map(normalize);
+}
+
+// 예전 형식(conf 한 덩어리)을 나눠 담는다
+function normalize(g: Game): Game {
+  if (!g.dos?.conf || g.dos.exe) return g;
+  const { conf, ...rest } = g.dos;
+  return { ...g, dos: { ...rest, ...splitConf(conf) } };
 }
 
 export async function getGame(id: string): Promise<Game | undefined> {

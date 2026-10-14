@@ -75,9 +75,9 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
 .meta strong { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; padding: 1px 7px; margin-right: 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(255, 255, 255, 0.16); color: var(--text); }
-.remove { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; padding: 0; opacity: 0; font-size: 13px; }
-li:hover .remove, .remove:focus-visible { opacity: 1; }
-@media (pointer: coarse) { .remove { opacity: 0.85; } }
+.more { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; padding: 0; opacity: 0; font-size: 16px; line-height: 1; }
+li:hover .more, .more:focus-visible { opacity: 1; }
+@media (pointer: coarse) { .more { opacity: 0.85; } }
 
 ul.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; }
 ul.grid .card { flex-direction: column; }
@@ -95,7 +95,18 @@ ul.list .meta { padding: 4px 8px; }
 
 /* 플레이 화면 */
 .game { position: fixed; inset: 0; container-type: size; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
-.game canvas { width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated; }
+.screen { position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; }
+.screen canvas { display: block; width: 100%; height: 100%; }
+/* 화면 필터: 선명(도트 그대로) / 부드럽게 / CRT(주사선 + 가장자리 어둡게) */
+.filter-sharp, .filter-crt { image-rendering: pixelated; }
+.filter-smooth { image-rendering: auto; }
+.crt-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.45) 100%);
+  mix-blend-mode: multiply;
+}
 .sfc-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .vkeys { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 14px; }
 .vkeys button { min-width: 58px; }
@@ -145,3 +156,28 @@ ul.list .meta { padding: 4px 8px; }
 .switch.on i { transform: translateX(20px); }
 .slot.auto { background: rgba(255, 179, 64, 0.1); border-color: rgba(255, 179, 64, 0.25); }
 .ff-badge { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 64px; z-index: 25; padding: 10px 14px; border-radius: 999px; font-size: 13px; letter-spacing: -2px; }
+.icon-toggle { width: 38px; height: 38px; padding: 0; background: transparent; border: 0; font-size: 18px; }
+.volume { flex: 1; accent-color: var(--tint); height: 4px; }
+
+/* 게임 설정 */
+.settings { width: min(520px, 100%); gap: 10px; }
+.settings h3 { margin: 12px 0 2px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: none; }
+.settings .muted { margin: 0; font-size: 13px; }
+.field { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.field > span { flex-shrink: 0; }
+.settings input:not([type]), .settings select {
+  font: inherit; font-size: 14px; color: var(--text); background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-line); border-radius: 10px; padding: 7px 10px; min-width: 0; flex: 1; max-width: 300px;
+}
+.settings select option { background: #1c1c22; }
+.map-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.map-row code { min-width: 90px; }
+.pad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 14px; }
+.pad-grid select { max-width: 130px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.end { margin-top: 14px; }
+.spacer { flex: 1; }
+button.small { padding: 5px 12px; font-size: 13px; align-self: flex-start; }
+button.primary { background: var(--tint); color: #111; border-color: var(--tint); }
+button.danger { background: transparent; border: 1px solid rgba(255, 110, 100, 0.5); color: #ff8a80; }
+.dialog .row button, .settings > button { text-align: center; }

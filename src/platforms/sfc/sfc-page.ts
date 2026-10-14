@@ -26,11 +26,23 @@ w.EJS_Buttons = {
   exitEmulation: false, cacheManager: false, netplay: false, screenRecord: false, screenshot: false, cheat: false,
 };
 
+// 부모가 보낸 볼륨·화면 필터. 게임이 시작되기 전에 오면 시작할 때 적용한다
+let prefs: { volume: number; filter: string } | null = null;
+const SHADERS: Record<string, string> = { sharp: "disabled", smooth: "2xScaleHQ.glslp", crt: "crt-easymode.glslp" };
+function applyPrefs() {
+  const emu = w.EJS_emulator;
+  if (!prefs || !emu?.started) return;
+  emu.volume = prefs.volume;
+  emu.setVolume(prefs.volume);
+  emu.changeSettingOption("shader", SHADERS[prefs.filter] ?? "disabled");
+}
+
 let lastSave: Uint8Array | null = null;
 const same = (a: Uint8Array, b: Uint8Array | null) => !!b && a.length === b.length && a.every((x, i) => x === b[i]);
 
 w.EJS_onGameStart = async () => {
   const gm = w.EJS_emulator.gameManager;
+  applyPrefs();
   // 첫 실행이면 잠시 뒤 화면을 썸네일로 쓴다
   setTimeout(async () => {
     if (await hasThumbnail(id)) return;
@@ -67,6 +79,10 @@ const screenshot = async (): Promise<Blob | null> => {
 window.addEventListener("message", async (e) => {
   if (e.origin !== location.origin) return;
   const { type, reqId } = e.data ?? {};
+  if (type === "prefs") {
+    prefs = { volume: e.data.volume, filter: e.data.filter };
+    return applyPrefs();
+  }
   if (type !== "save-state" && type !== "load-state" && type !== "fast-forward") return;
   try {
     const gm = w.EJS_emulator?.gameManager;
@@ -75,7 +91,7 @@ window.addEventListener("message", async (e) => {
       const state: Uint8Array = gm.getState();
       parent.postMessage({ type: "result", reqId, state, thumb: await screenshot() }, location.origin);
     } else if (type === "fast-forward") {
-      gm.functions.toggleFastForward(e.data.on ? 1 : 0);
+      w.EJS_emulator.changeSettingOption("fastForward", e.data.on ? "enabled" : "disabled");
       parent.postMessage({ type: "result", reqId }, location.origin);
     } else {
       gm.loadState(e.data.state);

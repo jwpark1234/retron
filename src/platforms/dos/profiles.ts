@@ -88,12 +88,39 @@ export function findProfile(fileNames: string[]): DosProfile | undefined {
   return PROFILES.find((p) => names.has(p.entry));
 }
 
-/** cd: CD 폴더 안의 이미지 파일 이름 (CD.CUE 또는 CD.ISO) */
+/** cycles를 바꾼 settings (auto / max / 숫자). 비우면 그대로 */
+export function withCycles(settings: string, cycles?: string) {
+  if (!cycles) return settings;
+  const line = `cycles=${cycles}`;
+  if (/^cycles=.*$/m.test(settings)) return settings.replace(/^cycles=.*$/m, line);
+  const cpu = /^\[cpu\][ \t]*$/m;
+  return cpu.test(settings) ? settings.replace(cpu, `[cpu]\n${line}`) : `${settings}\n[cpu]\n${line}\n`;
+}
+
+const BS = String.fromCharCode(92); // DOS 경로 구분자 '\'
+
+/** exe: C: 기준 경로, cd: CD 폴더 안의 이미지 파일 이름 (CD.CUE 또는 CD.ISO) */
 export function buildConf(settings: string, exe: string, cd?: string) {
   const lines = ["[autoexec]", `mount c ${HDD_DIR}`];
   if (cd) lines.push(`imgmount d ${CD_DIR}/${cd} -t iso`);
-  lines.push("c:", exe.toLowerCase().endsWith(".bat") ? `call ${exe}` : exe);
-  return `${settings}\n${lines.join("\n")}\n`;
+  lines.push("c:");
+  const parts = exe.split("/");
+  const file = parts.pop()!;
+  if (parts.length) lines.push(`cd ${BS}${parts.join(BS)}`);
+  lines.push(file.toLowerCase().endsWith(".bat") ? `call ${file}` : file);
+  return `${settings.trimEnd()}\n\n${lines.join("\n")}\n`;
+}
+
+export function splitConf(conf: string): { settings: string; exe: string; cd?: string } {
+  const i = conf.indexOf("[autoexec]");
+  const lines = conf.slice(i).split("\n").map((l) => l.trim()).filter(Boolean);
+  const dirs = lines.filter((l) => l.toLowerCase().startsWith(`cd ${BS}`)).map((l) => l.slice(4).split(BS).join("/"));
+  const file = lines[lines.length - 1].replace(/^call\s+/i, "");
+  return {
+    settings: conf.slice(0, i).trimEnd() + "\n",
+    exe: [...dirs, file].join("/"),
+    cd: lines.find((l) => /^imgmount d /i.test(l))?.match(/\/(\S+)\s/)?.[1],
+  };
 }
 
 export { DEFAULT_SETTINGS };

@@ -3,12 +3,17 @@ import type { Game } from "../../library/library";
 import { GameMenu, type StateBridge } from "../../ui/GameMenu";
 import { rotatedStyle } from "../../ui/RotatedStage";
 import { useOrientation } from "../../ui/orientation";
+import { effectiveVolume, usePrefs } from "../../ui/prefs";
 
 export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const pending = useRef(new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>());
   const [toast, setToast] = useState("");
   const orientation = useOrientation();
+  const prefs = usePrefs();
+  const sendPrefs = () =>
+    frame.current?.contentWindow?.postMessage({ type: "prefs", volume: effectiveVolume(prefs), filter: prefs.filter }, location.origin);
+  useEffect(sendPrefs, [prefs]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -58,7 +63,7 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
 
   return (
     <div class="game" style={rotatedStyle(orientation.rotation)}>
-      <iframe ref={frame} class="sfc-frame" src={`${import.meta.env.BASE_URL}sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" />
+      <iframe ref={frame} class="sfc-frame" src={`${import.meta.env.BASE_URL}sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" onLoad={sendPrefs} />
       <GameMenu gameId={game.id} bridge={bridge} onExit={exit} orientation={orientation} />
       {toast && <div class="glass toast">{toast}</div>}
     </div>

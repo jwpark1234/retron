@@ -6,9 +6,11 @@ import { GameMenu, type StateBridge } from "../../ui/GameMenu";
 import { saveFirstRunThumbnail } from "../../library/thumbnail";
 import { rotatedStyle } from "../../ui/RotatedStage";
 import { toLocal, useOrientation } from "../../ui/orientation";
+import { effectiveVolume, usePrefs } from "../../ui/prefs";
 import { VirtualKeys } from "../../ui/VirtualKeys";
 import { attachAudio, attachVideo, createDos, loadDosState, saveDosState, toDosKey } from "./create-dos";
-import { CD_DIR, HDD_DIR } from "./profiles";
+import { watchGamepad } from "./gamepad";
+import { CD_DIR, HDD_DIR, buildConf, withCycles } from "./profiles";
 import { watchSaves } from "./save-watch";
 
 const LONG_PRESS_MS = 500;
@@ -33,6 +35,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const orientation = useOrientation();
   const rotation = useRef(0);
   rotation.current = orientation.rotation;
+  const prefs = usePrefs();
+  const volume = useRef<(v: number) => void>(() => {});
+  const cursor = useRef({ x: 0.5, y: 0.5 }); // 마우스·패드가 같이 쓰는 커서 위치
+  const remap = game.dos!.input?.keys ?? {};
+
+  useEffect(() => volume.current(effectiveVolume(prefs)), [prefs.volume, prefs.muted]);
 
   const snapshot = () => new Promise<Blob | null>((resolve) => (canvas.current ? canvas.current.toBlob(resolve, "image/png") : resolve(null)));
   // 화면 전환 중(거의 검은 화면)은 썸네일로 쓰지 않는다
@@ -54,10 +62,26 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       for (const [p, d] of saves) hdd.set(p, d); // 세이브를 원본 위에 덮는다
       const cd = await readDir(`${dir}/${CD_DIR}`);
       setStatus("에뮬레이터 시작 중…");
-      const dos = await createDos(hdd, cd, game.dos!.conf);
+      const info = game.dos!;
+      const dos = await createDos(hdd, cd, buildConf(withCycles(info.settings, info.cycles), info.exe, info.cd));
       if (disposed) return void dos.exit();
       ci.current = dos;
-      cleanups.push(attachVideo(dos, canvas.current!), attachAudio(dos));
+      const audio = attachAudio(dos);
+      volume.current = audio.setVolume;
+      audio.setVolume(effectiveVolume(prefs));
+      cleanups.push(attachVideo(dos, canvas.current!), audio.detach);
+      cleanups.push(
+        watchGamepad(info.input, {
+          key: (k, p) => dos.sendKeyEvent(k, p),
+          mouseButton: (b, p) => dos.sendMouseButton(b, p),
+          moveCursor: (dx, dy) => {
+            const c = cursor.current;
+            c.x = Math.min(1, Math.max(0, c.x + dx));
+            c.y = Math.min(1, Math.max(0, c.y + dy));
+            dos.sendMouseMotion(c.x, c.y);
+          },
+        }),
+      );
       setStatus("");
       // 아이콘이 없던 게임은 첫 실행 화면을 썸네일로 쓴다 (로고가 지나간 뒤, 검은 화면이 아닐 때)
       const startedAt = Date.now();
@@ -97,8 +121,8 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   useEffect(() => {
     const el = wrap.current!;
     const move = (e: PointerEvent) => {
-      const { x, y } = toLocal(e, canvas.current!.getBoundingClientRect(), rotation.current);
-      ci.current?.sendMouseMotion(x, y);
+      cursor.current = toLocal(e, canvas.current!.getBoundingClientRect(), rotation.current);
+      ci.current?.sendMouseMotion(cursor.current.x, cursor.current.y);
     };
     const click = (button: number) => {
       ci.current?.sendMouseButton(button, true);
@@ -131,7 +155,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       if (!longPressed && !isUi(e.target)) click(0);
     };
     const key = (pressed: boolean) => (e: KeyboardEvent) => {
-      const k = toDosKey(e.code);
+      const k = remap[e.code] ?? toDosKey(e.code); // 키 재배치가 있으면 그것을 쓴다
       if (k === undefined) return;
       e.preventDefault();
       ci.current?.sendKeyEvent(k, pressed);
@@ -157,7 +181,10 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
 
   return (
     <div class="game" ref={wrap} style={rotatedStyle(orientation.rotation)}>
-      <canvas ref={canvas} />
+      <div class="screen">
+        <canvas ref={canvas} class={`filter-${prefs.filter}`} />
+        {prefs.filter === "crt" && <div class="crt-overlay" />}
+      </div>
       <GameMenu gameId={game.id} bridge={bridge} onExit={onExit} orientation={orientation} />
       <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
       {status && <div class="overlay">{status}</div>}

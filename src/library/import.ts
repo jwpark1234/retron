@@ -1,7 +1,7 @@
 // 폴더, zip, 낱개 파일에서 게임을 찾아 라이브러리에 등록한다.
 // - SFC: .sfc/.smc/.fig/.swc ROM마다 게임 하나
 // - DOS: 실행 파일이 있는 폴더를 C:로, bin/cue나 iso가 있으면 D:(CD)로
-import { CD_DIR, DEFAULT_SETTINGS, HDD_DIR, buildConf, exeCandidates, findProfile, type DosProfile } from "../platforms/dos/profiles";
+import { CD_DIR, DEFAULT_SETTINGS, HDD_DIR, exeCandidates, findProfile, type DosProfile } from "../platforms/dos/profiles";
 import { convertBinCue, parseCue } from "./cue";
 import { gameDir, newGameId, putGame, saveThumbnail, type Game } from "./library";
 import { imageFileToSquare, pickIcon } from "./thumbnail";
@@ -137,7 +137,7 @@ async function writeDosGame(
     title,
     platform: "dos",
     addedAt: Date.now(),
-    dos: { conf: buildConf(profile?.settings ?? DEFAULT_SETTINGS, base(exePath).toUpperCase(), cd), savePattern: profile?.savePattern },
+    dos: { settings: profile?.settings ?? DEFAULT_SETTINGS, exe: base(exePath).toUpperCase(), cd, savePattern: profile?.savePattern },
   };
   await putGame(game);
   return game;

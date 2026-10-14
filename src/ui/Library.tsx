@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { listGames, removeGame, thumbnailUrl, type Game } from "../library/library";
+import { listGames, thumbnailUrl, type Game } from "../library/library";
 import { importFiles } from "../library/import";
+import { GameSettings } from "./GameSettings";
 
 type View = "grid" | "list";
 const PLATFORM_LABEL = { dos: "DOS", sfc: "SFC" } as const;
@@ -20,6 +21,7 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
   const [view, setView] = useState<View>(loadView);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<Game | null>(null);
   const [choice, setChoice] = useState<{ candidates: string[]; resolve: (v: string | null) => void } | null>(null);
 
   const refresh = async () => {
@@ -67,11 +69,6 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
     setProgress("");
   };
 
-  const remove = async (g: Game) => {
-    if (!confirm(`${g.title}을(를) 삭제할까요? 세이브도 함께 지워집니다.`)) return;
-    await removeGame(g.id);
-    await refresh();
-  };
 
   return (
     <div class="library">
@@ -119,12 +116,14 @@ export function Library({ onPlay }: { onPlay: (game: Game) => void }) {
                 </small>
               </div>
             </button>
-            <button class="remove glass" title="삭제" onClick={() => remove(g)}>
-              ✕
+            <button class="more glass" title="설정" aria-label={`${g.title} 설정`} onClick={() => setEditing(g)}>
+              ⋯
             </button>
           </li>
         ))}
       </ul>
+
+      {editing && <GameSettings game={editing} onClose={() => setEditing(null)} onChanged={refresh} />}
 
       {choice && (
         <div class="modal">

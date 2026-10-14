@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { AUTO_SLOT, SLOTS, listSlots, readSlot, writeSlot, type SlotInfo } from "../library/states";
 import type { OrientationMode } from "./orientation";
+import { setPrefs, usePrefs, type ScreenFilter } from "./prefs";
 
 export interface StateBridge {
   save(): Promise<{ state: Uint8Array; thumb: Blob | null }>;
@@ -16,6 +17,12 @@ const ORIENTATIONS: { mode: OrientationMode; label: string }[] = [
   { mode: "auto", label: "자동" },
   { mode: "landscape", label: "가로" },
   { mode: "portrait", label: "세로" },
+];
+
+const FILTERS: { filter: ScreenFilter; label: string }[] = [
+  { filter: "sharp", label: "선명" },
+  { filter: "smooth", label: "부드럽게" },
+  { filter: "crt", label: "CRT" },
 ];
 
 const fmt = (t: number) =>
@@ -38,6 +45,17 @@ export function GameMenu({
   const [toast, setToast] = useState("");
   const [fast, setFast] = useState(false);
   const autoSaving = useRef(false);
+  const prefs = usePrefs();
+  const [fullscreen, setFullscreen] = useState(!!document.fullscreenElement);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = () =>
+    void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => undefined);
 
   const refresh = async () => {
     const next = await listSlots(gameId, ALL_SLOTS);
@@ -142,6 +160,39 @@ export function GameMenu({
                 ))}
               </div>
             </div>
+            <div class="menu-row">
+              <span>화면 필터</span>
+              <div class="seg glass">
+                {FILTERS.map((f) => (
+                  <button key={f.filter} class={prefs.filter === f.filter ? "on" : ""} onClick={() => setPrefs({ filter: f.filter })}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div class="menu-row">
+              <button class="icon-toggle" aria-label={prefs.muted ? "소리 켜기" : "음소거"} onClick={() => setPrefs({ muted: !prefs.muted })}>
+                {prefs.muted || prefs.volume === 0 ? "🔇" : "🔊"}
+              </button>
+              <input
+                class="volume"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={prefs.volume}
+                aria-label="볼륨"
+                onInput={(e) => setPrefs({ volume: +(e.target as HTMLInputElement).value, muted: false })}
+              />
+            </div>
+            {document.fullscreenEnabled && (
+              <div class="menu-row">
+                <span>전체화면</span>
+                <button class={`switch ${fullscreen ? "on" : ""}`} role="switch" aria-checked={fullscreen} onClick={toggleFullscreen}>
+                  <i />
+                </button>
+              </div>
+            )}
             {bridge?.setFastForward && (
               <div class="menu-row">
                 <span>빨리가기</span>

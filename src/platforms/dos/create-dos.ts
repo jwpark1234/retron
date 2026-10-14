@@ -64,7 +64,7 @@ export function attachVideo(ci: CommandInterface, canvas: HTMLCanvasElement): ()
 }
 
 // onSoundPush는 모노 Float32 샘플을 준다. js-dos 기본 UI와 같은 방식(링 버퍼 + ScriptProcessor)으로 재생한다.
-export function attachAudio(ci: CommandInterface): () => void {
+export function attachAudio(ci: CommandInterface): { detach: () => void; setVolume: (v: number) => void } {
   const SIZE = 8192;
   const BLOCK = 2048;
   const ctx = new AudioContext({ sampleRate: ci.soundFrequency(), latencyHint: "interactive" });
@@ -87,17 +87,21 @@ export function attachAudio(ci: CommandInterface): () => void {
       } else out[i] = 0;
     }
   };
-  node.connect(ctx.destination);
+  const gain = ctx.createGain();
+  node.connect(gain).connect(ctx.destination);
   // iOS는 사용자 입력이 있어야 소리가 난다
   const unlock = () => void ctx.resume();
   document.addEventListener("pointerdown", unlock);
   document.addEventListener("keydown", unlock);
   void ctx.resume();
-  return () => {
-    node.disconnect();
-    void ctx.close();
-    document.removeEventListener("pointerdown", unlock);
-    document.removeEventListener("keydown", unlock);
+  return {
+    setVolume: (v) => void (gain.gain.value = v),
+    detach: () => {
+      node.disconnect();
+      void ctx.close();
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("keydown", unlock);
+    },
   };
 }
 
@@ -133,6 +137,18 @@ const KEYS: Record<string, number> = {
   BracketLeft: 91, Backslash: 92, BracketRight: 93, Backquote: 96,
   ShiftLeft: 340, ControlLeft: 341, AltLeft: 342, ShiftRight: 344, ControlRight: 345, AltRight: 346,
 };
+
+/** 키 설정 화면에서 고를 수 있는 DOS 키 */
+export const DOS_KEY_LIST: { label: string; key: number }[] = [
+  ...[["ESC", 256], ["Enter", 257], ["Space", 32], ["Tab", 258], ["Backspace", 259], ["↑", 265], ["↓", 264], ["←", 263], ["→", 262],
+    ["Shift", 340], ["Ctrl", 341], ["Alt", 342], ["Insert", 260], ["Delete", 261], ["Home", 268], ["End", 269], ["PageUp", 266], ["PageDown", 267]]
+    .map(([label, key]) => ({ label: label as string, key: key as number })),
+  ...Array.from({ length: 26 }, (_, i) => ({ label: String.fromCharCode(65 + i), key: 65 + i })),
+  ...Array.from({ length: 10 }, (_, i) => ({ label: String(i), key: 48 + i })),
+  ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, key: 290 + i })),
+];
+
+export const dosKeyLabel = (key: number) => DOS_KEY_LIST.find((k) => k.key === key)?.label ?? String(key);
 
 export function toDosKey(code: string): number | undefined {
   if (code in KEYS) return KEYS[code];
