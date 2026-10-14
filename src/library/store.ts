@@ -1,0 +1,79 @@
+// OPFS 래퍼. 경로의 '/'는 디렉터리로 매핑된다.
+export type FileMap = Map<string, Uint8Array>;
+
+const root = () => navigator.storage.getDirectory();
+
+async function dir(parts: string[], create: boolean): Promise<FileSystemDirectoryHandle | null> {
+  let d = await root();
+  for (const p of parts.filter(Boolean)) {
+    try {
+      d = await d.getDirectoryHandle(p, { create });
+    } catch {
+      return null;
+    }
+  }
+  return d;
+}
+
+const split = (path: string) => {
+  const parts = path.split("/");
+  return { dirs: parts.slice(0, -1), name: parts[parts.length - 1] };
+};
+
+export async function writeFile(path: string, data: Uint8Array | Blob) {
+  const { dirs, name } = split(path);
+  const d = (await dir(dirs, true))!;
+  const w = await (await d.getFileHandle(name, { create: true })).createWritable();
+  await w.write(data);
+  await w.close();
+}
+
+/** 디스크에 있는 그대로의 File을 돌려준다 (메모리에 올리지 않음). */
+export async function getFile(path: string): Promise<File | null> {
+  const { dirs, name } = split(path);
+  const d = await dir(dirs, false);
+  if (!d) return null;
+  return d.getFileHandle(name).then((h) => h.getFile(), () => null);
+}
+
+/** 디렉터리 아래 모든 파일을 상대경로 → File로 나열한다. */
+export async function listFiles(path: string): Promise<Map<string, File>> {
+  const out = new Map<string, File>();
+  const d = await dir(path.split("/"), false);
+  if (!d) return out;
+  const walk = async (h: FileSystemDirectoryHandle, prefix: string) => {
+    for await (const [name, child] of (h as any).entries() as AsyncIterable<[string, FileSystemHandle]>) {
+      if (child.kind === "directory") await walk(child as FileSystemDirectoryHandle, `${prefix}${name}/`);
+      else out.set(prefix + name, await (child as FileSystemFileHandle).getFile());
+    }
+  };
+  await walk(d, "");
+  return out;
+}
+
+export async function readDir(path: string): Promise<FileMap> {
+  const out: FileMap = new Map();
+  for (const [p, f] of await listFiles(path)) out.set(p, new Uint8Array(await f.arrayBuffer()));
+  return out;
+}
+
+export async function readJson<T>(path: string, fallback: T): Promise<T> {
+  const f = await getFile(path);
+  return f ? (JSON.parse(await f.text()) as T) : fallback;
+}
+
+export async function writeJson(path: string, value: unknown) {
+  await writeFile(path, new TextEncoder().encode(JSON.stringify(value)));
+}
+
+export async function removeFile(path: string) {
+  const { dirs, name } = split(path);
+  const d = await dir(dirs, false);
+  await d?.removeEntry(name).catch(() => undefined);
+}
+
+export async function removeDir(path: string) {
+  const { dirs, name } = split(path);
+  const d = await dir(dirs, false);
+  await d?.removeEntry(name, { recursive: true }).catch(() => undefined);
+}

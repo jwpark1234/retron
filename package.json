@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "emulators": "8.4.1",
+    "fflate": "^0.8.2",
     "preact": "10.24.3"
   },
   "devDependencies": {

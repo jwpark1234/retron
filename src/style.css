@@ -1,14 +1,51 @@
-html, body, #app { margin: 0; height: 100%; background: #000; color: #eee; font-family: system-ui, sans-serif; overscroll-behavior: none; }
-button, .pick { background: #222; color: #eee; border: 1px solid #555; border-radius: 6px; padding: 8px 16px; font-size: 16px; cursor: pointer; }
-.splash { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0 16px; text-align: center; }
-.splash .start { font-size: 20px; padding: 12px 32px; }
-.hint { color: #aaa; max-width: 420px; }
+:root { --bg: #0e0e10; --panel: #1b1b1f; --line: #333; --text: #eee; --muted: #999; --accent: #e8a33d; }
+html, body, #app { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; overscroll-behavior: none; }
+button, .pick { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; font-size: 15px; cursor: pointer; font-family: inherit; }
 .error { color: #f77; }
-.game { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hint, .progress { color: var(--muted); }
+
+/* 라이브러리 */
+.library { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.library header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.library h1 { margin: 0; font-size: 22px; letter-spacing: 1px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg { display: flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+.seg button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+.library ul { list-style: none; padding: 0; margin: 20px 0; }
+.library li { position: relative; }
+.card { width: 100%; padding: 0; text-align: left; overflow: hidden; display: flex; }
+.thumb { background: #000; display: grid; place-items: center; overflow: hidden; color: var(--muted); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.meta { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; min-width: 0; }
+.meta strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta small { color: var(--muted); }
+.remove { position: absolute; top: 6px; right: 6px; padding: 2px 8px; opacity: 0; background: #000a; }
+li:hover .remove, .remove:focus { opacity: 1; }
+@media (pointer: coarse) { .remove { opacity: 0.7; } }
+
+ul.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+ul.grid .card { flex-direction: column; }
+ul.grid .thumb { aspect-ratio: 4 / 3; }
+ul.list { display: flex; flex-direction: column; gap: 8px; }
+ul.list .card { flex-direction: row; align-items: center; }
+ul.list .thumb { width: 96px; aspect-ratio: 4 / 3; flex-shrink: 0; font-size: 11px; }
+
+.modal { position: fixed; inset: 0; background: #000a; display: grid; place-items: center; padding: 16px; z-index: 10; }
+.dialog { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px; max-height: 80vh; overflow: auto; min-width: min(360px, 100%); }
+.dialog h2 { margin: 0 0 8px; font-size: 17px; }
+.dialog button { text-align: left; }
+.dialog .cancel { text-align: center; color: var(--muted); }
+
+/* 플레이 화면 */
+.game { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
 .game canvas { width: min(100vw, calc(100vh * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated; }
-.toolbar { position: absolute; top: 8px; right: 8px; opacity: 0.6; }
-.vkeys { display: flex; gap: 8px; padding: 12px; }
-.vkeys button { min-width: 64px; }
+.sfc-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.toolbar { position: absolute; top: 8px; right: 8px; opacity: 0.6; z-index: 2; }
+.vkeys { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 12px; }
+.vkeys button { min-width: 56px; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: #000c; }
-.toast { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; padding: 8px 16px; border-radius: 6px; }
-@media (orientation: portrait) { .game { justify-content: flex-start; padding-top: 48px; } }
+.toast { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; padding: 8px 16px; border-radius: 6px; z-index: 2; }
+@media (orientation: portrait) { .game:not(:has(iframe)) { justify-content: flex-start; padding-top: 48px; } }

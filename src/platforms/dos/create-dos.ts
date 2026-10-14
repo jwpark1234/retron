@@ -1,19 +1,19 @@
 // js-dos 8 emulators API로 DOSBox-X를 Worker에서 띄우고 화면·소리를 연결한다.
 // js-dos 기본 UI는 쓰지 않는다 (가상 키패드, 터치 입력, 세이브 처리를 직접 하기 위해).
 import type { CommandInterface, Emulators } from "emulators";
-import { CD_DIR, DOSBOX_CONF, HDD_DIR } from "../game-config";
-import type { FileMap } from "../fs/store";
+import type { FileMap } from "../../library/store";
+import { CD_DIR, HDD_DIR } from "./profiles";
 
 declare global {
   // index.html에서 <script src="/emulators/emulators.js">로 로드된다
   const emulators: Emulators;
 }
 
-export async function createDos(hdd: FileMap, cd: FileMap): Promise<CommandInterface> {
+export async function createDos(hdd: FileMap, cd: FileMap, conf: string): Promise<CommandInterface> {
   const init = [
     ...[...hdd].map(([p, contents]) => ({ path: `${HDD_DIR}/${p}`, contents })),
     ...[...cd].map(([p, contents]) => ({ path: `${CD_DIR}/${p}`, contents })),
-    { dosboxConf: DOSBOX_CONF, jsdosConf: { version: "js-dos-v8" } },
+    { dosboxConf: conf, jsdosConf: { version: "js-dos-v8" } },
   ];
   return emulators.dosboxXWorker(init);
 }

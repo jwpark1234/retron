@@ -1,50 +1,67 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CommandInterface } from "emulators";
-import { CD_DIR, GAME_ID, HDD_DIR, SAVE_FILES } from "./game-config";
-import { attachAudio, attachVideo, createDos, toDosKey } from "./dos/create-dos";
-import { detectSaveChange } from "./fs/detect-save-change";
-import { readDir, removeFile, writeFile, type FileMap } from "./fs/store";
-import { VirtualKeyboard } from "./VirtualKeyboard";
+import { gameDir, saveThumbnail, type Game } from "../../library/library";
+import { listFiles, readDir, removeFile, writeFile, type FileMap } from "../../library/store";
+import { VirtualKeys } from "../../ui/VirtualKeys";
+import { attachAudio, attachVideo, createDos, toDosKey } from "./create-dos";
+import { CD_DIR, HDD_DIR } from "./profiles";
+import { watchSaves } from "./save-watch";
 
 const LONG_PRESS_MS = 500;
+const KEYS = [
+  { label: "ESC", key: 256 },
+  { label: "Enter", key: 257 },
+  { label: "Space", key: 32 },
+  { label: "Y", key: 89 },
+  { label: "N", key: 78 },
+];
 const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".vkeys, .toolbar");
 
-async function storeSaves(saves: FileMap) {
-  const hdd = (await readDir(`${GAME_ID}/${HDD_DIR}`)) ?? new Map();
-  for (const name of hdd.keys()) {
-    if (SAVE_FILES.test(name) && !saves.has(name)) await removeFile(`${GAME_ID}/${HDD_DIR}/${name}`);
-  }
-  for (const [name, data] of saves) await writeFile(`${GAME_ID}/${HDD_DIR}/${name}`, data);
-}
-
-export function Game({ onExit }: { onExit: () => void }) {
+export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const ci = useRef<CommandInterface | null>(null);
   const [status, setStatus] = useState("불러오는 중…");
   const [toast, setToast] = useState("");
+  const dir = gameDir(game.id);
+
+  const capture = () =>
+    new Promise<void>((resolve) =>
+      canvas.current?.toBlob((b) => (b ? saveThumbnail(game.id, b).then(resolve) : resolve()), "image/png") ?? resolve(),
+    );
+
+  const exit = async () => {
+    await capture();
+    onExit();
+  };
 
   useEffect(() => {
     let disposed = false;
     const cleanups: (() => void)[] = [];
     (async () => {
-      const hdd = await readDir(`${GAME_ID}/${HDD_DIR}`);
-      const cd = await readDir(`${GAME_ID}/${CD_DIR}`);
-      if (!hdd || !cd) throw new Error("게임 파일이 없습니다. 처음 화면에서 다시 가져와 주세요.");
+      const hdd = await readDir(`${dir}/${HDD_DIR}`);
+      const saves = await readDir(`${dir}/saves`);
+      for (const [p, d] of saves) hdd.set(p, d); // 세이브를 원본 위에 덮는다
+      const cd = await readDir(`${dir}/${CD_DIR}`);
       setStatus("에뮬레이터 시작 중…");
-      const dos = await createDos(hdd, cd);
+      const dos = await createDos(hdd, cd, game.dos!.conf);
       if (disposed) return void dos.exit();
       ci.current = dos;
-      cleanups.push(
-        attachVideo(dos, canvas.current!),
-        attachAudio(dos),
-        detectSaveChange(dos, async (saves) => {
-          await storeSaves(saves);
+      cleanups.push(attachVideo(dos, canvas.current!), attachAudio(dos));
+      setStatus("");
+      const stopWatch = await watchSaves(dos, {
+        pattern: game.dos!.savePattern,
+        previous: [...saves.keys()],
+        onChange: async (now: FileMap) => {
+          for (const p of (await listFiles(`${dir}/saves`)).keys()) if (!now.has(p)) await removeFile(`${dir}/saves/${p}`);
+          for (const [p, d] of now) await writeFile(`${dir}/saves/${p}`, d);
+          await capture();
           setToast("저장되었습니다");
           setTimeout(() => setToast(""), 2000);
-        }),
-      );
-      setStatus("");
+        },
+      });
+      if (disposed) stopWatch();
+      else cleanups.push(stopWatch);
     })().catch((e) => setStatus((e as Error).message));
     return () => {
       disposed = true;
@@ -112,14 +129,13 @@ export function Game({ onExit }: { onExit: () => void }) {
     };
   }, []);
 
-  const isTouch = matchMedia("(pointer: coarse)").matches;
   return (
     <div class="game" ref={wrap}>
       <canvas ref={canvas} />
       <div class="toolbar">
-        <button onClick={onExit}>나가기</button>
+        <button onClick={exit}>나가기</button>
       </div>
-      {isTouch && <VirtualKeyboard onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />}
+      <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
       {status && <div class="overlay">{status}</div>}
       {toast && <div class="toast">{toast}</div>}
     </div>

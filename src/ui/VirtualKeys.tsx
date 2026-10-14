@@ -1,9 +1,9 @@
-import { VIRTUAL_KEYS } from "./game-config";
-
-export function VirtualKeyboard({ onKey }: { onKey: (key: number, pressed: boolean) => void }) {
+// 모바일(터치 기기)에서만 보이는 가상 키
+export function VirtualKeys<K>({ keys, onKey }: { keys: { label: string; key: K }[]; onKey: (key: K, pressed: boolean) => void }) {
+  if (!matchMedia("(pointer: coarse)").matches) return null;
   return (
     <div class="vkeys">
-      {VIRTUAL_KEYS.map((k) => (
+      {keys.map((k) => (
         <button
           key={k.label}
           onPointerDown={(e) => {
