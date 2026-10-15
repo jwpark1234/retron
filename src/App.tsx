@@ -4,7 +4,6 @@ import { restoreSession, useAuth } from "./cloud/google-auth";
 import { syncSettings } from "./cloud/settings";
 import { removeOrphans, touchGame, type Game } from "./library/library";
 import { migrateLegacy, migrateThumbnails } from "./library/migrate";
-import { explainError } from "./library/store";
 import { PLAYERS } from "./platforms/players";
 import { ConflictDialog } from "./screens/ConflictDialog";
 import { Library } from "./screens/games/Library";
@@ -61,7 +60,7 @@ export function App() {
       const g = await downloadGame(r);
       await play(g);
     } catch (e) {
-      alert(`게임을 받지 못했습니다: ${await explainError(e)}`);
+      alert(`게임을 받지 못했습니다: ${(e as Error).message}`);
     }
   };
 

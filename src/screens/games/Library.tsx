@@ -45,7 +45,7 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
       {empty && (
         <div class="empty glass">
           <h2>게임을 추가하세요!</h2>
-          <p>DOS 게임은 zip, SFC·GBA는 롬 파일(.sfc .smc .gba)이나 zip을 추가하세요.</p>
+          <p>.zip, .sfc .smc .gba을 추가하세요.</p>
           <button class="primary" onClick={picker.open}>
             + 게임 추가
           </button>

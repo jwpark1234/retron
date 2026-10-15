@@ -101,13 +101,3 @@ export async function writeStream(path: string, stream: ReadableStream<Uint8Arra
   const w = await (await d.getFileHandle(name, { create: true })).createWritable();
   await stream.pipeTo(w);
 }
-
-const GB = (n: number) => `${(n / 1024 ** 3).toFixed(1)}GB`;
-
-/** 저장 공간이 모자라서 난 오류면 얼마나 쓰고 있는지 알려 주는 말로 바꾼다 */
-export async function explainError(e: unknown): Promise<string> {
-  const msg = (e as Error)?.message ?? String(e);
-  if ((e as DOMException)?.name !== "QuotaExceededError" && !/quota/i.test(msg)) return msg;
-  const { usage = 0, quota = 0 } = await navigator.storage.estimate().catch(() => ({}) as StorageEstimate);
-  return `브라우저 저장 공간이 모자랍니다 (${GB(usage)} / ${GB(quota)} 사용). 안 하는 게임을 지우거나, 브라우저가 있는 드라이브(C:)의 빈 공간을 늘려 주세요.`;
-}
