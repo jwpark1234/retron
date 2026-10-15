@@ -2,15 +2,17 @@
 import { useEffect, useState } from "preact/hooks";
 
 export type ScreenFilter = "sharp" | "smooth" | "crt";
+export type PadSide = "left" | "right"; // 터치 입력 막대에서 트랙패드 위치 (키는 반대쪽)
 
 export interface Prefs {
   volume: number; // 0~1
   muted: boolean;
   filter: ScreenFilter;
+  padSide: PadSide;
 }
 
 const KEY = "prefs";
-const DEFAULTS: Prefs = { volume: 1, muted: false, filter: "sharp" };
+const DEFAULTS: Prefs = { volume: 1, muted: false, filter: "sharp", padSide: "right" };
 
 function load(): Prefs {
   try {

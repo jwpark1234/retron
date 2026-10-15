@@ -6,6 +6,7 @@ import { useEffect, useState } from "preact/hooks";
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 const SCOPE = "https://www.googleapis.com/auth/drive.file openid email profile";
 const GIS_URL = "https://accounts.google.com/gsi/client";
+const E2E = import.meta.env.DEV && new URLSearchParams(location.search).has("e2e");
 
 export interface AuthState {
   signedIn: boolean;
@@ -103,6 +104,8 @@ async function loadEmail(t: Token) {
 
 /** 시작할 때: 이 탭에 아직 유효한 토큰이 있으면 그대로 로그인 상태로 둔다 */
 export async function restoreSession() {
+  // 개발 서버의 자동 테스트용(?e2e): 드라이브 없이 로그인한 것으로 둔다. 배포 빌드에는 들어가지 않는다
+  if (E2E) return emit({ signedIn: true, email: "e2e@local" });
   try {
     const saved = JSON.parse(sessionStorage.getItem("gtoken") ?? "null") as Token | null;
     if (saved && saved.expiresAt > Date.now()) {
@@ -144,7 +147,7 @@ export function signOut() {
 /** 드라이브 요청에 쓸 토큰. 만료됐으면 다시 받는다(이미 허락한 계정이면 창이 잠깐 떴다 닫힌다) */
 export async function accessToken(): Promise<string> {
   if (token && token.expiresAt > Date.now()) return token.access_token;
-  if (!state.signedIn) throw new Error("구글 로그인이 필요합니다");
+  if (!state.signedIn || E2E) throw new Error("구글 로그인이 필요합니다");
   await ensureClient();
   try {
     token = await request("");

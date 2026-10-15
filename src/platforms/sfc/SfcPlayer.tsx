@@ -5,11 +5,13 @@ import { rotatedStyle } from "../../ui/RotatedStage";
 import { useOrientation } from "../../ui/orientation";
 import { effectiveVolume, usePrefs } from "../../ui/prefs";
 import { markDirty } from "../../sync/sync";
+import { uploadGame } from "../../cloud/games";
 
 export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const pending = useRef(new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>());
   const [toast, setToast] = useState("");
+  const [status, setStatus] = useState("불러오는 중…"); // 게임이 시작될 때까지 iframe 대신 보여 준다
   const orientation = useOrientation();
   const prefs = usePrefs();
   const sendPrefs = () =>
@@ -26,7 +28,10 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         setToast("저장되었습니다");
         clearTimeout(timer);
         timer = setTimeout(() => setToast(""), 2000);
-      } else if (d.type === "exited") onExit();
+      } else if (d.type === "progress") setStatus((s) => (s ? d.text : s));
+      else if (d.type === "started") setStatus("");
+      else if (d.type === "thumbnail") void uploadGame(game.id).catch(() => undefined); // 다른 기기에서도 썸네일이 보이게
+      else if (d.type === "exited") onExit();
       else if (d.type === "result") {
         const p = pending.current.get(d.reqId);
         pending.current.delete(d.reqId);
@@ -65,8 +70,9 @@ export function SfcPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
 
   return (
     <div class="game" style={rotatedStyle(orientation.rotation)}>
-      <iframe ref={frame} class="sfc-frame" src={`${import.meta.env.BASE_URL}sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" onLoad={sendPrefs} />
-      <GameMenu gameId={game.id} bridge={bridge} onExit={exit} orientation={orientation} />
+      <iframe ref={frame} class={`sfc-frame ${status ? "loading" : ""}`} src={`${import.meta.env.BASE_URL}sfc.html?id=${encodeURIComponent(game.id)}`} allow="autoplay; fullscreen; gamepad" onLoad={sendPrefs} />
+      <GameMenu gameId={game.id} title={game.title} bridge={bridge} onExit={exit} orientation={orientation} />
+      {status && <div class="overlay">{status}</div>}
       {toast && <div class="glass toast">{toast}</div>}
     </div>
   );

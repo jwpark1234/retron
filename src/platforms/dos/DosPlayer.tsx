@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CommandInterface } from "emulators";
 import { gameDir, type Game } from "../../library/library";
-import { listFiles, readDir, removeFile, writeFile, type FileMap } from "../../library/store";
+import { listFiles, removeFile, writeFile, type FileMap } from "../../library/store";
 import { GameMenu, type StateBridge } from "../../ui/GameMenu";
-import { saveFirstRunThumbnail } from "../../library/thumbnail";
+import { hasThumbnail, litFractionOf, saveFirstRunThumbnail, squarePng } from "../../library/thumbnail";
+import { uploadGame } from "../../cloud/games";
 import { rotatedStyle } from "../../ui/RotatedStage";
 import { toLocal, useOrientation } from "../../ui/orientation";
-import { effectiveVolume, usePrefs } from "../../ui/prefs";
+import { effectiveVolume, setPrefs, usePrefs, type PadSide } from "../../ui/prefs";
+import { Trackpad } from "../../ui/Trackpad";
 import { VirtualKeys } from "../../ui/VirtualKeys";
 import { markDirty } from "../../sync/sync";
 import { attachAudio, attachVideo, createDos, loadDosState, saveDosState, toDosKey } from "./create-dos";
@@ -14,7 +16,6 @@ import { watchGamepad } from "./gamepad";
 import { CD_DIR, HDD_DIR, buildConf, withCycles } from "./profiles";
 import { watchSaves } from "./save-watch";
 
-const LONG_PRESS_MS = 500;
 const MIN_PRESS_MS = 80;
 const KEYS = [
   { label: "ESC", key: 256 },
@@ -23,7 +24,12 @@ const KEYS = [
   { label: "Y", key: 89 },
   { label: "N", key: 78 },
 ];
-const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".vkeys, .menu-button, .menu-backdrop");
+const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".vbar, .menu-button, .menu-backdrop");
+const touchDevice = matchMedia("(pointer: coarse)").matches;
+const PAD_SIDES: { side: PadSide; label: string }[] = [
+  { side: "left", label: "왼쪽" },
+  { side: "right", label: "오른쪽" },
+];
 
 export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -44,27 +50,19 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   useEffect(() => volume.current(effectiveVolume(prefs)), [prefs.volume, prefs.muted]);
 
   const snapshot = () => new Promise<Blob | null>((resolve) => (canvas.current ? canvas.current.toBlob(resolve, "image/png") : resolve(null)));
-  // 화면 전환 중(거의 검은 화면)은 썸네일로 쓰지 않는다
-  const mostlyBlack = () => {
-    const c = canvas.current;
-    if (!c || !c.width) return true;
-    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
-    let lit = 0;
-    for (let i = 0; i < d.length; i += 4 * 64) if (d[i] + d[i + 1] + d[i + 2] > 48) lit++;
-    return lit < d.length / (4 * 64) / 20;
-  };
-
   useEffect(() => {
     let disposed = false;
     const cleanups: (() => void)[] = [];
     (async () => {
-      const hdd = await readDir(`${dir}/${HDD_DIR}`);
-      const saves = await readDir(`${dir}/saves`);
-      for (const [p, d] of saves) hdd.set(p, d); // 세이브를 원본 위에 덮는다
-      const cd = await readDir(`${dir}/${CD_DIR}`);
+      // 파일 내용은 createDos가 필요한 만큼만 읽는다
+      const files = new Map<string, File>();
+      for (const [p, f] of await listFiles(`${dir}/${HDD_DIR}`)) files.set(`${HDD_DIR}/${p}`, f);
+      const saves = await listFiles(`${dir}/saves`);
+      for (const [p, f] of saves) files.set(`${HDD_DIR}/${p}`, f); // 세이브를 원본 위에 덮는다
+      for (const [p, f] of await listFiles(`${dir}/${CD_DIR}`)) files.set(`${CD_DIR}/${p}`, f);
       setStatus("에뮬레이터 시작 중…");
       const info = game.dos!;
-      const dos = await createDos(hdd, cd, buildConf(withCycles(info.settings, info.cycles), info.exe, info.cd));
+      const dos = await createDos(files, buildConf(withCycles(info.settings, info.cycles), info.exe, info.cd), (m) => !disposed && setStatus(m));
       if (disposed) return void dos.exit();
       ci.current = dos;
       const audio = attachAudio(dos);
@@ -84,15 +82,28 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         }),
       );
       setStatus("");
-      // 아이콘이 없던 게임은 첫 실행 화면을 썸네일로 쓴다 (로고가 지나간 뒤, 검은 화면이 아닐 때)
-      const startedAt = Date.now();
-      const thumbTimer = setInterval(() => {
-        if (Date.now() - startedAt < 8000 || mostlyBlack()) return;
-        clearInterval(thumbTimer);
-        const c = canvas.current!;
-        void saveFirstRunThumbnail(game.id, c, c.width, c.height);
-      }, 2000);
-      cleanups.push(() => clearInterval(thumbTimer));
+      // 아이콘이 없던 게임은 첫 실행 화면을 썸네일로 쓴다: 로고가 지나간 뒤 충분히 밝은 화면을 찍고,
+      // 그 전에 나가면 그때까지 가장 밝았던 화면을 쓴다
+      if (!(await hasThumbnail(game.id))) {
+        const startedAt = Date.now();
+        let best: { lit: number; png: Promise<Blob> } | null = null;
+        let done = false;
+        const save = async () => {
+          if (done || !best) return;
+          done = true;
+          clearInterval(thumbTimer);
+          await saveFirstRunThumbnail(game.id, await best.png);
+          void uploadGame(game.id).catch(() => undefined); // 다른 기기에서도 보이게
+        };
+        const thumbTimer = setInterval(() => {
+          const c = canvas.current;
+          if (!c?.width || Date.now() - startedAt < 4000) return;
+          const lit = litFractionOf(c, c.width, c.height);
+          if (lit > (best?.lit ?? 0.01)) best = { lit, png: squarePng(c, c.width, c.height) };
+          if (lit >= 0.08 && Date.now() - startedAt >= 10000) void save();
+        }, 2000);
+        cleanups.push(() => void save().catch(() => undefined), () => clearInterval(thumbTimer));
+      }
       setBridge({
         save: async () => ({ state: await saveDosState(dos), thumb: await snapshot() }),
         load: (state) => loadDosState(dos, state),
@@ -119,42 +130,28 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     };
   }, []);
 
-  // 입력: 마우스는 절대 좌표, 터치는 탭=좌클릭 / 길게 누르기=우클릭
+  // 입력: 실제 마우스만 화면 위에서 받는다 (절대 좌표). 터치는 트랙패드로만 마우스를 움직인다
   useEffect(() => {
     const el = wrap.current!;
+    const isMouse = (e: PointerEvent) => e.pointerType === "mouse" && !isUi(e.target);
     const move = (e: PointerEvent) => {
+      if (!isMouse(e)) return;
       cursor.current = toLocal(e, canvas.current!.getBoundingClientRect(), rotation.current);
       ci.current?.sendMouseMotion(cursor.current.x, cursor.current.y);
     };
-    const click = (button: number) => {
-      ci.current?.sendMouseButton(button, true);
-      setTimeout(() => ci.current?.sendMouseButton(button, false), 100);
-    };
-    let longPress: ReturnType<typeof setTimeout> | undefined;
-    let longPressed = false;
     let pressedAt = 0;
     const down = (e: PointerEvent) => {
-      if (isUi(e.target)) return;
+      if (!isMouse(e)) return;
       move(e);
-      if (e.pointerType === "mouse") {
-        pressedAt = performance.now();
-        return ci.current?.sendMouseButton(e.button === 2 ? 1 : 0, true);
-      }
-      longPressed = false;
-      longPress = setTimeout(() => {
-        longPressed = true;
-        click(1);
-      }, LONG_PRESS_MS);
+      pressedAt = performance.now();
+      ci.current?.sendMouseButton(e.button === 2 ? 1 : 0, true);
     };
     const up = (e: PointerEvent) => {
-      if (e.pointerType === "mouse") {
-        // 아주 빠른 클릭은 게임이 버튼 상태를 읽기 전에 끝나버리므로 최소한 누른 상태를 유지한다
-        const button = e.button === 2 ? 1 : 0;
-        const wait = Math.max(0, MIN_PRESS_MS - (performance.now() - pressedAt));
-        return void setTimeout(() => ci.current?.sendMouseButton(button, false), wait);
-      }
-      clearTimeout(longPress);
-      if (!longPressed && !isUi(e.target)) click(0);
+      if (e.pointerType !== "mouse") return;
+      // 아주 빠른 클릭은 게임이 버튼 상태를 읽기 전에 끝나버리므로 최소한 누른 상태를 유지한다
+      const button = e.button === 2 ? 1 : 0;
+      const wait = Math.max(0, MIN_PRESS_MS - (performance.now() - pressedAt));
+      setTimeout(() => ci.current?.sendMouseButton(button, false), wait);
     };
     const key = (pressed: boolean) => (e: KeyboardEvent) => {
       const k = remap[e.code] ?? toDosKey(e.code); // 키 재배치가 있으면 그것을 쓴다
@@ -187,8 +184,35 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         <canvas ref={canvas} class={`filter-${prefs.filter}`} />
         {prefs.filter === "crt" && <div class="crt-overlay" />}
       </div>
-      <GameMenu gameId={game.id} bridge={bridge} onExit={onExit} orientation={orientation} />
-      <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
+      <GameMenu gameId={game.id} title={game.title} bridge={bridge} onExit={onExit} orientation={orientation}>
+        {touchDevice && (
+          <div class="menu-row">
+            <span>트랙패드 위치</span>
+            <div class="seg glass">
+              {PAD_SIDES.map((p) => (
+                <button key={p.side} class={prefs.padSide === p.side ? "on" : ""} onClick={() => setPrefs({ padSide: p.side })}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </GameMenu>
+      {touchDevice && (
+        <div class={`vbar pad-${prefs.padSide}`}>
+          <VirtualKeys keys={KEYS} onKey={(k, p) => ci.current?.sendKeyEvent(k, p)} />
+          <Trackpad
+            rotation={orientation.rotation}
+            onMove={(dx, dy) => {
+              const c = cursor.current;
+              c.x = Math.min(1, Math.max(0, c.x + dx));
+              c.y = Math.min(1, Math.max(0, c.y + dy));
+              ci.current?.sendMouseMotion(c.x, c.y);
+            }}
+            onButton={(b, p) => ci.current?.sendMouseButton(b, p)}
+          />
+        </div>
+      )}
       {status && <div class="overlay">{status}</div>}
       {toast && <div class="glass toast">{toast}</div>}
     </div>

@@ -1,4 +1,5 @@
 // 게임 중 플랫폼 메뉴: 상태 저장/불러오기, 자동 저장, 빨리가기, 화면 방향, 나가기. DOS와 SFC가 같이 쓴다.
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { AUTO_SLOT, SLOTS, listSlots, readSlot, writeSlot, type SlotInfo } from "../library/states";
 import type { OrientationMode } from "./orientation";
@@ -31,14 +32,18 @@ const fmt = (t: number) =>
 
 export function GameMenu({
   gameId,
+  title,
   bridge,
   onExit,
   orientation,
+  children,
 }: {
   gameId: string;
+  title: string;
   bridge: StateBridge | null;
   onExit: () => void;
   orientation: { mode: OrientationMode; setMode: (m: OrientationMode) => void };
+  children?: ComponentChildren; // 플랫폼별 설정 줄 (DOS: 트랙패드 위치)
 }) {
   const [open, setOpen] = useState(false);
   const [slots, setSlots] = useState<(SlotInfo | null)[]>([]);
@@ -153,57 +158,67 @@ export function GameMenu({
       {open && (
         <div class="menu-backdrop" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div class="glass menu-sheet">
-            <div class="menu-row">
-              <span>화면 방향</span>
-              <div class="seg glass">
-                {ORIENTATIONS.map((o) => (
-                  <button key={o.mode} class={orientation.mode === o.mode ? "on" : ""} onClick={() => orientation.setMode(o.mode)}>
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div class="menu-row">
-              <span>화면 필터</span>
-              <div class="seg glass">
-                {FILTERS.map((f) => (
-                  <button key={f.filter} class={prefs.filter === f.filter ? "on" : ""} onClick={() => setPrefs({ filter: f.filter })}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div class="menu-row">
-              <button class="icon-toggle" aria-label={prefs.muted ? "소리 켜기" : "음소거"} onClick={() => setPrefs({ muted: !prefs.muted })}>
-                {prefs.muted || prefs.volume === 0 ? "🔇" : "🔊"}
+            <div class="menu-head">
+              <strong>{title}</strong>
+              <button class="glass exit" disabled={!!busy} onClick={exit}>
+                나가기
               </button>
-              <input
-                class="volume"
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={prefs.volume}
-                aria-label="볼륨"
-                onInput={(e) => setPrefs({ volume: +(e.target as HTMLInputElement).value, muted: false })}
-              />
             </div>
-            {document.fullscreenEnabled && (
+
+            <section class="menu-group">
               <div class="menu-row">
-                <span>전체화면</span>
-                <button class={`switch ${fullscreen ? "on" : ""}`} role="switch" aria-checked={fullscreen} onClick={toggleFullscreen}>
-                  <i />
-                </button>
+                <span>화면 방향</span>
+                <div class="seg glass">
+                  {ORIENTATIONS.map((o) => (
+                    <button key={o.mode} class={orientation.mode === o.mode ? "on" : ""} onClick={() => orientation.setMode(o.mode)}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-            {bridge?.setFastForward && (
               <div class="menu-row">
-                <span>빨리가기</span>
-                <button class={`switch ${fast ? "on" : ""}`} role="switch" aria-checked={fast} onClick={toggleFast}>
-                  <i />
-                </button>
+                <span>화면 필터</span>
+                <div class="seg glass">
+                  {FILTERS.map((f) => (
+                    <button key={f.filter} class={prefs.filter === f.filter ? "on" : ""} onClick={() => setPrefs({ filter: f.filter })}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+              {document.fullscreenEnabled && (
+                <div class="menu-row">
+                  <span>전체화면</span>
+                  <button class={`switch ${fullscreen ? "on" : ""}`} role="switch" aria-checked={fullscreen} onClick={toggleFullscreen}>
+                    <i />
+                  </button>
+                </div>
+              )}
+              {bridge?.setFastForward && (
+                <div class="menu-row">
+                  <span>빨리가기</span>
+                  <button class={`switch ${fast ? "on" : ""}`} role="switch" aria-checked={fast} onClick={toggleFast}>
+                    <i />
+                  </button>
+                </div>
+              )}
+              {children}
+              <div class="menu-row">
+                <button class="icon-toggle" aria-label={prefs.muted ? "소리 켜기" : "음소거"} onClick={() => setPrefs({ muted: !prefs.muted })}>
+                  {prefs.muted || prefs.volume === 0 ? "🔇" : "🔊"}
+                </button>
+                <input
+                  class="volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={prefs.volume}
+                  aria-label="볼륨"
+                  onInput={(e) => setPrefs({ volume: +(e.target as HTMLInputElement).value, muted: false })}
+                />
+              </div>
+            </section>
 
             <h2>상태 저장 · 불러오기</h2>
             {!bridge && <p class="muted">게임이 시작되면 사용할 수 있습니다.</p>}
@@ -213,10 +228,10 @@ export function GameMenu({
                 const auto = slot === AUTO_SLOT;
                 return (
                   <div class={`slot ${auto ? "auto" : ""}`} key={slot}>
-                    <div class="slot-thumb">{s?.thumb ? <img src={s.thumb} alt="" /> : <span>{auto ? "없음" : "빈 슬롯"}</span>}</div>
+                    <div class="slot-thumb">{s?.thumb ? <img src={s.thumb} alt="" /> : <span>{auto ? "없음" : "비어 있음"}</span>}</div>
                     <div class="slot-info">
                       <strong>{auto ? "자동 저장" : `슬롯 ${slot}`}</strong>
-                      <small>{s ? fmt(s.savedAt) : auto ? "나가거나 웹을 닫을 때 저장" : "—"}</small>
+                      <small>{s ? fmt(s.savedAt) : auto ? "나갈 때 저장" : "—"}</small>
                     </div>
                     <div class="slot-actions">
                       {!auto && (
@@ -233,9 +248,6 @@ export function GameMenu({
               })}
             </div>
             {busy && <p class="muted">{busy}</p>}
-            <button class="glass exit" disabled={!!busy} onClick={exit}>
-              라이브러리로 나가기
-            </button>
           </div>
         </div>
       )}

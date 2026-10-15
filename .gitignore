@@ -6,3 +6,4 @@ public/emulators/
 .cf-token
 .google-oauth
 client_secret*.json
+public/ejs/

@@ -14,7 +14,7 @@ export interface ImportUi {
   chooseExe(candidates: string[]): Promise<string | null>;
 }
 
-interface Entry {
+export interface Entry {
   path: string;
   file: File;
 }
@@ -24,18 +24,18 @@ const ROM = /\.(sfc|smc|fig|swc)$/i;
 const base = (p: string) => p.split("/").pop()!;
 const stem = (p: string) => base(p).replace(/\.[^.]+$/, "");
 
-/** input[type=file]에서 고른 파일들 (폴더 선택이면 webkitRelativePath가 있다) */
-export async function importFiles(files: File[], ui: ImportUi): Promise<Game[]> {
+/** 고른 파일들. 폴더에서 온 파일은 path에 폴더 경로가 붙어 있다 */
+export async function importFiles(picked: Entry[], ui: ImportUi): Promise<Game[]> {
   const entries: Entry[] = [];
-  const zips = files.filter((f) => /\.zip$/i.test(f.name));
+  const zips = picked.filter((e) => /\.zip$/i.test(e.path));
   try {
     for (const [i, zip] of zips.entries()) {
       const out = `${INCOMING}/${i}`;
-      await extractZip(zip, out, ui.progress);
-      for (const [p, file] of await listFiles(out)) entries.push({ path: `${stem(zip.name)}/${p}`, file });
+      await extractZip(zip.file, out, ui.progress);
+      for (const [p, file] of await listFiles(out)) entries.push({ path: `${stem(zip.path)}/${p}`, file });
     }
-    for (const f of files) if (!zips.includes(f)) entries.push({ path: f.webkitRelativePath || f.name, file: f });
-    return await importEntries(entries, ui, zips[0] ? stem(zips[0].name) : undefined);
+    for (const e of picked) if (!zips.includes(e)) entries.push(e);
+    return await importEntries(entries, ui, zips[0] ? stem(zips[0].path) : undefined);
   } finally {
     await removeDir(INCOMING);
   }

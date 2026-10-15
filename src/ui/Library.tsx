@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { listGames, thumbnailUrl, type Game } from "../library/library";
-import { importFiles } from "../library/import";
+import { importFiles, type Entry } from "../library/import";
+import { canPickFolder, fromDrop, fromInput } from "../library/pick";
+import { Logo } from "./Logo";
 import { GameSettings } from "./GameSettings";
 import { useSync } from "../sync/sync";
 import { listRemoteGames, uploadGame, useTransfers, type RemoteGame, type Transfer } from "../cloud/games";
-import { signIn, signOut, useAuth } from "../cloud/google-auth";
+import { signOut, useAuth } from "../cloud/google-auth";
 
 type View = "grid" | "list";
 const PLATFORM_LABEL = { dos: "DOS", sfc: "SFC" } as const;
@@ -42,6 +44,11 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
   const auth = useAuth();
   const transfers = useTransfers();
   const [remote, setRemote] = useState<RemoteGame[]>([]);
+  const [addMenu, setAddMenu] = useState(false);
+  const [accountMenu, setAccountMenu] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const [choice, setChoice] = useState<{ candidates: string[]; resolve: (v: string | null) => void } | null>(null);
 
   const refresh = async () => {
@@ -84,19 +91,17 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
     }
   };
 
-  const onPick = async (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const files = Array.from(input.files ?? []);
-    input.value = "";
-    if (!files.length) return;
+  const add = async (picked: Entry[]) => {
+    setAddMenu(false);
+    if (!picked.length || progress) return;
     setError("");
     try {
-      const added = await importFiles(files, {
+      const added = await importFiles(picked, {
         progress: setProgress,
         chooseExe: (candidates) => new Promise((resolve) => setChoice({ candidates, resolve })),
       });
       await refresh();
-      // 로그인했으면 내 구글 드라이브에 올린다 (뒤에서 하나씩)
+      // 내 구글 드라이브에 올린다 (뒤에서 하나씩)
       void (async () => {
         for (const g of added) await uploadGame(g.id).catch((err) => setError(`드라이브에 올리지 못했습니다: ${(err as Error).message}`));
       })();
@@ -106,62 +111,122 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
     setProgress("");
   };
 
+  const onPick = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const picked = fromInput(input.files);
+    input.value = "";
+    void add(picked);
+  };
+
+  // 휴대폰은 폴더를 못 고르므로 바로 파일 선택창을 연다
+  const openAdd = () => (canPickFolder() ? setAddMenu(!addMenu) : fileInput.current?.click());
+
+  // PC: 파일이나 폴더를 창에 끌어다 놓아도 추가된다
+  useEffect(() => {
+    let depth = 0;
+    const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes("Files");
+    const enter = (e: DragEvent) => hasFiles(e) && (depth++, setDragging(true));
+    const leave = (e: DragEvent) => hasFiles(e) && --depth <= 0 && ((depth = 0), setDragging(false));
+    const over = (e: DragEvent) => hasFiles(e) && e.preventDefault();
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDragging(false);
+      void fromDrop(e.dataTransfer!).then(add);
+    };
+    addEventListener("dragenter", enter);
+    addEventListener("dragleave", leave);
+    addEventListener("dragover", over);
+    addEventListener("drop", drop);
+    return () => {
+      removeEventListener("dragenter", enter);
+      removeEventListener("dragleave", leave);
+      removeEventListener("dragover", over);
+      removeEventListener("drop", drop);
+    };
+  }, [progress]);
+
+  const syncState = sync.conflict ? "warn" : sync.pending ? "pending" : "ok";
+  const syncLabel = sync.conflict ? "세이브 충돌이 있습니다" : sync.pending ? `드라이브에 올릴 세이브 ${sync.pending}개` : "드라이브와 동기화됨";
 
   return (
     <div class="library">
       <header class="glass">
-        <h1>retron</h1>
-        <div class="account">
-          {auth.signedIn ? (
-            <>
-              <span class={`sync-chip ${sync.conflict ? "warn" : sync.pending ? "pending" : "ok"}`}>
-                {sync.conflict ? "⚠ 충돌 있음" : sync.pending ? `↑ ${sync.pending}개 대기` : "✓ 드라이브 동기화"}
-              </span>
-              <span class="email" title={auth.email}>
-                {auth.email}
-              </span>
-              <button class="logout" onClick={signOut}>
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <>
-              <button class="glass google" disabled={auth.busy} onClick={() => void signIn().catch(() => undefined)}>
-                {auth.busy ? "로그인 중…" : "Google 로그인"}
-              </button>
-              <span class="sync-chip off">로그인하면 게임과 세이브가 내 구글 드라이브에 저장됩니다</span>
-            </>
-          )}
-        </div>
+        <Logo size="small" />
         <div class="actions">
-          <div class="seg glass">
-            <button class={view === "grid" ? "on" : ""} onClick={() => changeView("grid")}>
-              그리드
+          <div class="seg glass" role="group" aria-label="보기 방식">
+            <button class={view === "grid" ? "on" : ""} aria-label="그리드" title="그리드" onClick={() => changeView("grid")}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="1" y="1" width="6" height="6" rx="1.5" />
+                <rect x="9" y="1" width="6" height="6" rx="1.5" />
+                <rect x="1" y="9" width="6" height="6" rx="1.5" />
+                <rect x="9" y="9" width="6" height="6" rx="1.5" />
+              </svg>
             </button>
-            <button class={view === "list" ? "on" : ""} onClick={() => changeView("list")}>
-              목록
+            <button class={view === "list" ? "on" : ""} aria-label="목록" title="목록" onClick={() => changeView("list")}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="1" y="2" width="14" height="3" rx="1.5" />
+                <rect x="1" y="6.5" width="14" height="3" rx="1.5" />
+                <rect x="1" y="11" width="14" height="3" rx="1.5" />
+              </svg>
             </button>
           </div>
-          <label class="pick glass">
-            폴더 추가
-            <input type="file" {...{ webkitdirectory: true }} onChange={onPick} hidden disabled={!!progress} />
-          </label>
-          <label class="pick glass">
-            파일 추가
-            <input type="file" multiple accept=".zip,.sfc,.smc,.fig,.swc" onChange={onPick} hidden disabled={!!progress} />
-          </label>
+          <div class="popover-anchor">
+            <button class="primary add" disabled={!!progress} onClick={openAdd}>
+              + 게임 추가
+            </button>
+            {addMenu && (
+              <>
+                <div class="popover-backdrop" onClick={() => setAddMenu(false)} />
+                <div class="popover glass">
+                  <button onClick={() => fileInput.current?.click()}>
+                    <strong>파일 선택</strong>
+                    <small>zip, SFC ROM (.sfc .smc)</small>
+                  </button>
+                  <button onClick={() => folderInput.current?.click()}>
+                    <strong>폴더 선택</strong>
+                  </button>
+                  <p class="muted">파일이나 폴더를 창에 끌어다 놓아도 됩니다</p>
+                </div>
+              </>
+            )}
+          </div>
+          <div class="popover-anchor">
+            <button class={`avatar ${syncState}`} aria-label="계정" title={auth.email} onClick={() => setAccountMenu(!accountMenu)}>
+              {(auth.email ?? "?").slice(0, 1).toUpperCase()}
+            </button>
+            {accountMenu && (
+              <>
+                <div class="popover-backdrop" onClick={() => setAccountMenu(false)} />
+                <div class="popover glass account">
+                  <strong class="email">{auth.email}</strong>
+                  <span class={`sync-line ${syncState}`}>{syncLabel}</span>
+                  <button class="logout" onClick={signOut}>
+                    로그아웃
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+        <input ref={fileInput} type="file" multiple hidden onChange={onPick} />
+        <input ref={folderInput} type="file" {...{ webkitdirectory: true }} hidden onChange={onPick} />
       </header>
 
       {progress && <p class="progress">{progress}</p>}
       {error && <p class="error">{error}</p>}
 
-      {auth.error && <p class="error">로그인하지 못했습니다: {auth.error}</p>}
-
       {games?.length === 0 && !remote.length && !progress && (
-        <p class="hint">
-          게임을 추가하세요. DOS 게임은 게임 폴더나 zip(CD 게임은 bin/cue나 iso를 함께), SFC는 ROM 파일(.sfc/.smc)이나 zip을 고르면 됩니다.
-        </p>
+        <div class="empty glass">
+          <h2>게임을 추가하세요!</h2>
+          <p>
+            DOS 게임은 게임 폴더나 zip, SFC는 ROM 파일(.sfc/.smc)이나 zip을 추가하세요.
+          </p>
+          <button class="primary" onClick={openAdd}>
+            + 게임 추가
+          </button>
+        </div>
       )}
 
       <ul class={view}>
@@ -173,7 +238,7 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
                 <strong>{g.title}</strong>
                 <small>
                   <span class="badge">{PLATFORM_LABEL[g.platform]}</span>
-                  {g.lastPlayedAt ? `${new Date(g.lastPlayedAt).toLocaleDateString()} 플레이` : "새로 추가됨"}
+                  {g.lastPlayedAt ? `${new Date(g.lastPlayedAt).toLocaleDateString(undefined, { month: "numeric", day: "numeric" })} 플레이` : "새로 추가됨"}
                 </small>
               </div>
             </button>
@@ -198,6 +263,8 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
           </li>
         ))}
       </ul>
+
+      {dragging && <div class="drop-hint">여기에 놓으면 게임을 추가합니다</div>}
 
       {editing && <GameSettings game={editing} onClose={() => setEditing(null)} onChanged={refresh} />}
 

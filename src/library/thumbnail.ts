@@ -27,14 +27,36 @@ export async function imageFileToSquare(file: Blob): Promise<Blob> {
   }
 }
 
+/** 밝은 점의 비율 (0~1). 화면 전환 중 검은 화면은 썸네일로 쓰지 않으려고 본다 */
+export function litFractionOf(src: CanvasImageSource, width: number, height: number): number {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 64;
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(src, 0, 0, width, height, 0, 0, 64, 64);
+  const d = ctx.getImageData(0, 0, 64, 64).data;
+  let lit = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 48) lit++;
+  return lit / (64 * 64);
+}
+
+export async function litFraction(png: Blob): Promise<number> {
+  const bmp = await createImageBitmap(png);
+  try {
+    return litFractionOf(bmp, bmp.width, bmp.height);
+  } finally {
+    bmp.close();
+  }
+}
+
 export async function hasThumbnail(id: string) {
   return !!(await getFile(`${gameDir(id)}/thumb.png`));
 }
 
 /** 첫 실행 캡처: 썸네일이 아직 없을 때만 저장한다 */
-export async function saveFirstRunThumbnail(id: string, src: CanvasImageSource, width: number, height: number) {
+export async function saveFirstRunThumbnail(id: string, png: Blob) {
   if (await hasThumbnail(id)) return;
-  await saveThumbnail(id, await squarePng(src, width, height));
+  await saveThumbnail(id, png);
 }
 
 const stem = (p: string) => p.split("/").pop()!.replace(/\.[^.]+$/, "").toUpperCase();

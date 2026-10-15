@@ -1,8 +1,6 @@
 // js-dos 8 emulators API로 DOSBox-X를 Worker에서 띄우고 화면·소리를 연결한다.
 // js-dos 기본 UI는 쓰지 않는다 (가상 키패드, 터치 입력, 세이브 처리를 직접 하기 위해).
-import type { CommandInterface, Emulators } from "emulators";
-import type { FileMap } from "../../library/store";
-import { CD_DIR, HDD_DIR } from "./profiles";
+import type { CommandInterface, Emulators, InitFsEntry } from "emulators";
 
 declare global {
   // index.html에서 <script src="/emulators/emulators.js">로 로드된다
@@ -18,14 +16,63 @@ function withStateFile(conf: string) {
   return section.test(conf) ? conf.replace(section, `[dosbox]\n${line}`) : `[dosbox]\n${line}\n${conf}`;
 }
 
-export async function createDos(hdd: FileMap, cd: FileMap, conf: string): Promise<CommandInterface> {
+// 큰 파일(CD 이미지 등)은 시작할 때 한꺼번에 넘기면 메모리에 두세 벌이 올라가서 브라우저가 죽는다.
+// 작은 파일만 먼저 넘겨 에뮬레이터를 띄우고, 큰 파일은 조각으로 흘려보낸다.
+// 그동안 DOS는 autoexec 맨 앞에서 신호 파일이 생길 때까지 기다린다.
+const BIG_FILE = 8 * 1024 * 1024;
+const STREAM_CHUNK = 4 * 1024 * 1024;
+const SYNC_DIR = "RETRON";
+
+function waitForFiles(conf: string) {
+  const wait = ["@echo off", `mount y ${SYNC_DIR}`, ":retron_wait", "rescan y: >nul", "if not exist Y:\\READY goto retron_wait", "mount -u y >nul", "echo on"];
+  return conf.replace(/^\[autoexec\][ \t]*$/m, `[autoexec]\n${wait.join("\n")}`);
+}
+
+function fileStream(file: File): ReadableStream<Uint8Array> {
+  let offset = 0;
+  return new ReadableStream({
+    async pull(c) {
+      if (offset >= file.size) return c.close();
+      const end = Math.min(file.size, offset + STREAM_CHUNK);
+      c.enqueue(new Uint8Array(await file.slice(offset, end).arrayBuffer()));
+      offset = end;
+    },
+  });
+}
+
+/** files: 에뮬레이터 FS 경로(HDD/..., CD/...) → 파일. 나중 것이 앞의 것을 덮는다 */
+export async function createDos(files: Map<string, File>, conf: string, onProgress: (msg: string) => void): Promise<CommandInterface> {
   conf = withStateFile(conf);
-  const init = [
-    ...[...hdd].map(([p, contents]) => ({ path: `${HDD_DIR}/${p}`, contents })),
-    ...[...cd].map(([p, contents]) => ({ path: `${CD_DIR}/${p}`, contents })),
-    { dosboxConf: conf, jsdosConf: { version: "js-dos-v8" } },
-  ];
-  return emulators.dosboxXWorker(init);
+  const big = [...files].filter(([, f]) => f.size > BIG_FILE);
+  const small = [...files].filter(([, f]) => f.size <= BIG_FILE);
+  if (big.length) conf = waitForFiles(conf);
+  const init: InitFsEntry[] = [];
+  for (const [path, f] of small) init.push({ path, contents: new Uint8Array(await f.arrayBuffer()) });
+  if (big.length) init.push({ path: `${SYNC_DIR}/WAIT`, contents: new Uint8Array(1) });
+  init.push({ dosboxConf: conf, jsdosConf: { version: "js-dos-v8" } });
+  const ci = await emulators.dosboxXWorker(init);
+  if (!big.length) return ci;
+  const total = big.reduce((n, [, f]) => n + f.size, 0);
+  let sent = 0;
+  try {
+    for (const [path, f] of big) {
+      const stream = fileStream(f).pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform(chunk, c) {
+            sent += chunk.length;
+            onProgress(`게임 파일 넘기는 중 ${Math.floor((sent / total) * 100)}%`);
+            c.enqueue(chunk);
+          },
+        }),
+      );
+      await ci.fsWriteFile(path, stream);
+    }
+    await ci.fsWriteFile(`${SYNC_DIR}/READY`, new Uint8Array(1));
+  } catch (e) {
+    void ci.exit();
+    throw e;
+  }
+  return ci;
 }
 
 export function attachVideo(ci: CommandInterface, canvas: HTMLCanvasElement): () => void {
