@@ -1,5 +1,6 @@
 // js-dos 런타임(emulators)을 public/emulators로 복사한다. emulators.js가 wasm을 pathPrefix에서 불러온다.
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { unzipSync } from "fflate";
 
 const src = new URL("../node_modules/emulators/dist/", import.meta.url);
 const out = new URL("../public/emulators/", import.meta.url);
@@ -13,21 +14,19 @@ const code = readFileSync(worker, "utf8");
 if (!code.includes(FROM)) throw new Error("wdosbox-x.js가 바뀌었습니다: FS.writeFile 패치를 확인하세요");
 writeFileSync(worker, code.replace(FROM, 'Module.FS.writeFile(path+"/"+filename,body,{canOwn:true})'));
 
-// SFC(EmulatorJS)도 같은 사이트에서 내려준다. CDN에서 매번 받으면 코어 캐시 확인(report)이 실패할 때마다
-// 코어를 처음부터 다시 받는다. 버전별 폴더라 한 번 받으면 브라우저가 계속 캐시해 둔다.
-const EJS_VERSION = "4.2.3";
-const EJS_FILES = [
-  "loader.js", "emulator.min.js", "emulator.min.css",
-  "compression/extract7z.js", "compression/extractzip.js", "compression/libunrar.js", "compression/libunrar.wasm",
-  "cores/snes9x-wasm.data", "cores/snes9x-legacy-wasm.data", "cores/reports/snes9x.json",
-];
-const ejsOut = new URL(`../public/ejs/${EJS_VERSION}/`, import.meta.url);
-for (const f of EJS_FILES) {
-  const dest = new URL(f, ejsOut);
-  if (existsSync(dest)) continue;
-  const res = await fetch(`https://cdn.emulatorjs.org/${EJS_VERSION}/data/${f}`);
-  if (!res.ok) throw new Error(`EmulatorJS ${f} 받기 실패: ${res.status}`);
-  mkdirSync(new URL(".", dest), { recursive: true });
-  writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-  console.log("EmulatorJS", f);
+// SFC·GBA(Nostalgist.js = RetroArch 웹 빌드)의 코어도 같은 사이트에서 내려준다.
+// 기본값은 CDN에서 zip을 받아 매번 푸는데, 버전별 폴더에 풀어 두면 브라우저가 계속 캐시해 둔다.
+const RA_VERSION = "v1.22.2"; // nostalgist 0.23.0이 쓰는 빌드
+const RA_CORES = ["snes9x", "mgba"]; // src/platforms/retro/systems.ts의 core
+const raOut = new URL(`../public/retroarch/${RA_VERSION}/`, import.meta.url);
+mkdirSync(raOut, { recursive: true });
+for (const core of RA_CORES) {
+  if (existsSync(new URL(`${core}_libretro.wasm`, raOut))) continue;
+  const res = await fetch(`https://cdn.jsdelivr.net/gh/arianrhodsandlot/retroarch-emscripten-build@${RA_VERSION}/retroarch/${core}_libretro.zip`);
+  if (!res.ok) throw new Error(`${core} 코어 받기 실패: ${res.status}`);
+  for (const [name, data] of Object.entries(unzipSync(new Uint8Array(await res.arrayBuffer())))) {
+    const base = name.split("/").pop();
+    if (/\.(js|wasm)$/.test(base)) writeFileSync(new URL(base, raOut), data);
+  }
+  console.log("RetroArch", core, RA_VERSION);
 }

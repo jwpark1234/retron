@@ -44,12 +44,13 @@ export function useTransfers() {
 }
 
 // --- 폴더 ---
-let folders: Promise<{ root: string; games: string; saves: string }> | null = null;
+// retron/games: 게임 파일, retron/saves: 게임 안 세이브, retron/states: 상태 저장 슬롯
+let folders: Promise<{ root: string; games: string; saves: string; states: string }> | null = null;
 export function driveFolders() {
   folders ??= (async () => {
     const root = await rootFolder(ROOT);
-    const [games, saves] = await Promise.all([ensureFolder(root, "games"), ensureFolder(root, "saves")]);
-    return { root, games, saves };
+    const [games, saves, states] = await Promise.all([ensureFolder(root, "games"), ensureFolder(root, "saves"), ensureFolder(root, "states")]);
+    return { root, games, saves, states };
   })().catch((e) => {
     folders = null;
     throw e;

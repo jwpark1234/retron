@@ -1,5 +1,5 @@
 // 썸네일: 1:1로 가운데를 잘라 PNG로 만든다. 게임의 .ico가 있으면 그것을, 없으면 첫 실행 화면을 쓴다.
-import { gameDir, saveThumbnail } from "./library";
+import { gameDir } from "./library";
 import { getFile } from "./store";
 
 const SIZE = 256;
@@ -28,7 +28,7 @@ export async function imageFileToSquare(file: Blob): Promise<Blob> {
 }
 
 /** 밝은 점의 비율 (0~1). 화면 전환 중 검은 화면은 썸네일로 쓰지 않으려고 본다 */
-export function litFractionOf(src: CanvasImageSource, width: number, height: number): number {
+function litFractionOf(src: CanvasImageSource, width: number, height: number): number {
   const c = document.createElement("canvas");
   c.width = 64;
   c.height = 64;
@@ -53,11 +53,6 @@ export async function hasThumbnail(id: string) {
   return !!(await getFile(`${gameDir(id)}/thumb.png`));
 }
 
-/** 첫 실행 캡처: 썸네일이 아직 없을 때만 저장한다 */
-export async function saveFirstRunThumbnail(id: string, png: Blob) {
-  if (await hasThumbnail(id)) return;
-  await saveThumbnail(id, png);
-}
 
 const stem = (p: string) => p.split("/").pop()!.replace(/\.[^.]+$/, "").toUpperCase();
 

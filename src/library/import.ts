@@ -1,7 +1,8 @@
 // 폴더, zip, 낱개 파일에서 게임을 찾아 라이브러리에 등록한다.
-// - SFC: .sfc/.smc/.fig/.swc ROM마다 게임 하나
+// - SFC·GBA: 롬(.sfc/.smc/.fig/.swc, .gba)마다 게임 하나
 // - DOS: 실행 파일이 있는 폴더를 C:로, bin/cue나 iso가 있으면 D:(CD)로
 import { CD_DIR, DEFAULT_SETTINGS, HDD_DIR, exeCandidates, findProfile, type DosProfile } from "../platforms/dos/profiles";
+import { systemForRom } from "../platforms/retro/systems";
 import { convertBinCue, parseCue } from "./cue";
 import { gameDir, newGameId, putGame, saveThumbnail, type Game } from "./library";
 import { imageFileToSquare, pickIcon } from "./thumbnail";
@@ -20,7 +21,6 @@ export interface Entry {
 }
 
 const INCOMING = "_incoming";
-const ROM = /\.(sfc|smc|fig|swc)$/i;
 const base = (p: string) => p.split("/").pop()!;
 const stem = (p: string) => base(p).replace(/\.[^.]+$/, "");
 
@@ -42,18 +42,18 @@ export async function importFiles(picked: Entry[], ui: ImportUi): Promise<Game[]
 }
 
 async function importEntries(entries: Entry[], ui: ImportUi, sourceName?: string): Promise<Game[]> {
-  const roms = entries.filter((e) => ROM.test(e.path));
-  if (roms.length) return Promise.all(roms.map((r) => importSfc(r)));
+  const roms = entries.filter((e) => systemForRom(e.path));
+  if (roms.length) return Promise.all(roms.map((r) => importRom(r)));
   const game = await importDos(entries, ui, sourceName);
   return game ? [game] : [];
 }
 
-async function importSfc(rom: Entry): Promise<Game> {
+async function importRom(rom: Entry): Promise<Game> {
   const title = stem(rom.path);
   const id = newGameId(title);
   const name = `rom.${rom.path.split(".").pop()!.toLowerCase()}`;
   await writeFile(`${gameDir(id)}/${name}`, rom.file);
-  const game: Game = { id, title, platform: "sfc", addedAt: Date.now(), sfc: { rom: name } };
+  const game: Game = { id, title, platform: systemForRom(rom.path)!.platform, addedAt: Date.now(), rom: { rom: name } };
   await putGame(game);
   return game;
 }

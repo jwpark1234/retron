@@ -111,7 +111,7 @@ export function attachVideo(ci: CommandInterface, canvas: HTMLCanvasElement): ()
 }
 
 // onSoundPush는 모노 Float32 샘플을 준다. js-dos 기본 UI와 같은 방식(링 버퍼 + ScriptProcessor)으로 재생한다.
-export function attachAudio(ci: CommandInterface): { detach: () => void; setVolume: (v: number) => void } {
+export function attachAudio(ci: CommandInterface): () => void {
   const SIZE = 8192;
   const BLOCK = 2048;
   const ctx = new AudioContext({ sampleRate: ci.soundFrequency(), latencyHint: "interactive" });
@@ -134,21 +134,17 @@ export function attachAudio(ci: CommandInterface): { detach: () => void; setVolu
       } else out[i] = 0;
     }
   };
-  const gain = ctx.createGain();
-  node.connect(gain).connect(ctx.destination);
+  node.connect(ctx.destination);
   // iOS는 사용자 입력이 있어야 소리가 난다
   const unlock = () => void ctx.resume();
   document.addEventListener("pointerdown", unlock);
   document.addEventListener("keydown", unlock);
   void ctx.resume();
-  return {
-    setVolume: (v) => void (gain.gain.value = v),
-    detach: () => {
-      node.disconnect();
-      void ctx.close();
-      document.removeEventListener("pointerdown", unlock);
-      document.removeEventListener("keydown", unlock);
-    },
+  return () => {
+    node.disconnect();
+    void ctx.close();
+    document.removeEventListener("pointerdown", unlock);
+    document.removeEventListener("keydown", unlock);
   };
 }
 
@@ -168,6 +164,15 @@ export async function saveDosState(ci: CommandInterface): Promise<Uint8Array> {
     last = size;
   }
   throw new Error("상태 저장 시간이 초과되었습니다");
+}
+
+/** 빨리가기. DOSBox-X Turbo(speedlock2)는 켜고 끄기를 번갈아 하므로 지금 상태를 기억해서 바뀔 때만 보낸다 */
+export function dosFastForward(ci: CommandInterface): (on: boolean) => void {
+  let fast = false;
+  return (on) => {
+    if (on !== fast) trigger(ci, "hand_speedlock2");
+    fast = on;
+  };
 }
 
 export async function loadDosState(ci: CommandInterface, state: Uint8Array) {

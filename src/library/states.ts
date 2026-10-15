@@ -4,6 +4,7 @@ import { getFile, readJson, writeFile, writeJson } from "./store";
 
 export const SLOTS = [1, 2, 3, 4];
 export const AUTO_SLOT = 0; // 웹을 닫거나 나갈 때 자동으로 저장하는 슬롯
+export const QUICK_SLOT = 5; // 화면의 빠른 저장 버튼이 쓰는 슬롯
 
 export interface SlotInfo {
   slot: number;

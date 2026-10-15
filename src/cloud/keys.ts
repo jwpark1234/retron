@@ -11,8 +11,7 @@ async function sha256Hex(data: Uint8Array) {
 export async function syncKey(game: Game): Promise<string | null> {
   if (game.syncKey) return game.syncKey;
   const dir = gameDir(game.id);
-  const file =
-    game.platform === "sfc" ? await getFile(`${dir}/${game.sfc!.rom}`) : await getFile(`${dir}/${HDD_DIR}/${game.dos!.exe.toUpperCase()}`);
+  const file = game.rom ? await getFile(`${dir}/${game.rom.rom}`) : await getFile(`${dir}/${HDD_DIR}/${game.dos!.exe.toUpperCase()}`);
   if (!file) return null;
   const hash = (await sha256Hex(new Uint8Array(await file.arrayBuffer()))).slice(0, 40);
   const key = `${game.platform}-${hash}`;

@@ -1,5 +1,6 @@
 // DOS 게임용 게임패드. 버튼은 DOS 키나 마우스 버튼으로, 스틱은 방향키나 마우스 커서로 보낸다.
 import type { DosInput, PadAction } from "../../library/library";
+import { onGamepadFrame } from "../../player/gamepads";
 
 // 표준 게임패드 배치(Standard Gamepad) 버튼 번호
 export const PAD_BUTTONS: { index: number; label: string }[] = [
@@ -50,7 +51,6 @@ export function watchGamepad(input: DosInput | undefined, target: PadTarget): ()
   const pad = { ...DEFAULT_PAD, ...input?.pad };
   const leftStick = input?.leftStick ?? "arrows";
   const held = new Map<string, PadAction | null>(); // 누르고 있는 입력 → 보낸 동작
-  let raf = 0;
 
   const fire = (id: string, action: PadAction, pressed: boolean) => {
     if (!!held.get(id) === pressed) return;
@@ -60,9 +60,7 @@ export function watchGamepad(input: DosInput | undefined, target: PadTarget): ()
     else target.key(action, pressed);
   };
 
-  const tick = () => {
-    raf = requestAnimationFrame(tick);
-    const gp = navigator.getGamepads?.().find((g) => g?.connected);
+  const stop = onGamepadFrame(([gp]) => {
     if (!gp) return;
     for (const [index, action] of Object.entries(pad)) {
       fire(`b${index}`, action, !!gp.buttons[+index]?.pressed);
@@ -83,11 +81,10 @@ export function watchGamepad(input: DosInput | undefined, target: PadTarget): ()
       }
     }
     if (dx || dy) target.moveCursor(dx, dy);
-  };
-  raf = requestAnimationFrame(tick);
+  });
 
   return () => {
-    cancelAnimationFrame(raf);
+    stop();
     // 누르고 있던 것을 놓는다
     for (const [id, action] of held) if (action !== null) fire(id, action, false);
   };

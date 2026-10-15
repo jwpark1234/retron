@@ -1,17 +1,11 @@
 // 노트북 트랙패드처럼 쓰는 마우스: 끌면 커서가 움직이고, 탭=왼쪽 클릭, 길게 누르기=오른쪽 클릭.
 import { useRef } from "preact/hooks";
+import { rotateDelta } from "../../player/orientation";
 
 const SPEED = 1 / 260; // 패드 위 260px을 움직이면 화면 끝에서 끝까지
 const TAP_MS = 250;
 const LONG_PRESS_MS = 500;
 const SLOP = 8; // 이만큼 움직이면 클릭이 아니라 커서 이동으로 본다
-
-/** 회전된 화면(CSS rotate)에서는 손가락 이동 방향을 게임 기준으로 돌린다 */
-function toLocal(dx: number, dy: number, rotation: number) {
-  if (rotation === 90) return { dx: dy, dy: -dx };
-  if (rotation === -90) return { dx: -dy, dy: dx };
-  return { dx, dy };
-}
 
 export function Trackpad({
   rotation,
@@ -50,7 +44,7 @@ export function Trackpad({
     t.x = e.clientX;
     t.y = e.clientY;
     t.moved += Math.abs(dx) + Math.abs(dy);
-    const d = toLocal(dx, dy, rotation);
+    const d = rotateDelta(dx, dy, rotation);
     onMove(d.dx * SPEED, d.dy * SPEED);
   };
   const end = (e: PointerEvent, cancelled: boolean) => {

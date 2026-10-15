@@ -2,7 +2,7 @@
 import { splitConf } from "../platforms/dos/profiles";
 import { getFile, readJson, removeDir, writeFile, writeJson } from "./store";
 
-export type Platform = "dos" | "sfc";
+export type Platform = "dos" | "sfc" | "gba";
 
 /** 게임패드 버튼에 연결할 동작: DOS 키 코드 또는 마우스 버튼 */
 export type PadAction = number | "mouse-left" | "mouse-right";
@@ -21,10 +21,12 @@ export interface DosInfo {
   /** 세이브로 감시할 파일 패턴(정규식 문자열). 비어 있으면 실행 중 바뀐 파일을 자동으로 추적한다 */
   savePattern?: string;
   input?: DosInput;
+  vkeys?: number[]; // 휴대폰 화면에 보여 줄 키 버튼 (DOS 키 번호). 없으면 기본 키
   conf?: string; // 예전 형식 (normalize에서 위 필드로 옮긴다)
 }
 
-export interface SfcInfo {
+/** 롬 하나로 도는 기종(SFC, GBA) */
+export interface RomInfo {
   rom: string; // games/{id}/ 아래 ROM 파일 이름
 }
 
@@ -35,7 +37,8 @@ export interface Game {
   addedAt: number;
   lastPlayedAt?: number;
   dos?: DosInfo;
-  sfc?: SfcInfo;
+  rom?: RomInfo;
+  sfc?: RomInfo; // 예전 형식 (normalize에서 rom으로 옮긴다)
   thumbVersion?: number; // 2 = 1:1 썸네일
   syncKey?: string; // 기기 사이에서 같은 게임을 알아보는 키 (ROM/실행 파일 해시)
 }
@@ -48,8 +51,12 @@ export async function listGames(): Promise<Game[]> {
   return (await readJson<Game[]>(LIBRARY, [])).map(normalize);
 }
 
-// 예전 형식(conf 한 덩어리)을 나눠 담는다
+// 예전 형식을 지금 형식으로: DOS conf 한 덩어리를 나눠 담고, SFC 롬 정보(sfc)는 rom으로 옮긴다
 function normalize(g: Game): Game {
+  if (g.sfc) {
+    const { sfc, ...rest } = g;
+    g = { ...rest, rom: rest.rom ?? sfc };
+  }
   if (!g.dos?.conf || g.dos.exe) return g;
   const { conf, ...rest } = g.dos;
   return { ...g, dos: { ...rest, ...splitConf(conf) } };
