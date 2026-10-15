@@ -52,7 +52,12 @@ async function importRom(rom: Entry): Promise<Game> {
   const title = stem(rom.path);
   const id = newGameId(title);
   const name = `rom.${rom.path.split(".").pop()!.toLowerCase()}`;
-  await writeFile(`${gameDir(id)}/${name}`, rom.file);
+  try {
+    await writeFile(`${gameDir(id)}/${name}`, rom.file);
+  } catch (e) {
+    await removeDir(gameDir(id));
+    throw e;
+  }
   const game: Game = { id, title, platform: systemForRom(rom.path)!.platform, addedAt: Date.now(), rom: { rom: name } };
   await putGame(game);
   return game;

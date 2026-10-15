@@ -4,6 +4,7 @@ import { useEffect, useState } from "preact/hooks";
 import { uploadGame } from "../../cloud/games";
 import { importFiles, type Entry } from "../../library/import";
 import { fromDrop } from "../../library/pick";
+import { explainError } from "../../library/store";
 
 export interface ExeChoice {
   candidates: string[];
@@ -26,10 +27,10 @@ export function useImport(onAdded: () => Promise<void>) {
       await onAdded();
       // 뒤에서 하나씩 올린다
       void (async () => {
-        for (const g of added) await uploadGame(g.id).catch((err) => setError(`드라이브에 올리지 못했습니다: ${(err as Error).message}`));
+        for (const g of added) await uploadGame(g.id).catch(async (err) => setError(`드라이브에 올리지 못했습니다: ${await explainError(err)}`));
       })();
     } catch (err) {
-      setError((err as Error).message);
+      setError(await explainError(err));
     }
     setProgress("");
   };

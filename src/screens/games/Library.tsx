@@ -4,25 +4,9 @@ import type { RemoteGame } from "../../cloud/games";
 import type { Game } from "../../library/library";
 import { LocalGameCard, RemoteGameCard } from "./GameCard";
 import { GameSettings } from "./GameSettings";
-import { LibraryHeader, useAddPicker, type View } from "./LibraryHeader";
+import { LibraryHeader, useAddPicker } from "./LibraryHeader";
 import { useGames } from "./useGames";
 import { useFileDrop, useImport, type ExeChoice } from "./useImport";
-
-function loadView(): View {
-  try {
-    return localStorage.getItem("view") === "list" ? "list" : "grid";
-  } catch {
-    return "grid";
-  }
-}
-
-function saveView(v: View) {
-  try {
-    localStorage.setItem("view", v);
-  } catch {
-    // 저장 못 해도 이번 화면에서는 적용된다
-  }
-}
 
 function ExeChooser({ choice, onChoose }: { choice: ExeChoice; onChoose: (v: string | null) => void }) {
   return (
@@ -47,14 +31,13 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
   const imp = useImport(refresh);
   const picker = useAddPicker((entries) => void imp.add(entries));
   const dragging = useFileDrop((entries) => (entries ? void imp.add(entries) : imp.fail("폴더는 넣을 수 없습니다. zip으로 묶어서 넣어 주세요")), [imp.progress]);
-  const [view, setView] = useState<View>(loadView);
   const [editing, setEditing] = useState<Game | null>(null);
 
   const empty = games?.length === 0 && !remote.length && !imp.progress;
 
   return (
     <div class="library">
-      <LibraryHeader view={view} onView={(v) => (setView(v), saveView(v))} picker={picker} busy={!!imp.progress} />
+      <LibraryHeader picker={picker} busy={!!imp.progress} />
 
       {imp.progress && <p class="progress">{imp.progress}</p>}
       {imp.error && <p class="error">{imp.error}</p>}
@@ -69,7 +52,7 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
         </div>
       )}
 
-      <ul class={view}>
+      <ul class="grid">
         {games?.map((g) => (
           <LocalGameCard key={g.id} game={g} thumb={thumbs[g.id]} transfer={transfers[g.id]} onPlay={() => onPlay(g)} onSettings={() => setEditing(g)} />
         ))}

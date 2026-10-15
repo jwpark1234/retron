@@ -2,7 +2,7 @@
 // 각 파일은 원래 경로를 appProperties.path에 적어 둔다. manifest.json은 모든 파일을 올린 뒤 마지막에 쓴다.
 import { useEffect, useState } from "preact/hooks";
 import { gameDir, getGame, listGames, newGameId, putGame, type Game } from "../library/library";
-import { getFile, listFiles, writeStream } from "../library/store";
+import { getFile, listFiles, removeDir, writeStream } from "../library/store";
 import { createFile, createLargeFile, download, ensureFolder, findChild, listChildren, rootFolder, trash, updateFile } from "./drive";
 import { authState } from "./google-auth";
 import { syncKey } from "./keys";
@@ -170,6 +170,9 @@ export async function downloadGame(remote: RemoteGame): Promise<Game> {
     const game: Game = { ...remote.game, id, syncKey: remote.key, addedAt: Date.now() };
     await putGame(game);
     return game;
+  } catch (e) {
+    await removeDir(gameDir(id)); // 받다 만 파일이 공간을 차지하지 않게
+    throw e;
   } finally {
     setTransfer(remote.key, null);
   }

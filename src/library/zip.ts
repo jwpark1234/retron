@@ -1,6 +1,7 @@
 // zip을 스트리밍으로 풀어서 OPFS 임시 폴더에 쓴다. 수백 MB짜리 zip도 메모리에 통째로 올리지 않는다.
+// 풀린 조각도 모으지 않고 바로 파일에 쓴다 (큰 Blob은 메모리가 모자라면 디스크로 넘어가 공간을 또 차지한다).
 import { Unzip, UnzipInflate } from "fflate";
-import { writeFile } from "./store";
+import { openWritable } from "./store";
 
 // 한국어 Windows에서 만든 zip은 파일명이 CP949인데 UTF-8 플래그가 없어서 latin1로 읽힌다
 function fixName(name: string) {
@@ -20,12 +21,15 @@ export async function extractZip(zip: File, outDir: string, onProgress: (msg: st
   unzip.register(UnzipInflate);
   unzip.onfile = (file) => {
     if (file.name.endsWith("/")) return;
-    const path = `${outDir}/${fixName(file.name)}`;
-    const chunks: Uint8Array[] = [];
+    const out = pending.then(() => openWritable(`${outDir}/${fixName(file.name)}`));
+    pending = out;
     file.ondata = (err, data, final) => {
       if (err) return void (error = err);
-      chunks.push(data);
-      if (final) pending = pending.then(() => writeFile(path, new Blob(chunks)));
+      pending = pending.then(async () => {
+        const w = await out;
+        if (data.length) await w.write(data.slice()); // fflate가 버퍼를 다시 쓸 수 있어서 복사한다
+        if (final) await w.close();
+      });
     };
     try {
       file.start();

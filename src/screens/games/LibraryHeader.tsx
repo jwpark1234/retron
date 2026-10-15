@@ -1,39 +1,11 @@
-// 라이브러리 위쪽 막대: 로고, 보기 방식(그리드/목록), 게임 추가, 계정(동기화 상태, 로그아웃).
+// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정(동기화 상태, 로그아웃).
 import { useRef, useState } from "preact/hooks";
 import { signOut, useAuth } from "../../cloud/google-auth";
 import type { Entry } from "../../library/import";
 import { fromInput } from "../../library/pick";
 import { useSync } from "../../sync/sync";
-import { Popover, Segmented } from "../../ui/controls";
+import { Popover } from "../../ui/controls";
 import { Logo } from "../../ui/Logo";
-
-export type View = "grid" | "list";
-
-const VIEWS: { value: View; title: string; label: preact.JSX.Element }[] = [
-  {
-    value: "grid",
-    title: "그리드",
-    label: (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="1" y="1" width="6" height="6" rx="1.5" />
-        <rect x="9" y="1" width="6" height="6" rx="1.5" />
-        <rect x="1" y="9" width="6" height="6" rx="1.5" />
-        <rect x="9" y="9" width="6" height="6" rx="1.5" />
-      </svg>
-    ),
-  },
-  {
-    value: "list",
-    title: "목록",
-    label: (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <rect x="1" y="2" width="14" height="3" rx="1.5" />
-        <rect x="1" y="6.5" width="14" height="3" rx="1.5" />
-        <rect x="1" y="11" width="14" height="3" rx="1.5" />
-      </svg>
-    ),
-  },
-];
 
 /** "+ 게임 추가": 파일 선택창을 바로 연다 (zip, 롬 파일). 폴더째 넣고 싶으면 창에 끌어다 놓는다 */
 export function useAddPicker(onPick: (entries: Entry[]) => void) {
@@ -71,12 +43,11 @@ function AccountMenu() {
   );
 }
 
-export function LibraryHeader({ view, onView, picker, busy }: { view: View; onView: (v: View) => void; picker: ReturnType<typeof useAddPicker>; busy: boolean }) {
+export function LibraryHeader({ picker, busy }: { picker: ReturnType<typeof useAddPicker>; busy: boolean }) {
   return (
     <header class="glass">
       <Logo size="small" />
       <div class="actions">
-        <Segmented value={view} options={VIEWS} onChange={onView} label="보기 방식" />
         <button class="primary add" disabled={busy} onClick={picker.open}>
           + 게임 추가
         </button>

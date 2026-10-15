@@ -1,6 +1,6 @@
 // 등록한 게임 목록. OPFS의 library.json에 두고, 게임 파일은 games/{id}/ 아래에 둔다.
 import { splitConf } from "../platforms/dos/profiles";
-import { getFile, readJson, removeDir, writeFile, writeJson } from "./store";
+import { getFile, listDirs, readJson, removeDir, writeFile, writeJson } from "./store";
 
 export type Platform = "dos" | "sfc" | "gba";
 
@@ -74,6 +74,13 @@ export async function putGame(game: Game) {
 export async function removeGame(id: string) {
   await writeJson(LIBRARY, (await listGames()).filter((g) => g.id !== id));
   await removeDir(gameDir(id));
+}
+
+/** 라이브러리에 없는 게임 폴더(받다 만 게임, 등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다 */
+export async function removeOrphans() {
+  const ids = new Set((await listGames()).map((g) => g.id));
+  for (const name of await listDirs("games")) if (!ids.has(name)) await removeDir(gameDir(name));
+  await removeDir("_incoming");
 }
 
 export async function touchGame(id: string) {
