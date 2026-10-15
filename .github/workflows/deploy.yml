@@ -1,0 +1,28 @@
+# main에 push하면 빌드해서 Cloudflare Pages(retron.pages.dev)에 올린다.
+# 저장소 Settings → Secrets and variables → Actions에 CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID가 있어야 한다.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx wrangler pages deploy dist --project-name retron --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
