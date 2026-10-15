@@ -1,7 +1,8 @@
-// 게임 중 메뉴: 화면 설정, 게임패드 상태, 플랫폼별 설정, 상태 저장/불러오기, 나가기. DOS와 SFC가 같이 쓴다.
+// 게임 중 메뉴(나가기, 화면 설정, 플랫폼별 설정)와 저장·불러오기 팝업(화면의 저장·불러오기 버튼이 연다). DOS와 SFC가 같이 쓴다.
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { Row, Segmented, Switch } from "../ui/controls";
+import { Row, Segmented } from "../ui/controls";
+import { IconClose, IconExit, IconFullscreen, IconGamepad, IconMonitor } from "../ui/icons";
 import { setPrefs, usePrefs, type ScreenFilter } from "../ui/prefs";
 import { padName, useGamepad } from "./gamepads";
 import { MenuButton, type MenuState } from "./MenuButton";
@@ -29,6 +30,20 @@ const FILTERS: { value: ScreenFilter; label: string }[] = [
   { value: "smooth", label: "부드럽게" },
   { value: "crt", label: "CRT" },
 ];
+
+/** 누를 때마다 다음 값으로 넘어간다 */
+const next = <T,>(list: { value: T }[], v: T) => list[(list.findIndex((o) => o.value === v) + 1) % list.length].value;
+const labelOf = <T,>(list: { value: T; label: string }[], v: T) => list.find((o) => o.value === v)?.label ?? "";
+
+/** 아이콘 토글: 아이콘 아래에 지금 값을 적는다 */
+function IconTile({ icon, label, on, danger, disabled, onClick }: { icon: ComponentChildren; label: string; on?: boolean; danger?: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button class={`icon-tile ${on ? "on" : ""} ${danger ? "danger" : ""}`} disabled={disabled} onClick={onClick}>
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
 
 function useFullscreen() {
   const [on, setOn] = useState(!!document.fullscreenElement);
@@ -97,7 +112,7 @@ export function GameMenu({
     <>
       {floating && !open && (
         <div class="floating-bar">
-          <QuickButtons gameId={gameId} bridge={bridge} toast={showToast} />
+          <QuickButtons bridge={bridge} onSlots={menu.openSlots} />
           <MenuButton onClick={() => setOpen(true)} />
         </div>
       )}
@@ -105,36 +120,46 @@ export function GameMenu({
         <div class="menu-backdrop" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div class="glass menu-sheet">
             <div class="menu-head">
+              <span />
               <strong>{title}</strong>
-              <button class="glass exit" disabled={!!busy} onClick={exit}>
-                나가기
-              </button>
-              <button class="glass close" aria-label="닫기" onClick={() => setOpen(false)}>
-                ✕
+              <button class="icon-btn" aria-label="닫기" onClick={() => setOpen(false)}>
+                <IconClose />
               </button>
             </div>
-
-            <section class="menu-group">
-              {touchDevice && (
-                <Row label="화면 방향">
-                  <Segmented value={orientation.mode} options={ORIENTATIONS} onChange={orientation.setMode} />
-                </Row>
-              )}
-              <Row label="화면 필터">
-                <Segmented value={prefs.filter} options={FILTERS} onChange={(filter) => setPrefs({ filter })} />
-              </Row>
-              {document.fullscreenEnabled && (
-                <Row label="전체화면">
-                  <Switch on={fullscreen} onChange={toggleFullscreen} />
-                </Row>
-              )}
-              <Row label="게임패드">
-                <small>{pad ? padName(pad) : "패드 버튼을 누르면 연결됩니다"}</small>
-              </Row>
-              {children?.(() => setOpen(false))}
-            </section>
-
-            <StateSlots gameId={gameId} bridge={bridge} run={run} onLoaded={() => setOpen(false)} />
+            <div class="menu-main">
+              <div class="menu-icons">
+                <IconTile icon={<IconExit />} label="나가기" danger disabled={!!busy} onClick={exit} />
+                <IconTile icon={<IconMonitor />} label={`필터 · ${labelOf(FILTERS, prefs.filter)}`} onClick={() => setPrefs({ filter: next(FILTERS, prefs.filter) })} />
+                {document.fullscreenEnabled && <IconTile icon={<IconFullscreen on={fullscreen} />} label="전체화면" on={fullscreen} onClick={toggleFullscreen} />}
+              </div>
+              <section class="menu-group">
+                {touchDevice && (
+                  <Row label="화면 방향">
+                    <Segmented value={orientation.mode} options={ORIENTATIONS} onChange={orientation.setMode} />
+                  </Row>
+                )}
+                {children?.(() => setOpen(false))}
+                <p class="menu-note">
+                  <IconGamepad />
+                  {pad ? padName(pad) : "패드 버튼을 누르면 연결됩니다"}
+                </p>
+              </section>
+            </div>
+            {busy && <p class="muted">{busy}</p>}
+          </div>
+        </div>
+      )}
+      {menu.slots && (
+        <div class="menu-backdrop" onClick={(e) => e.target === e.currentTarget && menu.openSlots(null)}>
+          <div class="glass menu-sheet slots-sheet">
+            <div class="menu-head">
+              <span />
+              <strong>{menu.slots === "save" ? "저장" : "불러오기"}</strong>
+              <button class="icon-btn" aria-label="닫기" onClick={() => menu.openSlots(null)}>
+                <IconClose />
+              </button>
+            </div>
+            <StateSlots mode={menu.slots} gameId={gameId} bridge={bridge} run={run} onDone={() => menu.openSlots(null)} />
             {busy && <p class="muted">{busy}</p>}
           </div>
         </div>

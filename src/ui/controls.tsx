@@ -11,13 +11,11 @@ export function Row({ label, children }: { label: string; children?: ComponentCh
   );
 }
 
-export function Switch({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label?: string }) {
-  return (
-    <button class={`switch ${on ? "on" : ""}`} role="switch" aria-checked={on} aria-label={label} onClick={() => onChange(!on)}>
-      <i />
-    </button>
-  );
-}
+/** 켜기/끄기 설정은 모두 Segmented로 고른다 */
+export const ON_OFF = [
+  { value: "on", label: "켜기" },
+  { value: "off", label: "끄기" },
+] as const;
 
 export function Segmented<T extends string>({
   value,

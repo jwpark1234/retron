@@ -119,7 +119,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
           rotation={orientation.rotation}
           style={prefs.stickStyle}
           menuButton={<MenuButton onClick={menu.toggle} />}
-          quick={<QuickButtons gameId={game.id} bridge={bridge} toast={showToast} />}
+          quick={<QuickButtons bridge={bridge} onSlots={menu.openSlots} />}
         />
       )}
       {status && <div class="overlay">{status}</div>}

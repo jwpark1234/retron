@@ -1,6 +1,7 @@
 // js-dos 8 emulators API로 DOSBox-X를 Worker에서 띄우고 화면·소리를 연결한다.
 // js-dos 기본 UI는 쓰지 않는다 (가상 키패드, 터치 입력, 세이브 처리를 직접 하기 위해).
 import type { CommandInterface, Emulators, InitFsEntry } from "emulators";
+import { KEYBOARD } from "./keyboard";
 
 declare global {
   // index.html에서 <script src="/emulators/emulators.js">로 로드된다
@@ -200,7 +201,7 @@ export const DOS_KEY_LIST: { label: string; key: number }[] = [
   ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, key: 290 + i })),
 ];
 
-export const dosKeyLabel = (key: number) => DOS_KEY_LIST.find((k) => k.key === key)?.label ?? String(key);
+export const dosKeyLabel = (key: number) => DOS_KEY_LIST.find((k) => k.key === key)?.label ?? KEYBOARD.find((k) => k.key === key)?.label ?? String(key);
 
 export function toDosKey(code: string): number | undefined {
   if (code in KEYS) return KEYS[code];

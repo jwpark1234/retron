@@ -1,4 +1,4 @@
-// 사용자 설정 (화면 필터, 휴대폰 조작, 키보드 설정). 메뉴와 플레이어가 같이 구독하고 드라이브에도 저장한다.
+// 사용자 설정 (화면 필터, 휴대폰 조작, 키보드 설정, 업로드). 메뉴와 플레이어가 같이 구독하고 드라이브에도 저장한다.
 import { useEffect, useState } from "preact/hooks";
 import type { Platform } from "../library/library";
 import type { RetroKeys } from "../platforms/retro/systems";
@@ -14,10 +14,11 @@ export interface Prefs {
   stickStyle: StickStyle;
   mouseSpeed: number; // DOS 트랙패드·게임패드 커서 감도 (배수)
   retroKeys: Partial<Record<Platform, RetroKeys>>; // 기종별 키보드 설정 (바꾼 버튼만). 그 기종 게임 모두에 같이 쓴다
+  wifiOnlyUpload: boolean; // 게임 파일은 모바일 데이터로 올리지 않는다
 }
 
 const KEY = "prefs";
-const DEFAULTS: Prefs = { filter: "sharp", padSide: "right", virtualPad: true, stickStyle: "stick", mouseSpeed: 1, retroKeys: {} };
+const DEFAULTS: Prefs = { filter: "sharp", padSide: "right", virtualPad: true, stickStyle: "stick", mouseSpeed: 1, retroKeys: {}, wifiOnlyUpload: true };
 
 /** 예전 형식(sfcKeys)을 기종별 키 설정으로 옮긴다. 드라이브에서 받은 설정에도 쓴다 */
 function normalize(p: Partial<Prefs> & { sfcKeys?: RetroKeys }): Partial<Prefs> {

@@ -1,7 +1,8 @@
 // SFC·GBA 설정: 키보드 설정(PC, 기종마다 그 기종 게임 모두에 공통)과 가상패드 켜고 끄기(휴대폰). 키 입력도 여기서 받는다.
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Row, Segmented, Switch } from "../../ui/controls";
-import { getPrefs, setPrefs, usePrefs, type StickStyle } from "../../ui/prefs";
+import { ON_OFF, Row, Segmented } from "../../ui/controls";
+import { StickStyleRow } from "../../player/DirectionPad";
+import { getPrefs, setPrefs, usePrefs } from "../../ui/prefs";
 import { keyLabel, type Input } from "./input";
 import type { RetroButton, RetroKeys, RetroSystem } from "./systems";
 
@@ -86,23 +87,16 @@ export function KeySettings({ system, capturing, onCapture }: { system: RetroSys
   );
 }
 
-const STICK_STYLES: { value: StickStyle; label: string }[] = [
-  { value: "stick", label: "원형 패드" },
-  { value: "dpad", label: "십자 패드" },
-];
-
 /** 휴대폰: 가상패드 켜고 끄기, 방향 조작 고르기. 게임패드가 연결돼 있으면 가상패드는 저절로 숨는다 */
 export function VirtualPadSetting({ gamepad }: { gamepad: boolean }) {
-  const { virtualPad, stickStyle } = usePrefs();
+  const { virtualPad } = usePrefs();
   return (
     <>
       <Row label="가상패드">
-        {gamepad ? <small>게임패드 사용 중</small> : <Switch on={virtualPad} onChange={(on) => setPrefs({ virtualPad: on })} />}
+        {gamepad ? <small>게임패드 사용 중</small> : <Segmented value={virtualPad ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ virtualPad: v === "on" })} />}
       </Row>
       {!gamepad && virtualPad && (
-        <Row label="방향 조작">
-          <Segmented value={stickStyle} options={STICK_STYLES} onChange={(v) => setPrefs({ stickStyle: v })} />
-        </Row>
+        <StickStyleRow />
       )}
     </>
   );

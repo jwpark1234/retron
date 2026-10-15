@@ -21,7 +21,8 @@ export interface DosInfo {
   /** 세이브로 감시할 파일 패턴(정규식 문자열). 비어 있으면 실행 중 바뀐 파일을 자동으로 추적한다 */
   savePattern?: string;
   input?: DosInput;
-  vkeys?: number[]; // 휴대폰 화면에 보여 줄 키 버튼 (DOS 키 번호). 없으면 기본 키
+  vkeys?: number[]; // (예전) 휴대폰 키 버튼. touchKeys가 없을 때만 읽는다
+  touchKeys?: number[]; // 휴대폰 화면에 보여 줄 키 (DOS 키 번호). 방향키가 있으면 방향 패드로 나온다. 없으면 기본 키
   conf?: string; // 예전 형식 (normalize에서 위 필드로 옮긴다)
 }
 

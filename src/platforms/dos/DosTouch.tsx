@@ -1,30 +1,36 @@
-// DOS 휴대폰 조작: 가상 키 + 트랙패드 + 빠른 버튼·메뉴 버튼, 그리고 메뉴의 "좌우 전환", "키 버튼 고르기", "마우스 감도".
+// DOS 휴대폰 조작: 키 버튼 영역 + 방향 패드(방향키) + 트랙패드(마우스), 가운데 아래 빠른 버튼·메뉴 버튼.
+// 메뉴에는 트랙패드 위치, 방향 조작 모양, 키 버튼 고르기(전체 키보드 팝업), 마우스 감도가 들어간다.
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { updateRemoteGame } from "../../cloud/games";
 import { getGame, putGame, type Game } from "../../library/library";
+import { DirectionPad, StickStyleRow, type Direction } from "../../player/DirectionPad";
 import { MenuButton } from "../../player/MenuButton";
 import { Row, Segmented } from "../../ui/controls";
-import { setPrefs, usePrefs } from "../../ui/prefs";
-import { DOS_KEY_LIST, dosKeyLabel } from "./create-dos";
+import { setPrefs, usePrefs, type PadSide } from "../../ui/prefs";
+import { dosKeyLabel } from "./create-dos";
+import { ARROWS, isArrow, isWide, orderKeys } from "./keyboard";
+import { KeyPicker } from "./KeyPicker";
 import { Trackpad } from "./Trackpad";
 import { VirtualKeys } from "./VirtualKeys";
 
-const DEFAULT_KEYS = [256, 257, 32, 89, 78]; // ESC, Enter, Space, Y, N
+const DEFAULT_KEYS = [256, 257, 32, 89, 78, ...ARROWS]; // ESC, Enter, Space, Y, N + 방향 패드
+const DIR_KEY: Record<Direction, number> = { up: 265, down: 264, left: 263, right: 262 };
 
-/** 화면에 보여 줄 키 버튼. 게임마다 저장하고 드라이브에도 올린다 */
+/** 화면에 보여 줄 키(방향키가 있으면 방향 패드). 게임마다 저장하고 드라이브에도 올린다 */
 export function useVirtualKeys(game: Game) {
-  const [keys, setKeys] = useState(game.dos!.vkeys ?? DEFAULT_KEYS);
-  const toggle = async (key: number) => {
-    const next = keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key];
+  const info = game.dos!;
+  // 예전 vkeys에는 방향 패드가 없었으므로 붙여 준다
+  const [keys, setKeys] = useState(info.touchKeys ?? (info.vkeys ? [...info.vkeys, ...ARROWS] : DEFAULT_KEYS));
+  const set = async (next: number[]) => {
     setKeys(next);
     const latest = await getGame(game.id);
     if (!latest?.dos) return;
-    const updated = { ...latest, dos: { ...latest.dos, vkeys: next } };
+    const updated = { ...latest, dos: { ...latest.dos, touchKeys: next } };
     await putGame(updated);
     void updateRemoteGame(updated).catch(() => undefined);
   };
-  return { keys, toggle };
+  return { keys, set, reset: () => set(DEFAULT_KEYS) };
 }
 
 export function DosTouchControls({
@@ -44,10 +50,15 @@ export function DosTouchControls({
   onMenu: () => void;
   quick: ComponentChildren;
 }) {
-  const { padSide } = usePrefs();
+  const { padSide, stickStyle } = usePrefs();
+  const buttons = orderKeys(keys.filter((k) => !isArrow(k)));
+  const dpad = keys.some(isArrow);
   return (
-    <div class={`vbar pad-${padSide}`}>
-      <VirtualKeys keys={keys.map((key) => ({ key, label: dosKeyLabel(key) }))} onKey={onKey} />
+    <div class={`vbar pad-${padSide} ${dpad ? "" : "no-dpad"}`}>
+      {buttons.length > 0 && (
+        <VirtualKeys keys={buttons.map((key) => ({ key, label: dosKeyLabel(key), wide: isWide(key) }))} cols={buttons.length <= 4 ? 2 : 3} onKey={onKey} />
+      )}
+      {dpad && <DirectionPad key={stickStyle} style={stickStyle} rotation={rotation} press={(_, dir, pressed) => onKey(DIR_KEY[dir], pressed)} />}
       <Trackpad rotation={rotation} onMove={onMove} onButton={onButton} />
       <div class="vbar-mid">
         {quick}
@@ -57,31 +68,28 @@ export function DosTouchControls({
   );
 }
 
+const PAD_SIDES: { value: PadSide; label: string }[] = [
+  { value: "left", label: "왼쪽" },
+  { value: "right", label: "오른쪽" },
+];
+
 /** 게임 메뉴에 들어가는 휴대폰 설정 줄 */
-export function DosTouchSettings({ keys, onToggleKey }: { keys: number[]; onToggleKey: (key: number) => void }) {
+export function DosTouchSettings({ keys, onChange, onReset }: { keys: number[]; onChange: (keys: number[]) => void; onReset: () => void }) {
   const { padSide } = usePrefs();
-  const [editing, setEditing] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const count = keys.filter((k) => !isArrow(k)).length;
   return (
     <>
-      <Row label="트랙패드 · 키 위치">
-        <button class="glass small" onClick={() => setPrefs({ padSide: padSide === "left" ? "right" : "left" })}>
-          좌우 전환
-        </button>
+      <Row label="트랙패드 위치">
+        <Segmented value={padSide} options={PAD_SIDES} onChange={(v) => setPrefs({ padSide: v })} />
       </Row>
+      {keys.some(isArrow) && <StickStyleRow />}
       <Row label="키 버튼">
-        <button class="glass small" onClick={() => setEditing(!editing)}>
-          {editing ? "완료" : `${keys.length}개 · 고르기`}
+        <button class="glass small" onClick={() => setPicking(true)}>
+          {count}개 · 고르기
         </button>
       </Row>
-      {editing && (
-        <div class="key-chips">
-          {DOS_KEY_LIST.map((k) => (
-            <button key={k.key} class={keys.includes(k.key) ? "on" : ""} onClick={() => onToggleKey(k.key)}>
-              {k.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {picking && <KeyPicker keys={keys} onChange={onChange} onReset={onReset} onClose={() => setPicking(false)} />}
     </>
   );
 }

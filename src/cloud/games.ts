@@ -4,7 +4,9 @@ import { useEffect, useState } from "preact/hooks";
 import { gameDir, getGame, listGames, newGameId, putGame, type Game } from "../library/library";
 import { getFile, listFiles, removeDir, writeStream } from "../library/store";
 import { createFile, createLargeFile, download, ensureFolder, findChild, listChildren, rootFolder, trash, updateFile } from "./drive";
+import { getPrefs } from "../ui/prefs";
 import { authState } from "./google-auth";
+import { onCellular } from "./network";
 import { syncKey } from "./keys";
 
 const ROOT = "retron";
@@ -95,6 +97,9 @@ export async function uploadGame(gameId: string) {
     const remote = new Map((await listChildren(folderId)).map((f) => [f.appProperties?.path ?? "", f]));
     // 세이브와 상태는 따로 동기화하므로 게임 파일만 올린다
     const local = [...(await listFiles(gameDir(game.id)))].filter(([p]) => !/^(saves|states)\//.test(p) && !/^(sram\.srm|conflict-backup\.zip)$/.test(p));
+    // 모바일 데이터면 큰 파일은 Wi-Fi에 연결됐을 때 올린다 (uploadMissingGames)
+    const big = local.some(([path, f]) => f.size > SMALL && Number(remote.get(path)?.size ?? -1) !== f.size);
+    if (big && getPrefs().wifiOnlyUpload && onCellular()) return;
     const total = local.reduce((n, [, f]) => n + f.size, 0);
     let done = 0;
     setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });

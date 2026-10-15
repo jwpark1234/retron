@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { downloadGame, uploadMissingGames, type RemoteGame } from "./cloud/games";
 import { restoreSession, useAuth } from "./cloud/google-auth";
+import { onCellular, onNetworkChange } from "./cloud/network";
 import { syncSettings } from "./cloud/settings";
 import { removeOrphans, touchGame, type Game } from "./library/library";
 import { migrateLegacy, migrateThumbnails } from "./library/migrate";
@@ -10,6 +11,7 @@ import { Library } from "./screens/games/Library";
 import { Landing } from "./screens/Landing";
 import { initSync, prepareForPlay, resolveConflict, retryAll } from "./sync/sync";
 import { Logo } from "./ui/Logo";
+import { onPrefsChange } from "./ui/prefs";
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -35,6 +37,15 @@ export function App() {
     void syncSettings().catch(() => undefined);
     void retryAll();
     void uploadMissingGames().catch(() => undefined);
+  }, [auth.signedIn]);
+
+  // Wi-Fi로 바뀌거나 "Wi-Fi에서만"을 끄면 미뤄 둔 게임을 올린다
+  useEffect(() => {
+    if (!auth.signedIn) return;
+    const retry = () => void uploadMissingGames().catch(() => undefined);
+    const offNetwork = onNetworkChange(() => !onCellular() && retry());
+    const offPrefs = onPrefsChange((p) => !p.wifiOnlyUpload && retry());
+    return () => (offNetwork(), offPrefs());
   }, [auth.signedIn]);
 
   const start = (g: Game) => {

@@ -177,25 +177,29 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad-mid > *, .vpad-sys > * { pointer-events: none; }
   .vpad-mid .vpad-btn, .vpad-mid .menu-button { pointer-events: auto; opacity: 0.8; }
 }
-/* DOS 터치 입력 막대: 가상 키 + 트랙패드 + 메뉴 버튼(아래 가운데). 세로 화면은 게임 아래, 가로 화면은 게임 위 양옆에 띄운다.
-   키와 트랙패드는 메뉴의 "좌우 전환"으로 자리를 바꾼다 */
+/* DOS 터치 입력: 키 버튼 영역(keys) + 방향 패드(dpad) + 트랙패드(pad) + 가운데 아래 빠른 버튼·메뉴(menu).
+   세로 화면은 게임 아래에 키 줄, 그 아래 방향 패드와 트랙패드. 가로 화면은 게임 양옆에 띄운다 (한쪽은 키 위·방향 패드 아래, 다른 쪽은 트랙패드).
+   트랙패드 위치는 메뉴에서 왼쪽·오른쪽으로 고른다 */
 .vbar {
   width: 100%; box-sizing: border-box; display: grid; gap: 12px; flex: 1; min-height: 0;
-  grid-template-columns: auto 1fr; grid-template-rows: 1fr auto; grid-template-areas: "keys pad" "menu menu";
+  grid-template-columns: auto 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "keys keys" "dpad pad" "menu menu";
   padding: 14px 14px max(14px, env(safe-area-inset-bottom));
 }
-.vbar.pad-left { grid-template-columns: 1fr auto; grid-template-areas: "pad keys" "menu menu"; }
+.vbar.pad-left { grid-template-columns: 1fr auto; grid-template-areas: "keys keys" "pad dpad" "menu menu"; }
+.vbar.no-dpad { grid-template-columns: 1fr; grid-template-areas: "keys" "pad" "menu"; }
 .vbar > .vkeys { grid-area: keys; }
+.vbar > .vpad-stick, .vbar > .vpad-dpad { grid-area: dpad; align-self: center; justify-self: center; }
 .vbar > .trackpad { grid-area: pad; }
 .vbar > .vbar-mid { grid-area: menu; justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-/* 키가 많으면 다섯 개씩 옆 줄로 넘긴다 */
-.vkeys { display: grid; grid-auto-flow: column; grid-template-rows: repeat(5, auto); gap: 8px; flex-shrink: 0; align-content: start; }
+/* 키 버튼: 키보드 순서대로 격자에 놓는다. 세로 화면은 한 줄에 여섯, 가로 화면은 cols(2~3)칸 */
+.vkeys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 8px; align-content: start; }
 .vkeys button {
-  min-width: 58px; padding: 10px 14px; font-size: 14px; font-weight: 600; color: #fff;
-  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28);
+  min-width: 0; padding: 10px 4px; font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); touch-action: none;
 }
+.vkeys button.wide { grid-column: span 2; }
 .vkeys button:active { background: rgba(255, 179, 64, 0.45); border-color: var(--tint); }
 /* 노트북 트랙패드: 탭=왼쪽 클릭, 길게 누르기=오른쪽 클릭 */
 .trackpad {
@@ -209,13 +213,21 @@ ul.grid .thumb { aspect-ratio: 1; }
 .trackpad .pad span { font-size: 11px; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.16); pointer-events: none; }
 .trackpad .pad:active { background: rgba(255, 255, 255, 0.03); }
 @container (orientation: landscape) {
-  .vbar { position: absolute; inset: auto 0 0 0; align-items: end; pointer-events: none; grid-template-columns: auto 1fr auto; grid-template-rows: auto; grid-template-areas: "keys menu pad"; padding: 12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
-  .vbar.pad-left { grid-template-columns: auto 1fr auto; grid-template-areas: "pad menu keys"; }
+  .vbar {
+    position: absolute; inset: 0; pointer-events: none; align-items: end;
+    grid-template-columns: auto 1fr auto; grid-template-rows: 1fr auto; grid-template-areas: "keys . pad" "dpad menu pad";
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .vbar.pad-left { grid-template-columns: auto 1fr auto; grid-template-areas: "pad . keys" "pad menu dpad"; }
+  .vbar.no-dpad { grid-template-columns: auto 1fr auto; grid-template-areas: "keys . pad" "keys menu pad"; }
+  .vbar.no-dpad.pad-left { grid-template-areas: "pad . keys" "pad menu keys"; }
   .vbar > * { pointer-events: auto; }
   .vbar > .vbar-mid { pointer-events: none; }
   .vbar-mid .vpad-btn, .vbar-mid .menu-button { pointer-events: auto; opacity: 0.8; }
-  .vkeys button { opacity: 0.8; min-width: 64px; padding: 8px 10px; }
-  .trackpad { width: 180px; height: 130px; flex: none; align-self: flex-end; min-height: 0; opacity: 0.9; }
+  .vbar > .vkeys { width: calc(var(--cols) * 46px + (var(--cols) - 1) * 6px); grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; max-height: 100%; overflow: auto; align-self: end; scrollbar-width: none; }
+  .vkeys button { opacity: 0.8; padding: 8px 2px; font-size: 13px; }
+  .vbar > .vpad-stick, .vbar > .vpad-dpad { opacity: 0.85; }
+  .trackpad { width: 170px; height: 150px; flex: none; align-self: end; min-height: 0; opacity: 0.9; }
 }
 .overlay { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--muted); font-size: 15px; }
 .toast { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
@@ -231,28 +243,89 @@ ul.grid .thumb { aspect-ratio: 1; }
   display: flex; align-items: center; gap: 10px; opacity: 0.3; transition: opacity 0.2s;
 }
 .game:hover .floating-bar, .floating-bar:focus-within { opacity: 0.85; }
-/* 메뉴 창은 아래에서 올라온다 */
-.menu-backdrop { position: absolute; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.35); display: flex; justify-content: center; align-items: flex-end; padding: 12px 12px max(12px, env(safe-area-inset-bottom)); }
-.menu-sheet {
-  width: min(400px, 100%); background: rgba(24, 24, 30, 0.82); max-height: calc(100% - 20px); overflow: auto; border-radius: 28px; padding: 18px;
-  display: flex; flex-direction: column; gap: 12px; animation: pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+/* 메뉴 창: 화면 가운데 카드. 위에는 아이콘 타일(나가기, 필터, 전체화면), 아래는 설정 줄.
+   가로로 낮은 화면에서는 두 칸으로 나눈다. 저장·불러오기 팝업도 같은 카드를 쓴다 */
+.menu-backdrop {
+  position: absolute; inset: 0; z-index: 20; display: flex; justify-content: center; align-items: center;
+  background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
-@keyframes pop { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
-.menu-sheet .muted { margin: 0 4px; }
-.slots { display: flex; flex-direction: column; gap: 8px; }
-.slot { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
-.slot-thumb { width: 72px; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: rgba(0, 0, 0, 0.5); display: grid; place-items: center; flex-shrink: 0; font-size: 11px; color: var(--muted); }
-.slot-thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
-.slot-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.slot-info small { color: var(--muted); font-size: 12px; }
-.slot-actions { display: flex; gap: 6px; }
-.slot-actions button { padding: 6px 12px; font-size: 13px; }
-.menu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 0 0 4px; }
-.menu-head strong { font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.menu-head .exit { flex-shrink: 0; margin-left: auto; padding: 7px 16px; font-size: 14px; color: #ff8a80; }
-.menu-head .close { flex-shrink: 0; width: 34px; height: 34px; padding: 0; font-size: 14px; }
-.menu-group { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+.menu-sheet {
+  width: min(420px, 100%); box-sizing: border-box; max-height: 100%; overflow: auto; border-radius: 28px; padding: 14px 16px 16px;
+  background: linear-gradient(180deg, rgba(48, 48, 58, 0.78), rgba(22, 22, 28, 0.82));
+  display: flex; flex-direction: column; gap: 14px; animation: pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2); scrollbar-width: none;
+}
+.menu-sheet::-webkit-scrollbar { display: none; }
+@keyframes pop { from { opacity: 0; transform: scale(0.96); } }
+.menu-sheet .muted { margin: 0 4px; text-align: center; font-size: 13px; }
+.icon { width: 22px; height: 22px; flex-shrink: 0; }
+.menu-head { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; gap: 8px; }
+.menu-head strong { font-size: 17px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-btn { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; background: transparent; border: 0; color: var(--text); }
+.icon-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.menu-main { display: flex; flex-direction: column; gap: 10px; }
+.icon-tile {
+  border-radius: 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.icon-tile:hover { background: rgba(255, 255, 255, 0.13); }
+/* 아이콘 토글 줄: 누를 때마다 다음 값 */
+.menu-icons { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
+.icon-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 11px 4px 9px; }
+.icon-tile span { font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.icon-tile.on { background: rgba(255, 179, 64, 0.22); border-color: rgba(255, 179, 64, 0.55); }
+.icon-tile.on span { color: var(--text); }
+.icon-tile.danger, .icon-tile.danger span { color: #ff8a80; }
+/* 설정 줄 묶음 */
+.menu-group { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+.menu-group:not(:has(.menu-row)) { background: none; border: 0; padding: 0 4px; }
+.menu-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.menu-note .icon { width: 16px; height: 16px; }
+.menu-group .menu-row + .menu-note { padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .menu-sheet h2 { margin: 6px 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+/* 저장·불러오기 팝업: 썸네일 격자. 슬롯을 누르면 바로 저장하거나 불러온다 */
+.slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.slot {
+  display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 18px; min-width: 0; text-align: left;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.slot:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.slot:disabled { opacity: 0.45; }
+.slot.auto { background: rgba(255, 179, 64, 0.1); border-color: rgba(255, 179, 64, 0.25); }
+.slot-thumb { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: rgba(0, 0, 0, 0.45); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+.slot-thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.slot-info { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 0 2px 2px; min-width: 0; }
+.slot-info strong { font-size: 14px; white-space: nowrap; }
+.slot-info small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 키 버튼 고르기: 전체 키보드 (1/4 키 단위 격자) */
+.kb-backdrop { z-index: 22; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.menu-sheet.kb-sheet { width: min(860px, 100%); }
+.kb-hint { margin: -4px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+.kb-scroll { flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+/* 세로 화면에서는 옆으로 밀어서 본다. 오른쪽 끝을 흐리게 해서 더 있다는 걸 보여 준다 */
+@media (max-width: 640px) { .kb-scroll { mask-image: linear-gradient(90deg, #000 85%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); } }
+.kb { display: grid; gap: 4px; min-width: 620px; grid-auto-rows: 36px; }
+.kb button {
+  padding: 0; min-width: 0; border-radius: 8px; font: 600 11.5px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--muted); white-space: nowrap; overflow: hidden;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.kb button.on { color: #fff; background: rgba(255, 179, 64, 0.38); border-color: var(--tint); }
+.kb-foot { display: flex; align-items: center; gap: 8px; }
+.kb-foot span { flex: 1; font-size: 13px; color: var(--muted); }
+.kb-foot button.small { align-self: center; }
+button.primary { background: var(--tint); border-color: var(--tint); color: #1a1205; font-weight: 700; box-shadow: none; }
+/* 가로로 낮은 화면(휴대폰 가로): 왼쪽 아이콘 타일, 오른쪽 설정 줄. 슬롯은 세 칸 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .menu-sheet { width: min(700px, 100%); padding: 12px 14px 14px; gap: 10px; }
+  .menu-main { display: grid; grid-template-columns: 180px 1fr; align-items: start; gap: 12px; }
+  .menu-icons { grid-auto-flow: row; grid-auto-columns: auto; gap: 8px; }
+  .icon-tile { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 12px 14px; }
+  .icon-tile span { font-size: 14px; }
+  .slots { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .slot { gap: 6px; padding: 6px; }
+  .slot-thumb { aspect-ratio: 2 / 1; }
+  .kb { grid-auto-rows: 34px; }
+}
 
 @media (max-width: 600px) {
   .library header { padding: 6px 6px 6px 16px; }
@@ -262,8 +335,9 @@ ul.grid .thumb { aspect-ratio: 1; }
 }
 
 /* 메뉴 설정 줄, 스위치, 빨리가기 표시 */
-.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px; }
-.menu-row > span { font-size: 15px; font-weight: 500; }
+.menu-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 2px 4px; }
+.menu-row > .seg { margin-left: auto; }
+.menu-row > span { font-size: 15px; font-weight: 500; white-space: nowrap; }
 .menu-row .seg button { font-size: 13px; padding: 5px 12px; }
 .menu-row > small { font-size: 13px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .menu-row button.small { align-self: center; }
@@ -278,11 +352,6 @@ ul.grid .thumb { aspect-ratio: 1; }
 .key-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 4px 4px; }
 .key-chips button { min-width: 44px; padding: 6px 10px; font-size: 13px; color: var(--muted); background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: none; }
 .key-chips button.on { color: var(--text); background: rgba(255, 179, 64, 0.32); border-color: var(--tint); }
-.switch { position: relative; width: 52px; height: 32px; padding: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.18); border: 1px solid var(--glass-line); }
-.switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.switch.on { background: #34c759; border-color: #34c759; }
-.switch.on i { transform: translateX(20px); }
-.slot.auto { background: rgba(255, 179, 64, 0.1); border-color: rgba(255, 179, 64, 0.25); }
 
 /* 게임 설정 */
 .settings { width: min(520px, 100%); gap: 10px; }
@@ -345,6 +414,8 @@ li.remote .thumb img { filter: saturate(0.6); }
 .popover .muted { margin: 4px 14px 6px; font-size: 12px; }
 .popover.account { padding: 14px; gap: 6px; }
 .popover.account .email { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popover.account .menu-row { margin-top: 6px; padding: 0; }
+.popover.account .menu-row > span { font-size: 13.5px; }
 .popover.account .logout { margin-top: 6px; padding: 8px 12px; align-items: center; color: #ff8a80; background: rgba(255, 255, 255, 0.06); }
 .sync-line { font-size: 12.5px; }
 .sync-line.ok { color: #7ee2a0; }

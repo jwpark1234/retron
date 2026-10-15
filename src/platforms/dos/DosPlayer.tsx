@@ -109,7 +109,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       <GameMenu menu={menu} floating={!touchDevice} gameId={game.id} title={game.title} bridge={bridge} onExit={onExit} orientation={orientation}>
         {() => (
           <>
-            {touchDevice && <DosTouchSettings keys={vkeys.keys} onToggleKey={(k) => void vkeys.toggle(k)} />}
+            {touchDevice && <DosTouchSettings keys={vkeys.keys} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />}
             <MouseSpeedSetting />
           </>
         )}
@@ -122,7 +122,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
           onMove={(dx, dy) => nudgeCursor(cursor.current, ci.current, dx, dy)}
           onButton={(b, p) => ci.current?.sendMouseButton(b, p)}
           onMenu={menu.toggle}
-          quick={<QuickButtons gameId={game.id} bridge={bridge} toast={showToast} />}
+          quick={<QuickButtons bridge={bridge} onSlots={menu.openSlots} />}
         />
       )}
       {status && <div class="overlay">{status}</div>}
