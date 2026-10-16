@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>retron 개인정보처리방침</title>
+    <style>
+      :root { color-scheme: dark; --text: #f5f5f7; --muted: rgba(245, 245, 247, 0.65); --tint: #ffb340; }
+      body { margin: 0; background: #07070c; color: var(--text); font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif; }
+      main { max-width: 720px; margin: 0 auto; padding: 40px 20px 64px; }
+      h1 { font-size: 26px; margin: 0 0 4px; }
+      h2 { font-size: 17px; margin: 32px 0 8px; color: var(--tint); }
+      p, li { color: var(--text); }
+      .muted { color: var(--muted); font-size: 13px; }
+      a { color: var(--tint); }
+      ul { padding-left: 20px; }
+      code { font-size: 13px; background: rgba(255, 255, 255, 0.08); padding: 1px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>retron 개인정보처리방침</h1>
+      <p class="muted">시행일 2026년 10월 16일</p>
+
+      <p>retron(<a href="https://retron.pages.dev/">retron.pages.dev</a>)은 사용자가 가진 옛날 게임 파일을 브라우저에서 실행하는 웹 앱입니다. 이 문서는 retron이 어떤 정보를 어디에 두고 어떻게 쓰는지 설명합니다.</p>
+
+      <h2>1. 받는 정보</h2>
+      <ul>
+        <li><strong>구글 계정 이메일 주소</strong>: 로그인한 계정을 화면에 보여 주고, 다시 열었을 때 같은 계정으로 이어 가기 위해 씁니다.</li>
+        <li><strong>구글 드라이브 접근 권한</strong> (<code>drive.file</code>): retron이 직접 만든 파일만 보고 쓸 수 있는 권한입니다. 사용자의 다른 드라이브 파일은 볼 수 없습니다.</li>
+      </ul>
+
+      <h2>2. 정보를 두는 곳</h2>
+      <ul>
+        <li><strong>사용자 본인의 구글 드라이브</strong>: 등록한 게임 파일, 세이브, 설정을 드라이브의 <code>retron</code> 폴더에 저장합니다. 다른 기기에서 같은 계정으로 이어서 하기 위해서입니다.</li>
+        <li><strong>사용자의 브라우저</strong>: 게임 파일, 세이브, 설정, 로그인한 계정 이메일을 브라우저 저장소에 둡니다. 오프라인에서도 게임을 하기 위해서입니다.</li>
+        <li><strong>로그인 유지 쿠키</strong>: 드라이브 접근이 한 시간마다 끊기지 않도록, 구글이 준 갱신 토큰을 암호화해 사용자 브라우저의 쿠키에 둡니다. 이 쿠키는 retron 서버로만 보내지고 자바스크립트로 읽을 수 없습니다.</li>
+      </ul>
+      <p>retron 운영자는 사용자의 게임 파일, 세이브, 설정, 드라이브 내용을 서버에 저장하지 않고 볼 수도 없습니다. retron 서버(Cloudflare Pages)는 앱 파일을 내려주고, 위 쿠키로 구글에 새 접근 토큰을 요청하는 일만 합니다.</p>
+
+      <h2>3. 제3자 제공</h2>
+      <p>개인정보를 판매하거나 제3자에게 제공하지 않습니다. 광고·분석 도구를 쓰지 않습니다. 서비스를 위해 다음 업체의 기능을 씁니다.</p>
+      <ul>
+        <li>Google: 로그인, 구글 드라이브 저장</li>
+        <li>Cloudflare: 웹사이트 호스팅 (일반적인 접속 기록이 Cloudflare에 남을 수 있습니다)</li>
+      </ul>
+
+      <h2>4. 구글 사용자 데이터 사용</h2>
+      <p>retron이 구글 API로 받은 정보의 사용과 다른 앱으로의 전달은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 서비스 사용자 데이터 정책</a>(제한적 사용 요건 포함)을 따릅니다. 받은 정보는 위에 적은 기능에만 쓰고, 다른 목적으로 쓰거나 사람이 열어 보지 않습니다.</p>
+
+      <h2>5. 삭제와 권한 철회</h2>
+      <ul>
+        <li>앱의 계정 메뉴에서 <strong>로그아웃</strong>하면 로그인 유지 쿠키를 지우고 구글에 갱신 토큰 취소를 요청합니다.</li>
+        <li><a href="https://myaccount.google.com/permissions">구글 계정 → 서드파티 앱 및 서비스</a>에서 retron의 접근 권한을 언제든 철회할 수 있습니다.</li>
+        <li>드라이브의 <code>retron</code> 폴더를 지우면 드라이브에 둔 게임·세이브·설정이 지워집니다.</li>
+        <li>브라우저의 사이트 데이터를 지우면 기기에 둔 정보가 지워집니다.</li>
+      </ul>
+
+      <h2>6. 바뀔 때</h2>
+      <p>이 방침이 바뀌면 이 페이지에 새 시행일과 함께 올립니다.</p>
+
+      <p class="muted" style="margin-top: 40px"><a href="./">retron으로 돌아가기</a></p>
+    </main>
+  </body>
+</html>

@@ -7,7 +7,7 @@
 // 에뮬레이터는 처음 한 번 온라인에서 그 기종 게임을 실행해야 기기에 남는다 (모바일 데이터로 수십 MB를 미리 받지 않으려고).
 // 구글 로그인·드라이브 요청(다른 도메인)은 건드리지 않는다.
 
-const CACHE = "retron-app-v2";
+const CACHE = "retron-app-v3";
 const PAGE = "./index.html";
 
 self.addEventListener("install", (e) => {
@@ -80,7 +80,9 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   // 로그인 왕복(/api/auth)은 서버로 그대로 보낸다 (페이지 이동이라 index.html로 저장되면 안 된다)
   if (req.method !== "GET" || url.origin !== location.origin || req.headers.has("range") || url.pathname.includes("/api/")) return;
-  if (req.mode === "navigate") return e.respondWith(page(req));
+  // 앱 페이지(/, index.html)만 앱으로 저장한다. 다른 페이지(개인정보처리방침 등)를 앱으로 저장하면 오프라인에서 그 페이지가 떴다
+  const appPage = /\/(index\.html)?$/.test(url.pathname);
+  if (req.mode === "navigate") return e.respondWith(appPage ? page(req) : networkFirst(req));
   if (url.pathname.includes("/assets/") || url.pathname.includes("/retroarch/")) return e.respondWith(cacheFirst(req));
   if (url.pathname.includes("/emulators/")) return e.respondWith(staleWhileRevalidate(req, (p) => e.waitUntil(p)));
   e.respondWith(networkFirst(req));

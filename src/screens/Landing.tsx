@@ -30,6 +30,9 @@ export function Landing({ loading }: { loading?: boolean }) {
       </button>
       {auth.error && <p class="error">로그인하지 못했습니다: {auth.error}</p>}
       <p class="fineprint">모든 데이터는 내 구글 드라이브의 retron 폴더에 저장됩니다.</p>
+      <a class="fineprint privacy-link" href="./privacy.html">
+        개인정보처리방침
+      </a>
     </div>
   );
 }
