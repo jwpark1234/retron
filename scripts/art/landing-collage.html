@@ -30,20 +30,27 @@ function crtTile(img) {
 
 const load = (src) => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error(src)); i.src = src; });
 
-// 9×5 = 45칸. 그림마다 한 번씩만 (모자라면 처음부터 다시), 순서는 섞는다. 줄마다 엇갈리고 살짝 기울여 겹친다
+// 뒤죽박죽 콜라주: 그림마다 한 번씩만. 자리는 9×5 칸에서 크게 흔들고, 크기·기울기는 제각각, 겹치는 순서도 섞는다.
+// 칸을 기준으로 흔들어서 화면 전체가 고르게 덮인다 (빈 곳이 크게 생기지 않게)
 window.build = async (srcs) => {
   const imgs = await Promise.all(srcs.map(load));
-  for (let i = imgs.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [imgs[i], imgs[j]] = [imgs[j], imgs[i]]; }
   const tiles = imgs.map(crtTile);
+  const COLS = 9, ROWS = 5, CW = 1920 / COLS, CH = 1200 / ROWS;
+  const spots = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++)
+    spots.push({
+      x: (c + 0.5) * CW + (rnd() - 0.5) * CW * 0.9,
+      y: (r + 0.5) * CH + (rnd() - 0.5) * CH * 0.9,
+      s: 0.7 + rnd() * 0.75, // 0.7 ~ 1.45배
+      a: (rnd() - 0.5) * 0.65, // -19° ~ 19°
+    });
+  for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; } // 겹치는 순서
   const out = document.getElementById("out"), o = out.getContext("2d");
   o.fillStyle = "#07070c"; o.fillRect(0, 0, out.width, out.height);
-  let n = 0;
-  for (let r = 0; r < 5; r++) for (let c = 0; c < 9; c++) {
-    const t = tiles[n++ % tiles.length];
-    const x = c * 222 - 90 + (r % 2) * 111, y = r * 248 - 40;
-    o.save(); o.translate(x + TW / 2, y + TH / 2); o.rotate((rnd() - 0.5) * 0.1);
-    o.shadowColor = "rgba(0,0,0,.75)"; o.shadowBlur = 24; o.drawImage(t, -TW / 2, -TH / 2); o.restore();
-  }
+  spots.forEach((p, i) => {
+    o.save(); o.translate(p.x, p.y); o.rotate(p.a); o.scale(p.s, p.s);
+    o.shadowColor = "rgba(0,0,0,.8)"; o.shadowBlur = 28; o.drawImage(tiles[i % tiles.length], -TW / 2, -TH / 2); o.restore();
+  });
   document.title = "done";
 };
 </script></body></html>
