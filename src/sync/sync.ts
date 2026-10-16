@@ -18,6 +18,7 @@ import { writeFile } from "../library/store";
 export interface SyncInfo {
   pending: number; // 아직 못 올린 게임 수
   conflict: boolean;
+  conflictTitles: string[]; // 게임 안 세이브가 충돌한 게임 (게임을 열면 어느 쪽을 쓸지 묻는다)
 }
 
 interface KindSync {
@@ -29,7 +30,7 @@ interface KindSync {
 const DEBOUNCE_MS = 5000;
 const RETRY_MS = 60 * 1000;
 
-let info: SyncInfo = { pending: 0, conflict: false };
+let info: SyncInfo = { pending: 0, conflict: false, conflictTitles: [] };
 const listeners = new Set<(i: SyncInfo) => void>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const pushing = new Map<string, Promise<void>>();
@@ -62,9 +63,11 @@ function emit(patch: Partial<SyncInfo>) {
 
 async function refreshCounts() {
   const games = await listGames();
+  const conflicted = games.filter((g) => readState(g.id, "saves").conflict);
   emit({
     pending: games.filter((g) => SAVE_KINDS.some((k) => readState(g.id, k).dirty)).length,
-    conflict: games.some((g) => readState(g.id, "saves").conflict),
+    conflict: conflicted.length > 0,
+    conflictTitles: conflicted.map((g) => g.title),
   });
 }
 

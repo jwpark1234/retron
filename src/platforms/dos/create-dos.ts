@@ -29,6 +29,36 @@ function waitForFiles(conf: string) {
   return conf.replace(/^\[autoexec\][ \t]*$/m, `[autoexec]\n${wait.join("\n")}`);
 }
 
+// 게임이 끝나 DOS로 돌아오면(게임 안의 "종료", "DOS로 나가기") autoexec 마지막 줄이 신호 파일을 남긴다.
+// 플레이 화면이 이 파일을 보고 세이브를 마저 저장한 뒤 라이브러리로 돌아간다 (DOS 프롬프트를 남겨 두지 않는다)
+const EXITED = `${SYNC_DIR}/EXITED`;
+function signalExit(conf: string) {
+  const lines = ["@echo off", `mount y ${SYNC_DIR} >nul`, "echo done>Y:\\EXITED"];
+  return `${conf.trimEnd()}\n${lines.join("\n")}\n`;
+}
+
+/**
+ * 에뮬레이터 FS 목록. js-dos는 fsTree를 동시에 두 번 부르면 앞의 것이 영영 끝나지 않으므로(답을 받을 자리가 하나뿐)
+ * 세이브 감시, 상태 저장, 게임 종료 확인이 모두 이것으로 같이 받는다
+ */
+export type FsNode = Awaited<ReturnType<CommandInterface["fsTree"]>>;
+const trees = new WeakMap<CommandInterface, Promise<FsNode>>();
+export function fsTree(ci: CommandInterface): Promise<FsNode> {
+  let p = trees.get(ci);
+  if (!p) {
+    p = ci.fsTree().finally(() => trees.delete(ci));
+    trees.set(ci, p);
+  }
+  return p;
+}
+
+/** 게임이 끝나 DOS로 돌아왔는지. 없는 파일을 fsReadFile로 읽으면 답이 오지 않아서 목록으로 본다 */
+export async function gameExited(ci: CommandInterface): Promise<boolean> {
+  const [dir, name] = EXITED.split("/");
+  const tree = await fsTree(ci);
+  return !!tree.nodes?.find((n) => n.name === dir)?.nodes?.some((n) => n.name === name);
+}
+
 function fileStream(file: File): ReadableStream<Uint8Array> {
   let offset = 0;
   return new ReadableStream({
@@ -43,13 +73,13 @@ function fileStream(file: File): ReadableStream<Uint8Array> {
 
 /** files: 에뮬레이터 FS 경로(HDD/..., CD/...) → 파일. 나중 것이 앞의 것을 덮는다 */
 export async function createDos(files: Map<string, File>, conf: string, onProgress: (msg: string) => void): Promise<CommandInterface> {
-  conf = withStateFile(conf);
+  conf = signalExit(withStateFile(conf));
   const big = [...files].filter(([, f]) => f.size > BIG_FILE);
   const small = [...files].filter(([, f]) => f.size <= BIG_FILE);
   if (big.length) conf = waitForFiles(conf);
   const init: InitFsEntry[] = [];
   for (const [path, f] of small) init.push({ path, contents: new Uint8Array(await f.arrayBuffer()) });
-  if (big.length) init.push({ path: `${SYNC_DIR}/WAIT`, contents: new Uint8Array(1) });
+  init.push({ path: `${SYNC_DIR}/WAIT`, contents: new Uint8Array(1) }); // 신호 폴더(Y:)가 있어야 mount된다
   init.push({ dosboxConf: conf, jsdosConf: { version: "js-dos-v8" } });
   const ci = await emulators.dosboxXWorker(init);
   if (!big.length) return ci;
@@ -159,7 +189,7 @@ export async function saveDosState(ci: CommandInterface): Promise<Uint8Array> {
   let last = -1;
   for (let i = 0; i < 50; i++) {
     await sleep(200);
-    const tree = await ci.fsTree();
+    const tree = await fsTree(ci);
     const size = tree.nodes?.find((n) => n.name === STATE_FILE)?.size ?? -1;
     if (size > 0 && size === last) return ci.fsReadFile(STATE_FILE);
     last = size;

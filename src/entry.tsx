@@ -2,6 +2,7 @@ import { render } from "preact";
 import { App } from "./App";
 import { applyControlStyle } from "./ui/control-style";
 import { installHaptics } from "./ui/haptics";
+import "./ui/install"; // 앱 설치 창을 시작할 때부터 받아 둔다
 import { preventZoom } from "./ui/no-zoom";
 import "./style.css";
 

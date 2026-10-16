@@ -181,6 +181,15 @@ export async function download(fileId: string): Promise<Response> {
   return call(`${API}/files/${fileId}?alt=media`);
 }
 
+/** 파일의 한 구간(start~end, 끝 포함)을 받는다. timeoutMs 안에 다 못 받으면 끊고 오류 (화면이 꺼져 연결이 멈춘 경우) */
+export async function downloadRange(fileId: string, start: number, end: number, timeoutMs: number): Promise<Uint8Array> {
+  const signal = AbortSignal.timeout(timeoutMs);
+  const res = await call(`${API}/files/${fileId}?alt=media`, { headers: { Range: `bytes=${start}-${end}` }, signal });
+  const data = new Uint8Array(await res.arrayBuffer());
+  if (data.length !== end - start + 1) throw new Error("받은 크기가 맞지 않습니다");
+  return data;
+}
+
 export async function getMeta(fileId: string): Promise<DriveFile> {
   return (await (await call(`${API}/files/${fileId}?fields=${FIELDS}`)).json()) as DriveFile;
 }

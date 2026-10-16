@@ -17,7 +17,7 @@ import { BusyOverlay } from "../../ui/Spinner";
 import { useCanvasLuma } from "../../player/useCanvasLuma";
 import { markDirty } from "../../sync/sync";
 import { usePrefs } from "../../ui/prefs";
-import { attachAudio, attachVideo, createDos, dosFastForward, loadDosState, saveDosState } from "./create-dos";
+import { attachAudio, attachVideo, createDos, dosFastForward, gameExited, loadDosState, saveDosState } from "./create-dos";
 import { nudgeCursor, useDosMouseKeyboard, type Cursor } from "./dos-input";
 import { DosTouchControls, DosTouchSettings, MouseSpeedSetting, useVirtualKeys } from "./DosTouch";
 import { watchGamepad } from "./gamepad";
@@ -97,7 +97,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       );
 
       // 게임 안 세이브 파일이 바뀌면 기기에 저장하고 드라이브 동기화를 예약한다
-      const stopWatch = await watchSaves(dos, {
+      const saveWatch = await watchSaves(dos, {
         pattern: info.savePattern,
         previous: [...saves.keys()],
         onChange: async (now: FileMap) => {
@@ -107,8 +107,19 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
           showToast("저장되었습니다");
         },
       });
-      if (disposed) stopWatch();
-      else cleanups.push(stopWatch);
+      if (disposed) return saveWatch.stop();
+      cleanups.push(() => saveWatch.stop());
+
+      // 게임 안에서 끝내면(DOS로 돌아오면) 세이브를 마저 저장하고 라이브러리로 돌아간다.
+      // 자동 저장 슬롯은 남기지 않는다 (DOS 프롬프트 상태라 쓸모가 없고, 전에 둔 자동 저장을 덮는다)
+      const exitTimer = setInterval(async () => {
+        if (disposed || !(await gameExited(dos))) return;
+        clearInterval(exitTimer);
+        setStatus("게임을 마치는 중…");
+        await saveWatch.flush().catch(() => undefined);
+        if (!disposed) onExit();
+      }, 1000);
+      cleanups.push(() => clearInterval(exitTimer));
     })().catch((e) => {
       setFailed(true);
       setStatus((e as Error).message);
@@ -123,7 +134,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   }, [run]);
 
   return (
-    <div class="game" ref={stage} style={rotatedStyle(orientation.rotation)}>
+    <div class={`game${touchDevice ? "" : " hide-cursor"}`} ref={stage} style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} />
       <GameMenu menu={menu} floating={!touchDevice} gameId={game.id} title={game.title} bridge={bridge} onExit={onExit} orientation={orientation}>
         {() => (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { downloadGame, uploadMissingGames, type RemoteGame } from "./cloud/games";
+import { downloadGame, pendingDownloadIds, uploadMissingGames, type RemoteGame } from "./cloud/games";
 import { restoreSession, useAuth } from "./cloud/google-auth";
 import { onCellular, onNetworkChange } from "./cloud/network";
 import { initSettingsSync, retrySettings, syncSettings } from "./cloud/settings";
@@ -35,7 +35,7 @@ export function App() {
   useEffect(() => {
     migrateLegacy()
       .then(migrateThumbnails)
-      .then(() => removeOrphans().catch(() => undefined))
+      .then(() => removeOrphans(pendingDownloadIds()).catch(() => undefined))
       .then(restoreSession)
       .finally(() => {
         setReady(true);

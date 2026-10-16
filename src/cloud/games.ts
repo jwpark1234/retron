@@ -2,9 +2,9 @@
 // 각 파일은 원래 경로를 appProperties.path에 적어 둔다. manifest.json은 모든 파일을 올린 뒤 마지막에 쓴다.
 import { useEffect, useState } from "preact/hooks";
 import { gameDir, getGame, listGames, newGameId, putGame, type Game } from "../library/library";
-import { getFile, listFiles, readJson, removeDir, writeJson, writeStream } from "../library/store";
+import { getFile, listFiles, openWritable, readJson, writeJson } from "../library/store";
 import { keepAwake } from "../ui/wake-lock";
-import { createFile, createLargeFile, download, ensureFolder, findChild, listAll, listChildren, rootFolder, trash, updateFile } from "./drive";
+import { createFile, createLargeFile, download, downloadRange, ensureFolder, findChild, listAll, listChildren, rootFolder, trash, updateFile } from "./drive";
 import { getPrefs } from "../ui/prefs";
 import { authState } from "./google-auth";
 import { onCellular } from "./network";
@@ -29,14 +29,26 @@ export interface Transfer {
 }
 
 // --- 진행 상황 (라이브러리 카드에 표시) ---
+// 진행률은 1초에 몇 번만 알린다. 받은 조각마다 알리면 라이브러리 화면을 수천 번 다시 그려서 휴대폰에서는 받기 자체가 느려졌다
+const NOTIFY_MS = 250;
 let transfers: Record<string, Transfer> = {};
 const listeners = new Set<(t: Record<string, Transfer>) => void>();
+let notifyTimer: ReturnType<typeof setTimeout> | null = null;
+const notify = () => {
+  notifyTimer = null;
+  listeners.forEach((l) => l(transfers));
+};
 function setTransfer(id: string, t: Transfer | null) {
+  const started = t && !transfers[id];
   transfers = { ...transfers };
   if (t) transfers[id] = t;
   else delete transfers[id];
   keepAwake(Object.keys(transfers).length > 0); // 올리거나 받는 동안 화면이 꺼지지 않게
-  listeners.forEach((l) => l(transfers));
+  // 시작과 끝은 바로, 중간 진행률은 모아서
+  if (started || !t) {
+    if (notifyTimer) clearTimeout(notifyTimer);
+    notify();
+  } else notifyTimer ??= setTimeout(notify, NOTIFY_MS);
 }
 export function useTransfers() {
   const [t, setT] = useState(transfers);
@@ -46,6 +58,26 @@ export function useTransfers() {
   }, []);
   return t;
 }
+
+// --- 올리지 못한 까닭 (카드와 게임 설정에 보여 준다. 올리면 지운다) ---
+let issues: Record<string, string> = {};
+const issueListeners = new Set<(t: Record<string, string>) => void>();
+function setIssue(id: string, msg: string | null) {
+  if ((issues[id] ?? null) === msg) return;
+  issues = { ...issues };
+  if (msg) issues[id] = msg;
+  else delete issues[id];
+  issueListeners.forEach((l) => l(issues));
+}
+export function useUploadIssues() {
+  const [t, setT] = useState(issues);
+  useEffect(() => {
+    issueListeners.add(setT);
+    return () => void issueListeners.delete(setT);
+  }, []);
+  return t;
+}
+export const WAIT_WIFI = "모바일 데이터라 Wi-Fi에 연결되면 올립니다";
 
 // --- 폴더 ---
 // retron/games: 게임 파일, retron/saves: 게임 안 세이브, retron/states: 상태 저장 슬롯
@@ -86,8 +118,8 @@ async function writeManifest(folderId: string, body: object) {
 // --- 올리기 ---
 const uploading = new Set<string>();
 
-/** 기기의 게임을 드라이브에 올린다. 이미 올라간 파일(같은 크기)은 건너뛴다 */
-export async function uploadGame(gameId: string) {
+/** 기기의 게임을 드라이브에 올린다. 이미 올라간 파일(같은 크기)은 건너뛴다. force: 모바일 데이터여도 올린다 (사용자가 직접 누름) */
+export async function uploadGame(gameId: string, { force = false } = {}) {
   if (uploading.has(gameId) || !authState().signedIn) return;
   uploading.add(gameId);
   try {
@@ -101,7 +133,8 @@ export async function uploadGame(gameId: string) {
     const local = [...(await listFiles(gameDir(game.id)))].filter(([p]) => !/^(saves|states)\//.test(p) && !/^(sram\.srm|conflict-backup\.zip)$/.test(p));
     // 모바일 데이터면 큰 파일은 Wi-Fi에 연결됐을 때 올린다 (uploadMissingGames)
     const big = local.some(([path, f]) => f.size > SMALL && Number(remote.get(path)?.size ?? -1) !== f.size);
-    if (big && getPrefs().wifiOnlyUpload && onCellular()) return;
+    if (big && !force && getPrefs().wifiOnlyUpload && onCellular()) return setIssue(gameId, WAIT_WIFI);
+    setIssue(gameId, null);
     const total = local.reduce((n, [, f]) => n + f.size, 0);
     let done = 0;
     setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });
@@ -129,6 +162,9 @@ export async function uploadGame(gameId: string) {
       setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });
     }
     await writeManifest(folderId, await manifestOf(game, key, local.map(([path, f]) => ({ path, size: f.size }))));
+  } catch (e) {
+    setIssue(gameId, `올리지 못했습니다: ${(e as Error).message}`);
+    throw e;
   } finally {
     uploading.delete(gameId);
     setTransfer(gameId, null);
@@ -180,34 +216,105 @@ async function remoteKeys(): Promise<Set<string>> {
   return keys;
 }
 
-/** 드라이브의 게임을 이 기기로 받는다 */
+// --- 받기 ---
+// 큰 파일은 8MB씩 잘라 4개를 동시에 받고, 받은 순서대로 이어 쓴다 (한 줄로 받으면 휴대폰에서 아주 느렸다).
+// 조각이 오래 안 오면(화면이 꺼지거나 다른 앱으로 가서 연결이 멈춤) 끊고 그 조각만 다시 받는다.
+// 실패해도 다 받은 파일은 남겨 두고, 다시 누르면 남은 파일부터 이어 받는다.
+const DL_CHUNK = 8 * 1024 * 1024;
+const DL_AHEAD = 4;
+const DL_TIMEOUT_MS = 60 * 1000;
+const DL_TRIES = 6;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const pendingKey = (key: string) => `download:${key}`;
+
+/** 받다 만 게임 폴더 (앱을 시작할 때 지우지 않는다) */
+export function pendingDownloadIds(): Set<string> {
+  const ids = new Set<string>();
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)!;
+      if (k.startsWith("download:")) ids.add(localStorage.getItem(k)!);
+    }
+  } catch {
+    // 못 읽으면 지우는 쪽으로 (다시 받으면 된다)
+  }
+  return ids;
+}
+
+async function fetchChunk(fileId: string, start: number, end: number): Promise<Uint8Array> {
+  for (let tries = 1; ; tries++) {
+    try {
+      return await downloadRange(fileId, start, end, DL_TIMEOUT_MS);
+    } catch (e) {
+      if (tries >= DL_TRIES) throw e;
+      await sleep(1500 * tries);
+      while (!navigator.onLine) await sleep(2000); // 연결이 돌아오면 이어 간다
+    }
+  }
+}
+
+async function downloadFile(fileId: string, size: number, path: string, onBytes: (n: number) => void) {
+  const w = await openWritable(path);
+  try {
+    const pending: Promise<Uint8Array>[] = [];
+    let next = 0;
+    const fill = () => {
+      for (; next < size && pending.length < DL_AHEAD; next += DL_CHUNK) {
+        const p = fetchChunk(fileId, next, Math.min(size, next + DL_CHUNK) - 1);
+        p.catch(() => undefined); // 앞 조각이 실패하면 뒤 조각은 기다리지 않는다 (처리 안 된 오류로 남지 않게)
+        pending.push(p);
+      }
+    };
+    fill();
+    while (pending.length) {
+      const data = await pending.shift()!;
+      await w.write(data);
+      onBytes(data.length);
+      fill();
+    }
+    await w.close();
+  } catch (e) {
+    await w.abort().catch(() => undefined);
+    throw e;
+  }
+}
+
+/** 드라이브의 게임을 이 기기로 받는다. 받다 멈춘 적이 있으면 다 받은 파일은 건너뛰고 이어 받는다 */
 export async function downloadGame(remote: RemoteGame): Promise<Game> {
-  const id = newGameId(remote.game.title);
+  let id: string;
+  try {
+    id = localStorage.getItem(pendingKey(remote.key)) ?? newGameId(remote.game.title);
+    localStorage.setItem(pendingKey(remote.key), id);
+  } catch {
+    id = newGameId(remote.game.title);
+  }
   const total = remote.files.reduce((n, f) => n + f.size, 0);
   let done = 0;
   setTransfer(remote.key, { label: "받는 중", done, total });
   try {
-    for (const f of await listChildren(remote.folderId)) {
-      const path = f.appProperties?.path;
-      if (!path || path.includes("..")) continue;
-      const res = await download(f.id);
-      const counted = res.body!.pipeThrough(
-        new TransformStream<Uint8Array, Uint8Array>({
-          transform(chunk, ctl) {
-            done += chunk.length;
-            setTransfer(remote.key, { label: "받는 중", done, total });
-            ctl.enqueue(chunk);
-          },
-        }),
-      );
-      await writeStream(`${gameDir(id)}/${path}`, counted);
+    // 게임 정보(manifest)에 적힌 파일만, 크기가 맞는 것으로 받는다 (올리다 만 파일이 섞여 있어도)
+    const children = await listChildren(remote.folderId);
+    for (const want of remote.files) {
+      if (want.path.includes("..")) continue;
+      const f = children.find((c) => c.appProperties?.path === want.path && Number(c.size ?? 0) === want.size);
+      if (!f) throw new Error(`드라이브에 ${want.path} 파일이 없습니다`);
+      const local = `${gameDir(id)}/${want.path}`;
+      if ((await getFile(local))?.size === want.size) {
+        done += want.size; // 지난번에 다 받은 파일
+        continue;
+      }
+      await downloadFile(f.id, want.size, local, (n) => setTransfer(remote.key, { label: "받는 중", done: (done += n), total }));
     }
     const game: Game = { ...remote.game, id, syncKey: remote.key, addedAt: Date.now() };
     await putGame(game);
+    try {
+      localStorage.removeItem(pendingKey(remote.key));
+    } catch {
+      // 남아 있어도 다음에 같은 폴더를 쓸 뿐이다
+    }
     return game;
   } catch (e) {
-    await removeDir(gameDir(id)); // 받다 만 파일이 공간을 차지하지 않게
-    throw e;
+    throw new Error(`${(e as Error).message} (다시 누르면 받은 데까지 이어서 받습니다)`);
   } finally {
     setTransfer(remote.key, null);
   }

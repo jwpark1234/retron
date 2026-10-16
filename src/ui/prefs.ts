@@ -5,6 +5,7 @@ import type { RetroKeys } from "../platforms/retro/systems";
 
 export type ScreenFilter = "sharp" | "smooth" | "crt";
 export type StickStyle = "stick" | "dpad"; // 가상패드 방향 조작: 원형 패드 / 십자 패드
+export type LibrarySort = "recent" | "name" | "added" | "platform"; // 라이브러리 정렬: 최근 플레이 / 이름 / 추가한 순 / 기종
 export type PadSide = "left" | "right"; // DOS 세로 화면: 윗줄에서 트랙패드 위치 (방향 패드는 반대쪽)
 export type DosSlot = "dpad" | "keys" | "pad"; // DOS 가로 화면: 아래 줄에 왼쪽부터 놓을 순서
 
@@ -21,6 +22,7 @@ export interface Prefs {
   controlScale: number; // 휴대폰 조작 버튼 크기 (배수)
   controlOpacity: number; // 휴대폰 조작 버튼 불투명도 (1 = 그대로)
   fastSpeed: number; // SFC·GBA 빨리가기 배속 (DOS Turbo는 배속을 정할 수 없어 최대 속도)
+  librarySort: LibrarySort;
 }
 
 const KEY = "prefs";
@@ -37,6 +39,7 @@ const DEFAULTS: Prefs = {
   controlScale: 1,
   controlOpacity: 1,
   fastSpeed: 3,
+  librarySort: "recent",
 };
 
 /** 예전 형식(sfcKeys)을 기종별 키 설정으로 옮기고, 깨진 값은 버린다. 드라이브에서 받은 설정에도 쓴다 */

@@ -76,9 +76,9 @@ export async function removeGame(id: string) {
   await removeDir(gameDir(id));
 }
 
-/** 라이브러리에 없는 게임 폴더(받다 만 게임, 등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다 */
-export async function removeOrphans() {
-  const ids = new Set((await listGames()).map((g) => g.id));
+/** 라이브러리에 없는 게임 폴더(등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다. keep: 이어 받을 폴더 */
+export async function removeOrphans(keep: Set<string> = new Set()) {
+  const ids = new Set([...(await listGames()).map((g) => g.id), ...keep]);
   for (const name of await listDirs("games")) if (!ids.has(name)) await removeDir(gameDir(name));
   await removeDir("_incoming");
 }
@@ -98,7 +98,4 @@ export async function saveThumbnail(id: string, png: Blob) {
   await writeFile(`${gameDir(id)}/thumb.png`, png);
 }
 
-export async function thumbnailUrl(id: string): Promise<string | null> {
-  const f = await getFile(`${gameDir(id)}/thumb.png`);
-  return f ? URL.createObjectURL(f) : null;
-}
+export const thumbnailFile = (id: string) => getFile(`${gameDir(id)}/thumb.png`);

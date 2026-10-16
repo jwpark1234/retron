@@ -1,10 +1,11 @@
-// 게임 설정 (라이브러리 카드의 ⋯): 이름, 플랫폼별 설정(DOS 실행·조작), 세이브 백업, 정보(용량, 날짜), 삭제
+// 게임 설정 (라이브러리 카드의 ⋯): 이름, 썸네일, 플랫폼별 설정(DOS 실행·조작), 세이브 백업, 정보(드라이브, 용량, 날짜), 삭제
 import { useEffect, useState } from "preact/hooks";
 import { deleteRemoteGame, updateRemoteGame, uploadGame } from "../../cloud/games";
 import { authState } from "../../cloud/google-auth";
 import { download, exportBackup, importBackup } from "../../library/backup";
-import { gameDir, putGame, removeGame, type Game } from "../../library/library";
+import { gameDir, putGame, removeGame, saveThumbnail, thumbnailFile, type Game } from "../../library/library";
 import { listFiles } from "../../library/store";
+import { imageFileToSquare } from "../../library/thumbnail";
 import { DosGameSettings, dosEditOf, type DosEdit } from "../../platforms/dos/DosGameSettings";
 import { markDirty } from "../../sync/sync";
 import { IconClose } from "../../ui/icons";
@@ -23,7 +24,66 @@ function useGameSize(id: string) {
   return size;
 }
 
-export function GameSettings({ game, onDrive, onClose, onChanged }: { game: Game; onDrive: boolean | null; onClose: () => void; onChanged: () => void }) {
+/** 썸네일: 지금 그림을 보여 주고, 고른 그림 파일로 바꾼다 (가운데를 1:1로 잘라 쓴다) */
+function ThumbnailField({ game, onChanged }: { game: Game; onChanged: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const load = async () => {
+    const f = await thumbnailFile(game.id);
+    setUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return f ? URL.createObjectURL(f) : null;
+    });
+  };
+  useEffect(() => {
+    void load();
+  }, [game.id]);
+  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
+
+  const pick = async (e: Event) => {
+    const el = e.target as HTMLInputElement;
+    const file = el.files?.[0];
+    el.value = "";
+    if (!file) return;
+    try {
+      await saveThumbnail(game.id, await imageFileToSquare(file));
+      await load();
+      void updateRemoteGame(game).catch(() => undefined); // 다른 기기 라이브러리의 카드 그림도 바꾼다
+      onChanged();
+      setMsg("");
+    } catch {
+      setMsg("이 그림 파일은 읽을 수 없습니다. PNG나 JPG로 골라 주세요");
+    }
+  };
+
+  return (
+    <section class="menu-group thumb-field">
+      <div class="thumb-preview">{url ? <img src={url} alt="" /> : <span>없음</span>}</div>
+      <div>
+        <label class="pick glass small">
+          그림 바꾸기
+          <input type="file" accept="image/*" onChange={(e) => void pick(e)} hidden />
+        </label>
+        <p class="muted">가운데를 정사각형으로 잘라 씁니다</p>
+        {msg && <p class="muted">{msg}</p>}
+      </div>
+    </section>
+  );
+}
+
+export function GameSettings({
+  game,
+  onDrive,
+  uploadIssue,
+  onClose,
+  onChanged,
+}: {
+  game: Game;
+  onDrive: boolean | null;
+  uploadIssue?: string;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
   const [title, setTitle] = useState(game.title);
   const dos = game.platform === "dos";
   const [dosEdit, setDosEdit] = useState<DosEdit | null>(dos ? dosEditOf(game) : null);
@@ -31,11 +91,11 @@ export function GameSettings({ game, onDrive, onClose, onChanged }: { game: Game
   const size = useGameSize(game.id);
   const [uploadMsg, setUploadMsg] = useState("");
 
-  // 드라이브에 없는 게임을 지금 올린다 (다른 기기에서도 보이게). 진행률은 라이브러리 카드에 나온다
+  // 드라이브에 없는 게임을 지금 올린다 (다른 기기에서도 보이게). 직접 누른 것이라 모바일 데이터여도 올린다. 진행률은 라이브러리 카드에 나온다
   const upload = async () => {
     setUploadMsg("올리는 중… (창을 닫으면 라이브러리 카드에서 진행률을 볼 수 있습니다)");
     try {
-      await uploadGame(game.id);
+      await uploadGame(game.id, { force: true });
       onChanged();
       setUploadMsg("올리기를 마쳤습니다");
     } catch (e) {
@@ -111,6 +171,9 @@ export function GameSettings({ game, onDrive, onClose, onChanged }: { game: Game
             </label>
           </section>
 
+          <h3>썸네일</h3>
+          <ThumbnailField game={game} onChanged={onChanged} />
+
           {dos && <DosGameSettings game={game} value={dosEdit!} onChange={setDosEdit} />}
           {!dos && <p class="muted">키보드 배치와 가상패드는 게임 중 메뉴(☰)에서 바꿉니다. 같은 기종 게임 모두에 적용됩니다.</p>}
 
@@ -139,10 +202,11 @@ export function GameSettings({ game, onDrive, onClose, onChanged }: { game: Game
                 <small>올라가 있음</small>
               ) : (
                 <button class="glass small" onClick={() => void upload()}>
-                  이 기기에만 있음 · 올리기
+                  이 기기에만 있음 · 지금 올리기
                 </button>
               )}
             </div>
+            {onDrive === false && !uploadMsg && uploadIssue && <p class="muted">{uploadIssue}</p>}
             {uploadMsg && <p class="muted">{uploadMsg}</p>}
             <div class="field">
               <span>기기 저장 공간</span>

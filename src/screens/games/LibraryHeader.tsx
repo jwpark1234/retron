@@ -8,6 +8,7 @@ import { touchDevice } from "../../player/orientation";
 import { useSync } from "../../sync/sync";
 import { CONTROL_OPACITIES, CONTROL_SIZES } from "../../ui/control-style";
 import { ON_OFF, Popover, Row, Segmented } from "../../ui/controls";
+import { useInstall } from "../../ui/install";
 import { Logo } from "../../ui/Logo";
 import { setPrefs, usePrefs } from "../../ui/prefs";
 
@@ -44,6 +45,20 @@ function StorageLine() {
   );
 }
 
+/** 앱으로 설치: 설치 창을 띄울 수 있으면 버튼, 아이폰이면 방법 안내, 이미 설치했으면 없음 */
+function InstallRow() {
+  const install = useInstall();
+  if (install.kind === "prompt")
+    return (
+      <button class="install" onClick={() => void install.install().catch(() => undefined)}>
+        앱으로 설치
+        <small>홈 화면·앱 목록에서 바로 열고, 전체 화면으로 씁니다</small>
+      </button>
+    );
+  if (install.kind === "ios") return <p class="muted install-hint">앱으로 쓰려면 사파리의 공유 버튼 → "홈 화면에 추가"</p>;
+  return null;
+}
+
 function AccountMenu() {
   const auth = useAuth();
   const sync = useSync();
@@ -51,7 +66,7 @@ function AccountMenu() {
   const [open, setOpen] = useState(false);
   const state = sync.conflict ? "warn" : sync.pending || !auth.driveReady ? "pending" : "ok";
   const label = sync.conflict
-    ? "세이브 충돌이 있습니다"
+    ? `세이브 충돌: ${sync.conflictTitles.join(", ")} · 게임을 열면 이 기기 것과 드라이브 것 중 고릅니다`
     : !auth.driveReady
       ? `${navigator.onLine ? "드라이브 연결 안 됨" : "오프라인"} · 기기에 저장 중${sync.pending ? ` (올릴 세이브 ${sync.pending}개)` : ""}`
       : sync.pending
@@ -90,6 +105,7 @@ function AccountMenu() {
             </Row>
           </>
         )}
+        <InstallRow />
         <button class="logout" onClick={signOut}>
           로그아웃
         </button>
@@ -98,12 +114,35 @@ function AccountMenu() {
   );
 }
 
-export function LibraryHeader({ picker, busy }: { picker: ReturnType<typeof useAddPicker>; busy: boolean }) {
+/** 진행 메시지에서 진행률(0~1)을 읽는다: "45%" 또는 "3/10". 못 읽으면 null (돌아가는 고리로 보여 준다) */
+function fractionOf(msg: string): number | null {
+  const pct = msg.match(/(\d+)%/);
+  if (pct) return Math.min(1, +pct[1] / 100);
+  const part = msg.match(/(\d+)\/(\d+)/);
+  return part ? Math.min(1, +part[1] / +part[2]) : null;
+}
+
+/**
+ * 게임 추가 중에는 버튼 왼쪽에 진행 메시지를, 버튼 테두리에 진행률 고리를 보여 준다.
+ * 목록 위에 줄을 끼워 넣지 않아서 그리드가 들썩이지 않는다
+ */
+export function LibraryHeader({ picker, progress }: { picker: ReturnType<typeof useAddPicker>; progress: string }) {
+  const f = progress ? fractionOf(progress) : null;
   return (
     <header class="glass">
       <Logo size="small" />
       <div class="actions">
-        <button class="primary add" disabled={busy} onClick={picker.open}>
+        {progress && (
+          <span class="add-status" role="status" title={progress}>
+            {progress}
+          </span>
+        )}
+        <button
+          class={`primary add${progress ? (f === null ? " busy spin" : " busy") : ""}`}
+          style={f === null ? undefined : { "--p": f }}
+          disabled={!!progress}
+          onClick={picker.open}
+        >
           + 게임 추가
         </button>
         <AccountMenu />

@@ -2,11 +2,10 @@
 // 후보: 게임별 세이브 패턴 + 흔한 세이브 확장자 + 실행 중 새로 생기거나 크기가 바뀐 파일 + 이전에 저장한 파일
 import type { CommandInterface } from "emulators";
 import type { FileMap } from "../../library/store";
+import { fsTree, type FsNode } from "./create-dos";
 import { HDD_DIR } from "./profiles";
 
 const COMMON_SAVE = /(\.(sav|save|sv\d?|sg\d?|gam|qsv)|^save.*)$/i;
-
-type FsNode = Awaited<ReturnType<CommandInterface["fsTree"]>>;
 
 function sizes(node: FsNode, prefix = "", out = new Map<string, number>()) {
   for (const n of node.nodes ?? []) {
@@ -17,7 +16,7 @@ function sizes(node: FsNode, prefix = "", out = new Map<string, number>()) {
 }
 
 async function hddSizes(ci: CommandInterface) {
-  const tree = await ci.fsTree();
+  const tree = await fsTree(ci);
   const hdd = tree.nodes?.find((n) => n.name === HDD_DIR);
   return hdd ? sizes(hdd) : new Map<string, number>();
 }
@@ -28,11 +27,18 @@ function same(a?: Uint8Array, b?: Uint8Array) {
   return true;
 }
 
+export interface SaveWatch {
+  /** 감시를 멈춘다. 기다리던 변경(게임이 파일을 나눠 쓰는 동안 미뤄 둔 것)은 버리지 않고 바로 넘긴다 */
+  stop(): void;
+  /** 지금 한 번 더 읽어 보고, 바뀐 것이 있으면 기다리지 않고 바로 넘긴다 (게임이 끝나 에뮬레이터를 끄기 전에) */
+  flush(): Promise<void>;
+}
+
 /** onChange는 지금까지 바뀐 세이브 파일 전체(HDD 기준 경로)를 받는다 */
 export async function watchSaves(
   ci: CommandInterface,
-  opts: { pattern?: string; previous: string[]; onChange: (saves: FileMap) => void },
-): Promise<() => void> {
+  opts: { pattern?: string; previous: string[]; onChange: (saves: FileMap) => void | Promise<void> },
+): Promise<SaveWatch> {
   const pattern = opts.pattern ? new RegExp(opts.pattern, "i") : null;
   const initial = await hddSizes(ci);
   const tracked = new Set(opts.previous);
@@ -47,12 +53,16 @@ export async function watchSaves(
     if (d) last.set(p, d);
   }
 
-  let busy = false;
-  let debounce: ReturnType<typeof setTimeout>;
-  const timer = setInterval(async () => {
-    if (busy) return;
-    busy = true;
-    try {
+  let busy: Promise<boolean> | null = null;
+  let debounce: ReturnType<typeof setTimeout> | undefined;
+  const emit = () => {
+    clearTimeout(debounce);
+    debounce = undefined;
+    return opts.onChange(new Map(last));
+  };
+  /** 한 번 읽어 비교한다. 바뀐 것이 있으면 true */
+  const poll = () =>
+    (busy ??= (async () => {
       const now = await hddSizes(ci);
       for (const [p, size] of now) if (initial.get(p) !== size) tracked.add(p);
       let changed = false;
@@ -64,17 +74,21 @@ export async function watchSaves(
           else last.delete(p);
         }
       }
-      if (changed) {
-        clearTimeout(debounce);
-        // 게임이 여러 파일을 나눠 쓰는 동안 기다린다
-        debounce = setTimeout(() => opts.onChange(new Map(last)), 1500);
-      }
-    } finally {
-      busy = false;
-    }
-  }, 1500);
-  return () => {
-    clearInterval(timer);
+      return changed;
+    })().finally(() => (busy = null)));
+  const timer = setInterval(async () => {
+    if (busy || !(await poll().catch(() => false))) return;
     clearTimeout(debounce);
+    // 게임이 여러 파일을 나눠 쓰는 동안 기다린다
+    debounce = setTimeout(() => void emit(), 1500);
+  }, 1500);
+  return {
+    stop() {
+      clearInterval(timer);
+      if (debounce) void emit();
+    },
+    async flush() {
+      if ((await poll().catch(() => false)) || debounce) await emit();
+    },
   };
 }

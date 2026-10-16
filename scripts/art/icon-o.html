@@ -12,4 +12,8 @@ em{font-style:normal;display:inline-block;color:transparent;font-size:84vh;line-
 .screen::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,.12),transparent 45%),radial-gradient(74% 74% at 50% 50%,transparent 55%,rgba(0,0,0,.8)),repeating-linear-gradient(180deg,rgba(0,0,0,.28) 0 1.05%,transparent 1.05% 2.5%)}
 </style></head><body><div class="screen" id="s"><em id="i">O</em></div>
-<script>if(location.hash==="#round")document.getElementById("s").style.setProperty("--r","22.6%")</script></body></html>
+<script>
+// #round: 둥근 모서리 (파비콘, 아이콘). #maskable: 안드로이드가 동그랗게·둥글게 깎아도 O가 남도록 O를 작게 (가운데 80% 원 안)
+if(location.hash==="#round")document.getElementById("s").style.setProperty("--r","22.6%");
+if(location.hash==="#maskable")document.getElementById("i").style.fontSize="60vh";
+</script></body></html>
