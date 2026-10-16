@@ -1,9 +1,12 @@
-// 로고: RETRO 아래 줄 끝(O 밑)에 N이 내려앉은 모양. O만 주황 + CRT 효과 (아이콘과 같은 O).
+// 로고: RETRO 아래 줄 끝(O 밑)에 N이 내려앉은 모양. O만 주황. 첫 화면의 큰 로고는 글자 전체에 CRT 효과.
 export function Logo({ size = "large" }: { size?: "large" | "small" }) {
   return (
     <span class={`logo ${size}`} role="img" aria-label="retron">
       <span aria-hidden="true">
-        RETR<em>O</em>
+        RETR
+        <em>
+          <i>O</i>
+        </em>
       </span>
       <span class="n" aria-hidden="true">
         N
