@@ -55,12 +55,12 @@ npm run dev
 
 ### 구글 로그인과 드라이브 저장
 
-Cloudflare Pages는 정적 파일 서빙만 합니다. 로그인하면 게임 파일, 세이브, 설정이 **각 사용자의 구글 드라이브** `retron` 폴더에 저장되고, 다른 기기에서 같은 계정으로 로그인하면 게임을 받아 이어서 할 수 있습니다. 앱은 `drive.file` 권한만 써서, 자기가 만든 파일 외의 드라이브 내용은 보지 못합니다.
+Cloudflare Pages는 정적 파일 서빙과 드라이브 토큰 갱신(아래)만 합니다. 로그인하면 게임 파일, 세이브, 설정이 **각 사용자의 구글 드라이브** `retron` 폴더에 저장되고, 다른 기기에서 같은 계정으로 로그인하면 게임을 받아 이어서 할 수 있습니다. 앱은 `drive.file` 권한만 써서, 자기가 만든 파일 외의 드라이브 내용은 보지 못합니다.
 
 **기기 우선(오프라인에서도 됨)**: 게임 파일, 세이브, 설정은 모두 먼저 이 기기에 저장하고, 드라이브에 연결돼 있으면 올립니다. 못 올린 것은 표시해 두었다가 연결되면 올립니다.
 
 - 한 번 로그인한 기기는 계정을 기억해서, 다시 열면 첫 화면(로고 + 로딩)을 잠깐 보여 주고 라이브러리로 들어갑니다. 오프라인이어도 들어갑니다.
-- 드라이브 토큰은 1시간짜리입니다(서버 없이 브라우저에서 받는 방식이라 갱신 토큰이 없음). 끊기면 로그아웃하지 않고 위쪽에 **드라이브 연결** 버튼을 보여 줍니다. 구글 창은 사용자가 누른 순간에만 띄울 수 있어서 저절로 다시 연결하지는 못합니다.
+- 드라이브 토큰: 갱신 토큰 서버(`functions/api/auth`, Cloudflare Pages Functions)가 있으면, 로그인할 때 페이지째 구글로 다녀오면서 갱신 토큰을 받아 암호화한 쿠키에 두고, 1시간짜리 접근 토큰이 끝나면 창 없이 새로 받습니다. 서버는 아무것도 저장하지 않습니다. 서버를 못 쓰면(개발 서버, 비밀값 없음) 1시간짜리 토큰만 쓰고, 끊기면 로그아웃하지 않고 위쪽에 **드라이브 연결** 버튼을 보여 줍니다.
 - 설정은 기기와 드라이브 중 마지막으로 바꾼 쪽을 남깁니다 (`settings.json`의 `updatedAt`).
 - 라이브러리는 이 기기의 게임과 드라이브의 게임을 늘 같이 보여 줍니다. 드라이브 목록은 기기에 적어 둬서 오프라인에서도 보입니다. 드라이브에 없는 게임은 "이 기기에만"으로 표시하고, 연결될 때·화면으로 돌아올 때·5분마다 올립니다.
 - 큰 파일 올리기는 이어 올리기 세션을 기기에 적어 둬서, 화면이 꺼지거나 다른 앱으로 가서 끊겨도 끊긴 지점부터 잇습니다. 올리고 받는 동안에는 화면이 꺼지지 않게 합니다(Wake Lock). 웹 페이지는 다른 앱으로 넘어간 동안 실행되지 않아서 그동안 올리기를 계속하지는 못합니다.
@@ -76,6 +76,18 @@ Cloudflare Pages는 정적 파일 서빙만 합니다. 로그인하면 게임 �
 - `.env`의 `VITE_GOOGLE_CLIENT_ID`: Google Cloud OAuth 클라이언트 ID (웹 애플리케이션). 승인된 JavaScript 원본에 사이트 주소를 넣어야 합니다.
 - `npm run deploy`: 빌드한 뒤 Cloudflare Pages 프로젝트 `retron`에 배포합니다.
 
+#### 갱신 토큰 서버 설정 (한 번)
+
+1. Google Cloud 콘솔 → OAuth 클라이언트 → **승인된 리디렉션 URI**에 `https://retron.pages.dev/api/auth/callback` 추가
+2. OAuth 동의 화면의 게시 상태를 **프로덕션**으로 (테스트 상태면 갱신 토큰이 7일 뒤 만료됩니다)
+3. Pages 비밀값 세 개: `GOOGLE_CLIENT_ID`(클라이언트 ID), `GOOGLE_CLIENT_SECRET`(클라이언트 보안 비밀), `TOKEN_KEY`(쿠키 암호화 키, `openssl rand -base64 32`)
+   ```bash
+   npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name retron
+   ```
+4. 다시 배포하면 켜집니다. 셋 중 하나라도 없으면 서버는 꺼져 있고(`/api/auth/config` → `enabled: false`) 앱은 1시간 토큰 방식으로 동작합니다.
+
+로컬에서 서버까지 보려면 `.dev.vars`에 같은 값을 넣고 `npm run build && npx wrangler pages dev dist`를 씁니다 (`npm run dev`에서는 서버를 쓰지 않습니다).
+
 ## 구성
 
 | 영역 | 사용 기술 |
@@ -85,7 +97,7 @@ Cloudflare Pages는 정적 파일 서빙만 합니다. 로그인하면 게임 �
 | SFC·GBA | [Nostalgist.js](https://nostalgist.js.org) 0.23 (RetroArch snes9x·mgba 코어, `public/retroarch/`에 둡니다). 자체 UI는 쓰지 않습니다 |
 | 저장소 | OPFS (게임 파일, 세이브, 상태, 썸네일) |
 | 로그인·저장 | Google Identity Services, Google Drive API (`drive.file`) |
-| 서빙 | Cloudflare Pages (정적 파일만) |
+| 서빙 | Cloudflare Pages (정적 파일) + Pages Functions (드라이브 갱신 토큰만) |
 
 ```
 src/
