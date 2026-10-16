@@ -15,6 +15,7 @@ export interface DriveFile {
   appProperties?: Record<string, string>;
   modifiedTime: string;
   version: string;
+  parents?: string[];
 }
 
 async function call(url: string, init: RequestInit = {}): Promise<Response> {
@@ -34,22 +35,28 @@ async function call(url: string, init: RequestInit = {}): Promise<Response> {
 
 const q = (s: string) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 
-export async function listChildren(parentId: string, extra = ""): Promise<DriveFile[]> {
+/** 파일 목록 (여러 쪽이면 다 모은다). params에 q, fields(nextPageToken 포함)를 넣는다 */
+export async function listAll(params: URLSearchParams): Promise<DriveFile[]> {
   const out: DriveFile[] = [];
   let pageToken = "";
   do {
-    const params = new URLSearchParams({
-      q: `'${q(parentId)}' in parents and trashed = false${extra ? ` and ${extra}` : ""}`,
-      fields: `nextPageToken,files(${FIELDS})`,
-      pageSize: "1000",
-      spaces: "drive",
-    });
     if (pageToken) params.set("pageToken", pageToken);
     const r = (await (await call(`${API}/files?${params}`)).json()) as { files: DriveFile[]; nextPageToken?: string };
     out.push(...r.files);
     pageToken = r.nextPageToken ?? "";
   } while (pageToken);
   return out;
+}
+
+export async function listChildren(parentId: string, extra = ""): Promise<DriveFile[]> {
+  return listAll(
+    new URLSearchParams({
+      q: `'${q(parentId)}' in parents and trashed = false${extra ? ` and ${extra}` : ""}`,
+      fields: `nextPageToken,files(${FIELDS})`,
+      pageSize: "1000",
+      spaces: "drive",
+    }),
+  );
 }
 
 export async function findChild(parentId: string, name: string): Promise<DriveFile | undefined> {
@@ -83,22 +90,74 @@ export async function updateFile(fileId: string, data: Blob): Promise<DriveFile>
   return (await res.json()) as DriveFile;
 }
 
-/** 큰 파일 만들기: 이어 올리기 방식으로 조각내서 올린다 */
+// 이어 올리기 세션 주소를 기기에 적어 둔다. 휴대폰이 화면을 끄거나 다른 앱으로 가서 올리기가 끊겨도,
+// 다음에 처음부터가 아니라 끊긴 지점부터 이어 올린다 (구글은 세션을 일주일 동안 받아 준다)
+const sessionKey = (k: string) => `upload-session:${k}`;
+const savedSession = (k?: string) => {
+  try {
+    return k ? (localStorage.getItem(sessionKey(k)) ?? undefined) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+const saveSession = (k: string | undefined, url: string | null) => {
+  if (!k) return;
+  try {
+    if (url) localStorage.setItem(sessionKey(k), url);
+    else localStorage.removeItem(sessionKey(k));
+  } catch {
+    // 못 적으면 끊겼을 때 그 파일만 처음부터 올린다
+  }
+};
+
+/** 세션에 얼마나 올라갔는지 묻는다. 다 올라갔으면 파일, 세션이 사라졌으면 null */
+async function sessionStatus(session: string, size: number): Promise<{ offset: number } | { file: DriveFile } | null> {
+  try {
+    const res = await call(session, { method: "PUT", headers: { "Content-Range": `bytes */${size}`, "X-GUploader-No-308": "yes" } });
+    const status = Number(res.headers.get("X-HTTP-Status-Code-Override") ?? res.status);
+    if (status !== 308) return { file: (await res.json()) as DriveFile };
+    const range = res.headers.get("Range");
+    return { offset: range ? Number(range.split("-")[1]) + 1 : 0 };
+  } catch {
+    return null; // 만료(404·410) 등: 새로 시작한다
+  }
+}
+
+/**
+ * 큰 파일 만들기: 이어 올리기 방식으로 조각내서 올린다.
+ * resumeKey: 같은 파일이면 같은 값 (폴더·경로·크기). 끊겼던 세션이 남아 있으면 그 지점부터 잇는다
+ */
 export async function createLargeFile(
   parentId: string,
   name: string,
   data: Blob,
   appProperties: Record<string, string> | undefined,
   onProgress: (sent: number) => void,
+  resumeKey?: string,
 ): Promise<DriveFile> {
-  const start = await call(`${UPLOAD}/files?uploadType=resumable&fields=${FIELDS}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Length": String(data.size) },
-    body: JSON.stringify({ name, parents: [parentId], ...(appProperties ? { appProperties } : {}) }),
-  });
-  const session = start.headers.get("Location");
-  if (!session) throw new Error("구글 드라이브 업로드를 시작하지 못했습니다");
-  for (let offset = 0; offset < data.size; ) {
+  let session = savedSession(resumeKey) ?? null;
+  let offset = 0;
+  if (session) {
+    const st = await sessionStatus(session, data.size);
+    if (st && "file" in st) {
+      saveSession(resumeKey, null);
+      return st.file;
+    }
+    if (st) offset = st.offset;
+    else session = null;
+  }
+  if (!session) {
+    const start = await call(`${UPLOAD}/files?uploadType=resumable&fields=${FIELDS}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Length": String(data.size) },
+      body: JSON.stringify({ name, parents: [parentId], ...(appProperties ? { appProperties } : {}) }),
+    });
+    session = start.headers.get("Location");
+    if (!session) throw new Error("구글 드라이브 업로드를 시작하지 못했습니다");
+    saveSession(resumeKey, session);
+  }
+  onProgress(offset);
+  while (offset < data.size) {
     const end = Math.min(offset + CHUNK, data.size);
     // 브라우저 fetch는 308(이어서 보내라)을 리다이렉트로 처리하므로, 구글이 200으로 바꿔 주게 한다
     const res = await call(session, {
@@ -107,7 +166,10 @@ export async function createLargeFile(
       body: data.slice(offset, end),
     });
     const status = Number(res.headers.get("X-HTTP-Status-Code-Override") ?? res.status);
-    if (status !== 308) return (await res.json()) as DriveFile;
+    if (status !== 308) {
+      saveSession(resumeKey, null);
+      return (await res.json()) as DriveFile;
+    }
     const range = res.headers.get("Range"); // 예: bytes=0-33554431
     offset = range ? Number(range.split("-")[1]) + 1 : end;
     onProgress(offset);

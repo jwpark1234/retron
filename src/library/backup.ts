@@ -31,7 +31,9 @@ export async function buildBundle(game: Game, kinds: SaveKind[] = SAVE_KINDS): P
   }
   if (!Object.keys(files).length) return null;
   files[MANIFEST] = strToU8(JSON.stringify({ title: game.title, platform: game.platform, exportedAt: new Date().toISOString() }));
-  return zipSync(files, { level: 6 });
+  // 상태 저장은 이미 압축돼 있어서(DOSBox-X 상태 2MB → 다시 압축해도 2MB) 다시 압축하지 않고 담기만 한다.
+  // 창세기전2 슬롯 6개를 level 6으로 묶으면 0.7초 넘게 화면이 멈췄다 (그대로 담으면 40ms)
+  return zipSync(files, { level: kinds.includes("states") ? 0 : 6 });
 }
 
 function open(game: Game, zip: Uint8Array) {

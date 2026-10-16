@@ -8,7 +8,6 @@ export type Platform = "dos" | "sfc" | "gba";
 export type PadAction = number | "mouse-left" | "mouse-right";
 
 export interface DosInput {
-  keys?: Record<string, number>; // KeyboardEvent.code → DOS 키 (키 재배치)
   pad?: Record<string, PadAction>; // 게임패드 버튼 번호 → 동작
   leftStick?: "arrows" | "mouse";
 }

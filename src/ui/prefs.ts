@@ -59,10 +59,22 @@ function load(): Prefs {
 let current = load();
 const listeners = new Set<(p: Prefs) => void>();
 
-export function setPrefs(patch: Partial<Prefs>) {
+// 설정을 마지막으로 바꾼 시각. 기기와 드라이브 중 더 최근 것을 남기는 데 쓴다 (cloud/settings.ts)
+const AT_KEY = "prefs-at";
+export function prefsUpdatedAt(): number {
+  try {
+    return Number(localStorage.getItem(AT_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** remoteAt: 드라이브에서 받은 설정을 넣을 때 그 시각 (이 기기에서 바꾼 것으로 치지 않는다) */
+export function setPrefs(patch: Partial<Prefs>, remoteAt?: number) {
   current = { ...current, ...normalize(patch) };
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
+    localStorage.setItem(AT_KEY, String(remoteAt ?? Date.now()));
   } catch {
     // 이번 실행에서만 적용된다
   }

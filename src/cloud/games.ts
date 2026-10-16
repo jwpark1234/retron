@@ -2,8 +2,9 @@
 // 각 파일은 원래 경로를 appProperties.path에 적어 둔다. manifest.json은 모든 파일을 올린 뒤 마지막에 쓴다.
 import { useEffect, useState } from "preact/hooks";
 import { gameDir, getGame, listGames, newGameId, putGame, type Game } from "../library/library";
-import { getFile, listFiles, removeDir, writeStream } from "../library/store";
-import { createFile, createLargeFile, download, ensureFolder, findChild, listChildren, rootFolder, trash, updateFile } from "./drive";
+import { getFile, listFiles, readJson, removeDir, writeJson, writeStream } from "../library/store";
+import { keepAwake } from "../ui/wake-lock";
+import { createFile, createLargeFile, download, ensureFolder, findChild, listAll, listChildren, rootFolder, trash, updateFile } from "./drive";
 import { getPrefs } from "../ui/prefs";
 import { authState } from "./google-auth";
 import { onCellular } from "./network";
@@ -34,6 +35,7 @@ function setTransfer(id: string, t: Transfer | null) {
   transfers = { ...transfers };
   if (t) transfers[id] = t;
   else delete transfers[id];
+  keepAwake(Object.keys(transfers).length > 0); // 올리거나 받는 동안 화면이 꺼지지 않게
   listeners.forEach((l) => l(transfers));
 }
 export function useTransfers() {
@@ -112,7 +114,15 @@ export async function uploadGame(gameId: string) {
         else {
           if (old) await trash(old.id); // 크기가 다르면 올리다 만 파일이다
           if (file.size <= SMALL) await createFile(folderId, name, file, props);
-          else await createLargeFile(folderId, name, file, props, (sent) => setTransfer(gameId, { label: "드라이브에 올리는 중", done: done + sent, total }));
+          else
+            await createLargeFile(
+              folderId,
+              name,
+              file,
+              props,
+              (sent) => setTransfer(gameId, { label: "드라이브에 올리는 중", done: done + sent, total }),
+              `${folderId}/${path}/${file.size}`,
+            );
         }
       }
       done += file.size;
@@ -138,6 +148,12 @@ export async function updateRemoteGame(game: Game) {
 }
 
 /** 드라이브에만 있는 게임 목록 */
+const REMOTE_CACHE = "remote-games.json";
+
+/**
+ * 드라이브의 게임 목록. 받을 때마다 기기에도 적어 둬서, 오프라인이거나 드라이브 연결이 끊겨도
+ * 라이브러리에 드라이브 게임을 계속 보여 준다 (cachedRemoteGames)
+ */
 export async function listRemoteGames(): Promise<RemoteGame[]> {
   const { games } = await driveFolders();
   const out: RemoteGame[] = [];
@@ -147,7 +163,21 @@ export async function listRemoteGames(): Promise<RemoteGame[]> {
     const m = (await (await download(manifest.id)).json()) as Omit<RemoteGame, "folderId">;
     out.push({ ...m, folderId: folder.id });
   }
+  await writeJson(REMOTE_CACHE, out).catch(() => undefined);
   return out;
+}
+
+/** 마지막으로 받아 둔 드라이브 게임 목록 (없으면 빈 목록) */
+export const cachedRemoteGames = () => readJson<RemoteGame[]>(REMOTE_CACHE, []).catch(() => [] as RemoteGame[]);
+
+/** 드라이브에 다 올라간(manifest.json이 있는) 게임 키. 파일 내용은 받지 않아서 자주 불러도 가볍다 */
+async function remoteKeys(): Promise<Set<string>> {
+  const { games } = await driveFolders();
+  const folders = new Map((await listChildren(games, "mimeType = 'application/vnd.google-apps.folder'")).map((f) => [f.id, f.name]));
+  const params = new URLSearchParams({ q: "name = 'manifest.json' and trashed = false", fields: "nextPageToken,files(parents)", pageSize: "1000" });
+  const keys = new Set<string>();
+  for (const f of await listAll(params)) for (const p of f.parents ?? []) if (folders.has(p)) keys.add(folders.get(p)!);
+  return keys;
 }
 
 /** 드라이브의 게임을 이 기기로 받는다 */
@@ -189,11 +219,17 @@ export async function deleteRemoteGame(key: string) {
   if (folder) await trash(folder.id);
 }
 
-/** 로그인했을 때: 아직 드라이브에 없는 기기 게임을 올린다 (하나씩) */
-export async function uploadMissingGames() {
-  const remoteKeys = new Set((await listRemoteGames()).map((r) => r.key));
-  for (const g of await listGames()) {
-    const key = await syncKey(g);
-    if (key && !remoteKeys.has(key)) await uploadGame(g.id).catch(() => undefined);
-  }
+let missingRun: Promise<void> | null = null;
+
+/** 아직 드라이브에 없는 기기 게임을 올린다 (하나씩). 여러 곳에서 불러도 한 번에 하나만 돈다 */
+export function uploadMissingGames(): Promise<void> {
+  if (!authState().driveReady || !navigator.onLine) return Promise.resolve();
+  missingRun ??= (async () => {
+    const onDrive = await remoteKeys();
+    for (const g of await listGames()) {
+      const key = await syncKey(g);
+      if (key && !onDrive.has(key)) await uploadGame(g.id).catch(() => undefined);
+    }
+  })().finally(() => (missingRun = null));
+  return missingRun;
 }

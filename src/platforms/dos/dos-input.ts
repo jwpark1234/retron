@@ -1,4 +1,4 @@
-// DOS 마우스·키보드: 실제 마우스는 화면 위 절대 좌표로, 키는 (재배치가 있으면 바꿔서) DOS 키로 보낸다.
+// DOS 마우스·키보드: 실제 마우스는 화면 위 절대 좌표로, 키는 DOS 키로 바꿔서 보낸다.
 // 터치는 여기서 받지 않는다 (트랙패드와 가상 키가 맡는다).
 import type { CommandInterface } from "emulators";
 import { useEffect, type MutableRef } from "preact/hooks";
@@ -27,14 +27,12 @@ export function useDosMouseKeyboard({
   ci,
   cursor,
   rotation,
-  remap,
 }: {
   stage: MutableRef<HTMLElement | null>;
   canvas: MutableRef<HTMLCanvasElement | null>;
   ci: MutableRef<CommandInterface | null>;
   cursor: MutableRef<Cursor>;
   rotation: MutableRef<number>;
-  remap: Record<string, number>;
 }) {
   useEffect(() => {
     const el = stage.current!;
@@ -58,7 +56,7 @@ export function useDosMouseKeyboard({
       setTimeout(() => ci.current?.sendMouseButton(button, false), wait);
     };
     const key = (pressed: boolean) => (e: KeyboardEvent) => {
-      const k = remap[e.code] ?? toDosKey(e.code);
+      const k = toDosKey(e.code);
       if (k === undefined) return;
       e.preventDefault();
       ci.current?.sendKeyEvent(k, pressed);

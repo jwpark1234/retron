@@ -13,6 +13,8 @@ import { ControlTop } from "../../player/QuickButtons";
 import { rotatedStyle, touchDevice, useOrientation } from "../../player/orientation";
 import { Screen } from "../../player/Screen";
 import { useToast } from "../../player/useToast";
+import { BusyOverlay } from "../../ui/Spinner";
+import { useCanvasLuma } from "../../player/useCanvasLuma";
 import { markDirty } from "../../sync/sync";
 import { usePrefs } from "../../ui/prefs";
 import { attachAudio, attachVideo, createDos, dosFastForward, loadDosState, saveDosState } from "./create-dos";
@@ -38,6 +40,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const ci = useRef<CommandInterface | null>(null);
   const cursor = useRef<Cursor>({ x: 0.5, y: 0.5 });
   const [status, setStatus] = useState("불러오는 중…");
+  const [failed, setFailed] = useState(false);
   const [toast, showToast] = useToast();
   const [bridge, setBridge] = useState<StateBridge | null>(null);
   const [run, setRun] = useState(0); // 재시작: 바뀌면 에뮬레이터를 새로 띄운다 (js-dos에는 리셋이 없다)
@@ -50,7 +53,8 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const dir = gameDir(game.id);
   const info = game.dos!;
 
-  useDosMouseKeyboard({ stage, canvas, ci, cursor, rotation, remap: info.input?.keys ?? {} });
+  useDosMouseKeyboard({ stage, canvas, ci, cursor, rotation });
+  useCanvasLuma(canvas, rotation); // 화면 위 버튼 글자색을 화면 밝기에 맞춘다
 
   useEffect(() => {
     let disposed = false;
@@ -105,7 +109,10 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       });
       if (disposed) stopWatch();
       else cleanups.push(stopWatch);
-    })().catch((e) => setStatus((e as Error).message));
+    })().catch((e) => {
+      setFailed(true);
+      setStatus((e as Error).message);
+    });
     return () => {
       disposed = true;
       cleanups.forEach((c) => c());
@@ -124,7 +131,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
             {touchDevice && (
               <DosTouchSettings keys={vkeys.keys} landscape={orientation.mode === "landscape"} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />
             )}
-            <MouseSpeedSetting />
+            {touchDevice && <MouseSpeedSetting />}
           </>
         )}
       </GameMenu>
@@ -139,7 +146,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
           top={<ControlTop menu={menu} bridge={bridge} />}
         />
       )}
-      {status && <div class="overlay">{status}</div>}
+      {status && <BusyOverlay text={status} failed={failed} />}
       {toast && <div class="glass toast">{toast}</div>}
     </div>
   );

@@ -9,3 +9,6 @@ preventZoom();
 installHaptics();
 applyControlStyle();
 render(<App />, document.getElementById("app")!);
+
+// 오프라인에서도 앱이 열리게 (public/sw.js). 개발 서버에서는 쓰지 않는다 (고친 코드가 바로 보이게)
+if (import.meta.env.PROD && "serviceWorker" in navigator) void navigator.serviceWorker.register("./sw.js").catch(() => undefined);

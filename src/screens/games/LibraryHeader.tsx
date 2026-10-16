@@ -1,6 +1,6 @@
 // 라이브러리 위쪽 막대: 로고, 게임 추가, 계정(동기화 상태, 기기 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 로그아웃).
 import { useEffect, useRef, useState } from "preact/hooks";
-import { signOut, useAuth } from "../../cloud/google-auth";
+import { reconnectDrive, signOut, useAuth } from "../../cloud/google-auth";
 import type { Entry } from "../../library/import";
 import { fromInput } from "../../library/pick";
 import { StickStyleRow } from "../../player/DirectionPad";
@@ -49,8 +49,14 @@ function AccountMenu() {
   const sync = useSync();
   const { wifiOnlyUpload, haptics, controlScale, controlOpacity } = usePrefs();
   const [open, setOpen] = useState(false);
-  const state = sync.conflict ? "warn" : sync.pending ? "pending" : "ok";
-  const label = sync.conflict ? "세이브 충돌이 있습니다" : sync.pending ? `드라이브에 올릴 세이브 ${sync.pending}개` : "드라이브와 동기화됨";
+  const state = sync.conflict ? "warn" : sync.pending || !auth.driveReady ? "pending" : "ok";
+  const label = sync.conflict
+    ? "세이브 충돌이 있습니다"
+    : !auth.driveReady
+      ? `드라이브 연결 안 됨 · 기기에 저장 중${sync.pending ? ` (올릴 세이브 ${sync.pending}개)` : ""}`
+      : sync.pending
+        ? `드라이브에 올릴 세이브 ${sync.pending}개`
+        : "드라이브와 동기화됨";
   return (
     <div class="popover-anchor">
       <button class={`avatar ${state}`} aria-label="계정" title={auth.email} onClick={() => setOpen(!open)}>
@@ -60,8 +66,8 @@ function AccountMenu() {
         <strong class="email">{auth.email}</strong>
         <span class={`sync-line ${state}`}>{label}</span>
         <StorageLine />
-        <Row label="게임 업로드는 Wi-Fi에서만">
-          <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="게임 업로드는 Wi-Fi에서만" />
+        <Row label="모바일 데이터로 게임 안 올리기">
+          <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="모바일 데이터로 게임 안 올리기" />
         </Row>
         {touchDevice && (
           <>
@@ -86,11 +92,34 @@ function AccountMenu() {
   );
 }
 
+/**
+ * 드라이브 토큰이 끊겼을 때(1시간이 지났거나 오프라인으로 시작) 다시 연결하는 버튼.
+ * 구글 창은 사용자가 누른 순간에만 띄울 수 있어서 저절로 다시 연결하지 못한다. 연결 전까지는 기기에 저장해 둔다
+ */
+function ReconnectButton() {
+  const auth = useAuth();
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    addEventListener("online", update);
+    addEventListener("offline", update);
+    return () => (removeEventListener("online", update), removeEventListener("offline", update));
+  }, []);
+  if (!auth.signedIn || auth.driveReady) return null;
+  if (!online) return <span class="drive-chip offline">오프라인 · 기기에 저장 중</span>;
+  return (
+    <button class="drive-chip" disabled={auth.busy} onClick={() => void reconnectDrive().catch(() => undefined)} title="연결 전까지 세이브와 설정은 이 기기에 저장해 두고, 연결되면 올립니다">
+      드라이브 연결
+    </button>
+  );
+}
+
 export function LibraryHeader({ picker, busy }: { picker: ReturnType<typeof useAddPicker>; busy: boolean }) {
   return (
     <header class="glass">
       <Logo size="small" />
       <div class="actions">
+        <ReconnectButton />
         <button class="primary add" disabled={busy} onClick={picker.open}>
           + 게임 추가
         </button>

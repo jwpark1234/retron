@@ -3,6 +3,8 @@
 //   상태 저장 슬롯 → retron/states/{게임키}.zip  양쪽에서 바뀌었으면 슬롯마다 더 최근 것을 남긴다 (묻지 않는다).
 // - 드라이브 파일의 version으로 다른 기기가 먼저 올렸는지 확인한다.
 // - 오프라인이면 대기했다가 온라인이 되거나 화면으로 돌아오면 자동으로 올린다.
+// - 게임을 하는 동안(화면에 보이는 동안)은 올리지 않는다. 묶기·올리기가 메인 스레드를 잡으면 DOS 에뮬레이터
+//   (워커가 메인 스레드와 초당 만 번 가까이 주고받는다)와 소리가 같이 끊겼다. 나가거나 다른 앱으로 가면 올린다.
 // 로그인하지 않았으면 이 기기에만 저장한다.
 import { useEffect, useState } from "preact/hooks";
 import { createFile, download, findChild, getMeta, updateFile } from "../cloud/drive";
@@ -75,7 +77,16 @@ export function useSync(): SyncInfo {
   return i;
 }
 
-const online = () => authState().signedIn && navigator.onLine;
+const online = () => authState().driveReady && navigator.onLine;
+
+let playing = false;
+const holding = () => playing && document.visibilityState === "visible";
+
+/** 게임 화면이 열리고 닫힐 때 부른다. 닫히면 밀린 것을 올린다 */
+export function setPlaying(on: boolean) {
+  playing = on;
+  if (!on) void retryAll();
+}
 
 let started = false;
 export function initSync() {
@@ -83,7 +94,8 @@ export function initSync() {
   if (started) return;
   started = true;
   addEventListener("online", () => void retryAll());
-  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void retryAll());
+  // 화면으로 돌아오면 밀린 것을, 게임 중 다른 앱으로 가면 그동안 쌓인 것을 올린다
+  document.addEventListener("visibilitychange", () => void retryAll());
   setInterval(() => void retryAll(), RETRY_MS);
 }
 
@@ -122,7 +134,7 @@ async function remoteFile(game: Game, kind: SaveKind) {
 }
 
 async function doPush(gameId: string, kind: SaveKind, force = false) {
-  if (!online()) return;
+  if (!online() || (holding() && !force)) return; // 게임 중이면 dirty로 두고 나중에 올린다
   const game = await getGame(gameId);
   if (!game) return;
   const s = readState(gameId, kind);

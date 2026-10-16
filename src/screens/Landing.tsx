@@ -1,9 +1,21 @@
-// 첫 화면: 로고와 구글 로그인. 로그인해야 라이브러리로 들어간다
+// 첫 화면: 로고와 구글 로그인. 로그인해야 라이브러리로 들어간다.
+// 한 번 로그인한 기기는 로그인 버튼 대신 로딩 고리를 보여 주고 라이브러리로 넘어간다 (loading)
 import { signIn, useAuth } from "../cloud/google-auth";
 import { Logo } from "../ui/Logo";
+import { Spinner } from "../ui/Spinner";
 
-export function Landing() {
+export function Landing({ loading }: { loading?: boolean }) {
   const auth = useAuth();
+  if (loading)
+    return (
+      <div class="landing">
+        <Logo />
+        <div class="landing-loading">
+          <Spinner />
+          <span>{auth.email ? `${auth.email} · 라이브러리 여는 중` : "여는 중"}</span>
+        </div>
+      </div>
+    );
   return (
     <div class="landing">
       <Logo />

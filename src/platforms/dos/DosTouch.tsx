@@ -14,7 +14,7 @@ import { KeyPicker } from "./KeyPicker";
 import { Trackpad } from "./Trackpad";
 import { VirtualKeys } from "./VirtualKeys";
 
-export const DEFAULT_KEYS = [256, 257, 32, 89, 78, ...ARROWS]; // ESC, Enter, Space, Y, N + 방향 패드
+export const DEFAULT_KEYS = [256, 257, 32, ...ARROWS]; // ESC, Enter, Space + 방향 패드
 const DIR_KEY: Record<Direction, number> = { up: 265, down: 264, left: 263, right: 262 };
 
 /** 이 게임의 화면 키 (예전 vkeys에는 방향 패드가 없었으므로 붙여 준다) */
@@ -156,7 +156,7 @@ export function DosTouchSettings({ keys, landscape, onChange, onReset }: { keys:
 
 const MOUSE_SPEEDS = [0.5, 0.75, 1, 1.5, 2].map((v) => ({ value: String(v), label: `${v}×` }));
 
-/** 마우스 감도: 트랙패드와 게임패드 스틱으로 움직이는 커서 속도 (실제 마우스는 그대로) */
+/** 마우스 감도: 트랙패드와 게임패드 스틱으로 움직이는 커서 속도 (휴대폰만. PC는 실제 마우스를 쓴다) */
 export function MouseSpeedSetting() {
   const { mouseSpeed } = usePrefs();
   return (

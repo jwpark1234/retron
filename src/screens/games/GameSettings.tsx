@@ -1,6 +1,6 @@
 // 게임 설정 (라이브러리 카드의 ⋯): 이름, 플랫폼별 설정(DOS 실행·조작), 세이브 백업, 정보(용량, 날짜), 삭제
 import { useEffect, useState } from "preact/hooks";
-import { deleteRemoteGame, updateRemoteGame } from "../../cloud/games";
+import { deleteRemoteGame, updateRemoteGame, uploadGame } from "../../cloud/games";
 import { authState } from "../../cloud/google-auth";
 import { download, exportBackup, importBackup } from "../../library/backup";
 import { gameDir, putGame, removeGame, type Game } from "../../library/library";
@@ -8,6 +8,7 @@ import { listFiles } from "../../library/store";
 import { DosGameSettings, dosEditOf, type DosEdit } from "../../platforms/dos/DosGameSettings";
 import { markDirty } from "../../sync/sync";
 import { IconClose } from "../../ui/icons";
+import { Spinner } from "../../ui/Spinner";
 import { PLATFORM_LABEL } from "./GameCard";
 
 const fmtDate = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "numeric", day: "numeric" }) : "아직 안 함");
@@ -22,12 +23,25 @@ function useGameSize(id: string) {
   return size;
 }
 
-export function GameSettings({ game, onClose, onChanged }: { game: Game; onClose: () => void; onChanged: () => void }) {
+export function GameSettings({ game, onDrive, onClose, onChanged }: { game: Game; onDrive: boolean | null; onClose: () => void; onChanged: () => void }) {
   const [title, setTitle] = useState(game.title);
   const dos = game.platform === "dos";
   const [dosEdit, setDosEdit] = useState<DosEdit | null>(dos ? dosEditOf(game) : null);
   const [message, setMessage] = useState("");
   const size = useGameSize(game.id);
+  const [uploadMsg, setUploadMsg] = useState("");
+
+  // 드라이브에 없는 게임을 지금 올린다 (다른 기기에서도 보이게). 진행률은 라이브러리 카드에 나온다
+  const upload = async () => {
+    setUploadMsg("올리는 중… (창을 닫으면 라이브러리 카드에서 진행률을 볼 수 있습니다)");
+    try {
+      await uploadGame(game.id);
+      onChanged();
+      setUploadMsg("올리기를 마쳤습니다");
+    } catch (e) {
+      setUploadMsg(`올리지 못했습니다: ${(e as Error).message}`);
+    }
+  };
 
   const save = async () => {
     const updated: Game = {
@@ -118,8 +132,21 @@ export function GameSettings({ game, onClose, onChanged }: { game: Game; onClose
           <h3>정보</h3>
           <section class="menu-group info">
             <div class="field">
+              <span>구글 드라이브</span>
+              {onDrive === null ? (
+                <small>확인하지 못함</small>
+              ) : onDrive ? (
+                <small>올라가 있음</small>
+              ) : (
+                <button class="glass small" onClick={() => void upload()}>
+                  이 기기에만 있음 · 올리기
+                </button>
+              )}
+            </div>
+            {uploadMsg && <p class="muted">{uploadMsg}</p>}
+            <div class="field">
               <span>기기 저장 공간</span>
-              <small>{size === null ? "계산 중…" : fmtSize(size)}</small>
+              <small>{size === null ? <Spinner small /> : fmtSize(size)}</small>
             </div>
             <div class="field">
               <span>추가한 날</span>

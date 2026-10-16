@@ -8,6 +8,8 @@ import { imageFileToSquare } from "../../library/thumbnail";
 import { watchFirstRunThumbnail } from "../../player/first-run-thumbnail";
 import { Screen } from "../../player/Screen";
 import { useToast } from "../../player/useToast";
+import { BusyOverlay } from "../../ui/Spinner";
+import { useCanvasLuma } from "../../player/useCanvasLuma";
 import { markDirty } from "../../sync/sync";
 import { pausable, type StateBridge } from "../../player/bridge";
 import { GameMenu } from "../../player/GameMenu";
@@ -29,6 +31,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const canvas = useRef<HTMLCanvasElement>(null);
   const emu = useRef<RetroEmulator | null>(null);
   const [status, setStatus] = useState("불러오는 중…");
+  const [failed, setFailed] = useState(false);
   const [toast, showToast] = useToast();
   const [ready, setReady] = useState(false);
   const orientation = useOrientation();
@@ -81,7 +84,10 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
         async () => imageFileToSquare(await e.screenshot()),
         () => void uploadGame(game.id).catch(() => undefined), // 다른 기기에서도 썸네일이 보이게
       );
-    })().catch((err) => setStatus(`게임을 시작하지 못했습니다: ${(err as Error).message}`));
+    })().catch((err) => {
+      setFailed(true);
+      setStatus(`게임을 시작하지 못했습니다: ${(err as Error).message}`);
+    });
     return () => {
       disposed = true;
       stops.forEach((s) => s());
@@ -112,6 +118,13 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
     [ready],
   );
   const menu = useMenuState(bridge);
+
+  // 화면 위 버튼 글자색을 화면 밝기에 맞춘다. WebGL 화면은 바로 읽을 수 없어서 스크린샷으로 (멈춘 동안엔 찍지 않는다)
+  const rotation = useRef(0);
+  rotation.current = orientation.rotation;
+  const quiet = useRef(false);
+  quiet.current = menu.open || !!menu.slots || !!status;
+  useCanvasLuma(canvas, rotation, async () => (emu.current && !quiet.current ? createImageBitmap(await emu.current.screenshot()) : null), 1500);
 
   const changeSpeed = async (speed: number) => {
     setPrefs({ fastSpeed: speed });
@@ -160,7 +173,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
           top={<ControlTop menu={menu} bridge={bridge} />}
         />
       )}
-      {status && <div class="overlay">{status}</div>}
+      {status && <BusyOverlay text={status} failed={failed} />}
       {toast && <div class="glass toast">{toast}</div>}
     </div>
   );

@@ -73,12 +73,13 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s;
 }
 .card:hover { transform: translateY(-3px) scale(1.01); box-shadow: inset 0 1px 0 var(--glass-hi), 0 18px 40px rgba(0, 0, 0, 0.45); }
-.thumb { background: #000; display: grid; place-items: center; overflow: hidden; color: var(--muted); border-radius: calc(var(--radius) - 8px); }
+.thumb { position: relative; background: #000; display: grid; place-items: center; overflow: hidden; color: var(--muted); border-radius: calc(var(--radius) - 8px); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .meta { display: flex; flex-direction: column; gap: 4px; padding: 10px 8px 4px; min-width: 0; }
 .meta strong { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; padding: 1px 7px; margin-right: 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(255, 255, 255, 0.16); color: var(--text); }
+.badge.local { background: rgba(255, 179, 64, 0.22); color: var(--tint); }
 .more { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; padding: 0; opacity: 0; font-size: 16px; line-height: 1; }
 li:hover .more, .more:focus-visible { opacity: 1; }
 @media (pointer: coarse) { .more { opacity: 0.85; } }
@@ -234,11 +235,13 @@ ul.grid .thumb { aspect-ratio: 1; }
 @media (orientation: portrait) { .game:not([style]) { justify-content: flex-start; padding-top: env(safe-area-inset-top); } }
 
 /* 게임 메뉴 */
-/* 화면 컨트롤이 없을 때(PC, 게임패드): Save·Load·빨리가기·메뉴를 화면 아래 가운데에 흐리게 띄우고, 마우스를 올리면 진하게 */
+/* 화면 컨트롤이 없을 때(PC, 게임패드): Save·Load와 빨리가기·메뉴를 화면 오른쪽 아래에 두 묶음으로 흐리게 띄우고, 마우스를 올리면 진하게 */
 .floating-bar {
-  position: absolute; z-index: 25; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%);
-  display: flex; align-items: center; gap: 10px; opacity: 0.3; transition: opacity 0.2s;
+  position: absolute; z-index: 25; right: max(16px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 12px; opacity: 0.35; transition: opacity 0.2s;
 }
+/* 두 묶음(Save·Load / 빨리가기·메뉴)을 각각 유리 알약에 담아 떨어뜨려 둔다 */
+.floating-bar .quick { padding: 5px; border-radius: 999px; background: rgba(20, 20, 26, 0.45); border: 1px solid rgba(255, 255, 255, 0.14); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 .game:hover .floating-bar, .floating-bar:focus-within { opacity: 0.85; }
 /* 메뉴 창: 화면 가운데 카드. 위에는 아이콘 타일(나가기, 필터, 전체화면), 아래는 설정 줄.
    가로로 낮은 화면에서는 두 칸으로 나눈다. 저장·불러오기 팝업도 같은 카드를 쓴다 */
@@ -449,3 +452,36 @@ button.add { white-space: nowrap; }
 .settings .pick.small { padding: 5px 12px; font-size: 13px; }
 .settings > .row.end { margin-top: 0; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 @media (max-width: 600px) { .dialog.settings { padding: 20px 18px 18px; } }
+
+/* 드라이브 연결이 끊겼을 때 헤더의 다시 연결 버튼 (오프라인이면 안내만) */
+.drive-chip { padding: 7px 14px; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--tint); background: rgba(255, 179, 64, 0.14); border: 1px solid rgba(255, 179, 64, 0.5); border-radius: 999px; }
+.drive-chip.offline { color: var(--muted); background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); font-weight: 500; }
+@media (max-width: 600px) { .drive-chip { padding: 6px 10px; font-size: 12px; } }
+
+/* 로딩 고리 */
+.spinner { display: inline-block; width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.18); border-top-color: var(--tint); animation: spin 0.8s linear infinite; flex-shrink: 0; vertical-align: middle; box-sizing: border-box; }
+.spinner.small { width: 15px; height: 15px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.overlay-body { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 0 24px; }
+.progress, .busy-line { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.landing-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 28px; color: var(--muted); font-size: 14px; }
+
+/* 뒤 배경이 밝을 때(ui/adaptive-contrast.ts가 .on-light를 붙인다): 유리를 밝게, 글자를 검게.
+   어두운 유리에 흰 글자는 밝은 화면 위에서 글자가 묻혔다 */
+.on-light { --text: #17171d; --muted: rgba(23, 23, 29, 0.62); color: var(--text); transition: background 0.25s, color 0.25s, border-color 0.25s; }
+.glass.on-light, .floating-bar .quick.on-light {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.48));
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.vpad-btn.on-light, .vkeys button.on-light, .floating-bar .quick.on-light .vpad-btn {
+  color: #17171d; background: rgba(255, 255, 255, 0.62); border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+.vpad-btn.on-light:active, .vkeys button.on-light:active { background: rgba(255, 179, 64, 0.75); border-color: #c77800; }
+.vpad-dpad.on-light path { fill: rgba(255, 255, 255, 0.6); stroke: rgba(0, 0, 0, 0.22); }
+.vpad-dpad.on-light path.on { fill: rgba(255, 179, 64, 0.8); stroke: #c77800; }
+.vpad-stick.on-light { background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0 40%, rgba(255, 255, 255, 0.55) 100%); border-color: rgba(0, 0, 0, 0.18); }
+.vpad-stick.on-light .knob { background: radial-gradient(circle at 35% 30%, #fff, rgba(235, 235, 240, 0.9) 70%); border-color: rgba(0, 0, 0, 0.2); }
+.drive-chip.on-light { color: #9a5a00; background: rgba(255, 255, 255, 0.7); border-color: rgba(154, 90, 0, 0.45); }

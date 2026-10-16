@@ -12,6 +12,7 @@ import { SlotButtons, SpeedMenuButtons } from "./QuickButtons";
 import { touchDevice, type OrientationMode } from "./orientation";
 import { saveScreenshot } from "./screenshot";
 import { StateSlots } from "./StateSlots";
+import { Spinner } from "../ui/Spinner";
 import { useAutoSave } from "./useAutoSave";
 import { useToast } from "./useToast";
 
@@ -163,7 +164,12 @@ export function GameMenu({
                 </p>
               </section>
             </div>
-            {busy && <p class="muted">{busy}</p>}
+            {busy && (
+              <p class="muted busy-line">
+                <Spinner small />
+                {busy}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -178,7 +184,12 @@ export function GameMenu({
               </button>
             </div>
             <StateSlots mode={menu.slots} gameId={gameId} bridge={bridge} run={run} onDone={() => menu.openSlots(null)} />
-            {busy && <p class="muted">{busy}</p>}
+            {busy && (
+              <p class="muted busy-line">
+                <Spinner small />
+                {busy}
+              </p>
+            )}
           </div>
         </div>
       )}
