@@ -384,6 +384,17 @@ li.remote .thumb img { filter: saturate(0.6); }
 /* 로고: RETRO 아래 줄 끝(O 밑)에 N */
 .logo { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 0.82; font-weight: 800; letter-spacing: -0.01em; user-select: none; }
 .logo em { font-style: normal; color: var(--tint); }
+/* 로고의 O: 주황 글자에 CRT 효과 (주사선 + 빛 번짐 + RGB 어긋남). 아이콘(public/favicon.png)도 이 O를 그대로 찍은 것이다.
+   글자로 그려서 기기마다 나머지 글자(RETR, N)와 같은 글꼴로 나온다 */
+.logo em {
+  display: inline-block; color: transparent;
+  padding: 0.1em 0; margin: -0.1em 0; /* 줄 간격(0.82)보다 글자가 커서, 칠하는 영역을 위아래로 넓혀야 O 아래가 잘리지 않는다 */
+  background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0 0.032em, transparent 0.032em 0.082em), linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e);
+  -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(-0.018em 0 0 rgba(255, 42, 16, 0.55)) drop-shadow(0.018em 0 0 rgba(30, 200, 255, 0.35)) drop-shadow(0 0 0.09em rgba(255, 154, 46, 0.75));
+}
+/* 위쪽 막대의 작은 로고: 주사선은 너무 촘촘해 뭉개지므로 빛 번짐만 */
+.logo.small em { background-image: linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e); filter: drop-shadow(0 0 0.12em rgba(255, 154, 46, 0.6)); }
 .logo.large { font-size: clamp(56px, 16vw, 112px); }
 .logo.small { font-size: 21px; }
 .logo .n { margin-top: 0.02em; }
@@ -453,10 +464,8 @@ button.add { white-space: nowrap; }
 .settings > .row.end { margin-top: 0; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 @media (max-width: 600px) { .dialog.settings { padding: 20px 18px 18px; } }
 
-/* 드라이브 연결이 끊겼을 때 헤더의 다시 연결 버튼 (오프라인이면 안내만) */
-.drive-chip { padding: 7px 14px; font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--tint); background: rgba(255, 179, 64, 0.14); border: 1px solid rgba(255, 179, 64, 0.5); border-radius: 999px; }
-.drive-chip.offline { color: var(--muted); background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.14); font-weight: 500; }
-@media (max-width: 600px) { .drive-chip { padding: 6px 10px; font-size: 12px; } }
+/* 계정 메뉴: 드라이브 연결이 끊겼을 때 다시 연결 */
+.popover.account .reconnect { margin-top: 2px; padding: 8px 12px; align-items: center; color: var(--tint); background: rgba(255, 179, 64, 0.12); border: 1px solid rgba(255, 179, 64, 0.4); }
 
 /* 로딩 고리 */
 .spinner { display: inline-block; width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.18); border-top-color: var(--tint); animation: spin 0.8s linear infinite; flex-shrink: 0; vertical-align: middle; box-sizing: border-box; }
@@ -484,5 +493,18 @@ button.add { white-space: nowrap; }
 .vpad-dpad.on-light path.on { fill: rgba(255, 179, 64, 0.8); stroke: #c77800; }
 .vpad-stick.on-light { background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0 40%, rgba(255, 255, 255, 0.55) 100%); border-color: rgba(0, 0, 0, 0.18); }
 .vpad-stick.on-light .knob { background: radial-gradient(circle at 35% 30%, #fff, rgba(235, 235, 240, 0.9) 70%); border-color: rgba(0, 0, 0, 0.2); }
-.drive-chip.on-light { color: #9a5a00; background: rgba(255, 255, 255, 0.7); border-color: rgba(154, 90, 0, 0.45); }
 .privacy-link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+
+/* 첫 화면 배경: CRT 고전 게임 콜라주(public/landing-bg.jpg)를 어둡고 흐리게 깔고, 화면 전체에 주사선·가장자리 어둠을 한 겹 더 */
+.landing { position: relative; isolation: isolate; overflow: hidden; }
+.landing::before {
+  content: ""; position: absolute; inset: -3%; z-index: -2; pointer-events: none;
+  background: var(--landing-bg) center / cover no-repeat; opacity: 0.2; filter: blur(1.5px) saturate(0.85);
+  animation: landing-drift 60s ease-in-out infinite alternate;
+}
+.landing::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(7, 7, 12, 0.35) 0%, rgba(7, 7, 12, 0.92) 78%), repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px);
+}
+@keyframes landing-drift { to { transform: translate3d(-2%, -1.5%, 0) scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .landing::before { animation: none; } }

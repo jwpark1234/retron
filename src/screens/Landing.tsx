@@ -4,11 +4,15 @@ import { signIn, useAuth } from "../cloud/google-auth";
 import { Logo } from "../ui/Logo";
 import { Spinner } from "../ui/Spinner";
 
+// 배경: 고전 게임 장르 화면을 직접 그려 CRT를 씌운 콜라주 (scripts/art/landing-collage.html을 브라우저로 열어 1920×1200으로 찍은 것).
+// 실제 게임 화면은 저작권 때문에 쓰지 않는다
+const BG = { "--landing-bg": `url("${import.meta.env.BASE_URL}landing-bg.jpg")` };
+
 export function Landing({ loading }: { loading?: boolean }) {
   const auth = useAuth();
   if (loading)
     return (
-      <div class="landing">
+      <div class="landing" style={BG}>
         <Logo />
         <div class="landing-loading">
           <Spinner />
@@ -17,7 +21,7 @@ export function Landing({ loading }: { loading?: boolean }) {
       </div>
     );
   return (
-    <div class="landing">
+    <div class="landing" style={BG}>
       <Logo />
       <button class="google-signin" disabled={auth.busy} onClick={() => void signIn().catch(() => undefined)}>
         <svg viewBox="0 0 48 48" aria-hidden="true">

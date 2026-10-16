@@ -1,0 +1,130 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{display:block}</style></head>
+<body><canvas id="out" width="1920" height="1200"></canvas>
+<script>
+// 랜딩 배경 콜라주: 고전 게임 장르를 떠올리게 하는 화면을 직접 그린다 (실제 게임 화면은 저작권 때문에 쓰지 않는다).
+// 각 화면은 160×120 저해상도로 그린 뒤 정수배로 키우고 CRT(주사선, RGB 어긋남, 가장자리 어둡게, 둥근 모서리)를 씌운다.
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const W = 160, H = 120;
+const scene = (draw) => { const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.imageSmoothingEnabled = false; draw(g); return c; };
+const rect = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+const sprite = (g, rows, x, y, pal) => rows.forEach((r, j) => [...r].forEach((ch, i) => ch !== "." && rect(g, pal[ch], x + i, y + j, 1, 1)));
+
+// 특정 게임 캐릭터를 닮지 않게: 갈색 머리, 청록 옷의 모험가
+const HERO = ["..hhhh..", ".hhhhhh.", ".hsskss.", ".hsssss.", "..ssss..", ".tttttt.", "tttyyttt", "ss.tt.ss", "..pppp..", ".pp..pp."];
+const SHIP = ["....w....", "...wcw...", "...wcw...", "..wwcww..", ".wwrcrww.", "wwwwwwwww", "w.y...y.w"];
+// 적: 둥근 몸에 눈 하나인 해파리
+const ALIEN = ["...ggg...", ".ggggggg.", "gggwwwggg", "ggwwkwwgg", "gggwwwggg", ".ggggggg.", ".g.g.g.g.", "g..g.g..g"];
+
+const scenes = [
+  // 1. 가로 스크롤 플랫포머: 하늘, 구름, 벽돌 땅, 떠 있는 블록, 동전, 주인공
+  scene((g) => {
+    rect(g, "#5c94fc", 0, 0, W, H);
+    for (const [x, y] of [[18, 18], [96, 10], [130, 30]]) { rect(g, "#fff", x, y, 22, 6); rect(g, "#fff", x + 4, y - 4, 12, 4); }
+    rect(g, "#3cbc1c", 0, 86, 50, 6); rect(g, "#2a8c10", 10, 80, 26, 6);
+    for (let x = 0; x < W; x += 8) for (let y = 96; y < H; y += 8) { rect(g, "#c84c0c", x, y, 8, 8); rect(g, "#6b2304", x, y + 7, 8, 1); rect(g, "#6b2304", x + ((y / 8) % 2 ? 0 : 4), y, 1, 8); }
+    for (const x of [60, 68, 76, 84]) { rect(g, "#c84c0c", x, 60, 8, 8); rect(g, "#6b2304", x, 67, 8, 1); }
+    rect(g, "#fc9838", 72, 60, 8, 8); rect(g, "#000", 75, 62, 2, 4);
+    for (const x of [100, 110, 120]) { rect(g, "#fcbc3c", x, 74, 4, 6); rect(g, "#fff", x + 1, 75, 1, 3); }
+    sprite(g, HERO, 30, 86, { h: "#7c4c1c", s: "#fcb468", k: "#000", t: "#1c9c8c", y: "#fcd83c", p: "#3c3c5c" });
+    rect(g, "#00a800", 136, 72, 18, 24); rect(g, "#00d800", 134, 68, 22, 8);
+  }),
+  // 2. 세로 슈팅: 별, 적 편대, 탄, 플레이어 기체
+  scene((g) => {
+    rect(g, "#000018", 0, 0, W, H);
+    for (let i = 0; i < 70; i++) rect(g, rnd() > 0.7 ? "#fff" : "#6070a0", (rnd() * W) | 0, (rnd() * H) | 0, 1, 1);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) sprite(g, ALIEN, 22 + c * 20, 12 + r * 14, { g: ["#3cfc3c", "#fc3cfc", "#3cdcfc"][r], w: "#fff", k: "#000" });
+    for (let i = 0; i < 5; i++) rect(g, "#fcfc54", 40 + i * 22, 62 + (i % 3) * 8, 1, 4);
+    rect(g, "#fc5454", 76, 80, 2, 5);
+    sprite(g, SHIP, 72, 100, { w: "#dcdcdc", c: "#3c8cfc", r: "#fc3c3c", y: "#fcbc00" });
+  }),
+  // 3. RPG 필드: 풀, 강, 숲, 길, 마을, 용사
+  scene((g) => {
+    rect(g, "#3c9c3c", 0, 0, W, H);
+    for (let i = 0; i < 120; i++) rect(g, "#58b858", (rnd() * W) | 0, (rnd() * H) | 0, 2, 1);
+    for (let y = 0; y < H; y++) rect(g, "#2c58d8", 98 + Math.round(Math.sin(y / 9) * 6), y, 18, 1);
+    for (let y = 0; y < H; y += 3) rect(g, "#6c8cfc", 102 + Math.round(Math.sin(y / 9) * 6), y, 4, 1);
+    rect(g, "#c8a058", 0, 58, 104, 8); rect(g, "#a07838", 96, 56, 26, 12);
+    for (let i = 0; i < 16; i++) { const x = 6 + (i % 8) * 10, y = 8 + ((i / 8) | 0) * 12; rect(g, "#105810", x, y, 9, 8); rect(g, "#1c7c1c", x + 1, y + 1, 7, 5); rect(g, "#5c3410", x + 4, y + 8, 2, 3); }
+    for (const [x, y] of [[126, 20], [142, 20], [134, 36]]) { rect(g, "#c84c0c", x, y, 12, 6); rect(g, "#fcfcfc", x + 1, y + 6, 10, 8); rect(g, "#5c3410", x + 5, y + 10, 3, 4); }
+    sprite(g, ["..yy..", ".yssy.", ".ssss.", "bbbbbb", "sbbbbs", ".b..b."], 52, 52, { y: "#fcd800", s: "#fcb468", b: "#d82800" });
+    rect(g, "#000", 20, 84, 120, 30); rect(g, "#fff", 21, 85, 118, 1); rect(g, "#fff", 21, 112, 118, 1); rect(g, "#fff", 21, 85, 1, 28); rect(g, "#fff", 138, 85, 1, 28);
+    for (let i = 0; i < 14; i++) rect(g, "#fff", 28 + i * 8, 92, 5, 3); for (let i = 0; i < 9; i++) rect(g, "#fff", 28 + i * 8, 100, 5, 3);
+  }),
+  // 4. 블록 퍼즐: 우물, 떨어지는 블록, 쌓인 줄
+  scene((g) => {
+    rect(g, "#101028", 0, 0, W, H);
+    rect(g, "#5050a0", 48, 4, 64, 112); rect(g, "#000", 52, 4, 56, 108);
+    const cols = ["#fc3c3c", "#3cfc3c", "#3c8cfc", "#fcfc3c", "#fc8c3c", "#c83cfc", "#3cfcfc"];
+    const cell = (x, y, c) => { rect(g, c, 52 + x * 7, 4 + y * 7, 7, 7); rect(g, "#fff8", 52 + x * 7, 4 + y * 7, 6, 1); rect(g, "#0006", 52 + x * 7, 10 + y * 7, 7, 1); };
+    for (let y = 10; y < 15; y++) for (let x = 0; x < 8; x++) if (rnd() > 0.18 || y === 14) cell(x, y, cols[(x + y * 3) % 7]);
+    [[3, 2], [4, 2], [5, 2], [4, 3]].forEach(([x, y]) => cell(x, y, "#c83cfc"));
+    rect(g, "#5050a0", 118, 10, 34, 30); rect(g, "#000", 120, 12, 30, 26); [[0, 0], [1, 0], [1, 1], [2, 1]].forEach(([x, y]) => { rect(g, "#fc3c3c", 124 + x * 7, 18 + y * 7, 7, 7); });
+    for (let i = 0; i < 6; i++) rect(g, "#fff", 120 + i * 5, 50, 3, 5);
+  }),
+  // 5. 레이싱: 하늘, 산, 원근 도로
+  scene((g) => {
+    for (let y = 0; y < 50; y++) rect(g, `rgb(${60 + y * 2},${120 + y},${220})`, 0, y, W, 1);
+    for (let x = 0; x < W; x++) { const h = 14 + Math.round(Math.abs(Math.sin(x / 13)) * 12 + Math.sin(x / 5) * 2); rect(g, "#4c6c8c", x, 50 - h, 1, h); }
+    rect(g, "#1c8c1c", 0, 50, W, 70);
+    for (let y = 50; y < H; y++) { const t = (y - 50) / 70, w = 8 + t * 150, cx = 80 + Math.sin(t * 3) * 10 * (1 - t); rect(g, ((y / 4) | 0) % 2 ? "#fff" : "#fc3c3c", cx - w / 2 - 4 * t - 2, y, 4 * t + 2, 1); rect(g, "#505058", cx - w / 2, y, w, 1); if (((y / 3) | 0) % 2) rect(g, "#fff", cx - 1, y, 2, 1); rect(g, ((y / 4) | 0) % 2 ? "#fff" : "#fc3c3c", cx + w / 2, y, 4 * t + 2, 1); }
+    rect(g, "#d82800", 66, 96, 28, 12); rect(g, "#fc5c3c", 70, 92, 20, 6); rect(g, "#000", 64, 104, 8, 6); rect(g, "#000", 88, 104, 8, 6); rect(g, "#3cdcfc", 72, 93, 16, 3);
+  }),
+  // 6. 벽돌깨기: 벽돌, 공, 패들
+  scene((g) => {
+    rect(g, "#000", 0, 0, W, H);
+    const cols = ["#fc3c3c", "#fc8c3c", "#fcfc3c", "#3cfc3c", "#3c8cfc", "#c83cfc"];
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 13; c++) if (!(r === 4 && c > 5 && c < 9) && !(r === 5 && c > 3 && c < 11)) { rect(g, cols[r], 2 + c * 12, 12 + r * 6, 11, 5); rect(g, "#fff6", 2 + c * 12, 12 + r * 6, 11, 1); }
+    rect(g, "#fff", 92, 70, 3, 3); for (let i = 1; i < 6; i++) rect(g, "#ffffff22", 92 - i * 4, 70 + i * 4, 3, 3);
+    rect(g, "#dcdcdc", 58, 108, 30, 4); rect(g, "#3c8cfc", 58, 108, 4, 4); rect(g, "#3c8cfc", 84, 108, 4, 4);
+    for (let i = 0; i < 3; i++) rect(g, "#fff", 4 + i * 6, 3, 4, 4);
+  }),
+  // 7. DOS 전략 RPG: 격자 전장, 유닛, 정보 창
+  scene((g) => {
+    rect(g, "#002", 0, 0, W, H);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 12; x++) rect(g, (x + y) % 2 ? "#2c5c2c" : "#346c34", 4 + x * 10, 4 + y * 10, 10, 10);
+    for (const [x, y, c] of [[2, 3, "#3c8cfc"], [3, 4, "#3c8cfc"], [8, 2, "#fc3c3c"], [9, 5, "#fc3c3c"], [7, 4, "#fc3c3c"]]) { rect(g, c, 6 + x * 10, 5 + y * 10, 6, 8); rect(g, "#fcb468", 7 + x * 10, 5 + y * 10, 4, 3); }
+    for (let i = 0; i < 4; i++) rect(g, "#fcfc3c88", 34 + i * 10, 44, 10, 10);
+    rect(g, "#000080", 4, 86, 152, 30); rect(g, "#a8a8fc", 4, 86, 152, 1); rect(g, "#a8a8fc", 4, 115, 152, 1);
+    rect(g, "#fcb468", 8, 90, 18, 22); rect(g, "#5c3410", 8, 90, 18, 6); rect(g, "#000", 12, 98, 2, 2); rect(g, "#000", 20, 98, 2, 2);
+    for (let i = 0; i < 12; i++) rect(g, "#fff", 32 + i * 8, 92, 5, 3); rect(g, "#fc3c3c", 32, 102, 60, 4); rect(g, "#3cfc3c", 32, 108, 44, 4);
+  }),
+  // 8. 대전 격투: 도시 배경, 두 캐릭터, 체력 바
+  scene((g) => {
+    for (let y = 0; y < 70; y++) rect(g, `rgb(${120 + y},${60 + y / 2},${100})`, 0, y, W, 1);
+    for (let x = 0; x < W; x += 14) { const h = 20 + ((x * 37) % 30); rect(g, "#2c1c3c", x, 70 - h, 13, h); for (let wy = 74 - h; wy < 66; wy += 6) rect(g, "#fcd83c", x + 3 + ((wy * 3) % 6), wy, 2, 2); }
+    rect(g, "#6c4c2c", 0, 70, W, 50); for (let x = 0; x < W; x += 16) rect(g, "#5c3c1c", x, 70, 1, 50);
+    rect(g, "#fff", 30, 54, 10, 30); rect(g, "#fcb468", 31, 46, 8, 8); rect(g, "#d82800", 30, 60, 10, 3); rect(g, "#fff", 40, 60, 14, 4);
+    rect(g, "#3c5cfc", 112, 54, 10, 30); rect(g, "#fcb468", 113, 46, 8, 8); rect(g, "#fcd800", 112, 44, 10, 3);
+    rect(g, "#fcfc3c", 6, 6, 60, 5); rect(g, "#fc3c3c", 46, 6, 20, 5); rect(g, "#fcfc3c", 94, 6, 60, 5); rect(g, "#fff", 74, 4, 12, 9);
+  }),
+];
+
+// CRT를 씌운 화면 하나를 그린다 (정수배 확대 + 주사선 + RGB 어긋남 + 가장자리 어둡게 + 둥근 모서리)
+function crtTile(src, scale) {
+  const w = W * scale, h = H * scale, c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"); g.imageSmoothingEnabled = false;
+  g.beginPath(); g.roundRect(0, 0, w, h, 26); g.clip();
+  g.globalAlpha = 1; g.drawImage(src, 0, 0, w, h);
+  g.globalCompositeOperation = "screen"; g.globalAlpha = 0.25; g.drawImage(src, -2, 0, w, h); g.drawImage(src, 2, 0, w, h);
+  g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
+  for (let y = 0; y < h; y += scale) { g.fillStyle = "rgba(0,0,0,.35)"; g.fillRect(0, y + scale - 2, w, 2); }
+  const v = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.75)"); g.fillStyle = v; g.fillRect(0, 0, w, h);
+  const s = g.createLinearGradient(0, 0, 0, h * 0.5); s.addColorStop(0, "rgba(255,255,255,.12)"); s.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = s; g.fillRect(0, 0, w, h);
+  return c;
+}
+
+const out = document.getElementById("out"), o = out.getContext("2d");
+o.fillStyle = "#07070c"; o.fillRect(0, 0, out.width, out.height);
+const tiles = scenes.map((s) => crtTile(s, 3)); // 480×360
+// 4×3 격자에 살짝 기울여 겹치게 깐다 (한 줄씩 엇갈리게)
+// 옆·위아래에 같은 화면이 오지 않게 섞는다
+for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) {
+  const t = tiles[(c * 3 + r * 5) % tiles.length];
+  const x = c * 420 - 120 + (r % 2) * 200, y = r * 330 - 90;
+  o.save(); o.translate(x + 240, y + 180); o.rotate((rnd() - 0.5) * 0.12);
+  o.shadowColor = "rgba(0,0,0,.7)"; o.shadowBlur = 30; o.drawImage(t, -240, -180); o.restore();
+}
+document.title = "done";
+</script></body></html>

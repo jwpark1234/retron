@@ -8,7 +8,7 @@
 /** rect(화면 좌표) 뒤의 평균 밝기(0~1)와, rect 중 그것이 덮는 비율(0~1). 겹치지 않으면 null */
 export type LumaSource = (rect: DOMRect) => { luma: number; cover: number } | null;
 
-const SELECTOR = "header.glass, .more, .toast, .vpad-btn, .vkeys button, .vpad-dpad, .vpad-stick, .floating-bar .quick, .drive-chip";
+const SELECTOR = "header.glass, .more, .toast, .vpad-btn, .vkeys button, .vpad-dpad, .vpad-stick, .floating-bar .quick";
 const BACKGROUND = 0.03; // 앱 배경 (#07070c, 게임 바깥 검정)
 const ON = 0.56; // 이보다 밝아지면 밝은 유리로
 const OFF = 0.44; // 이보다 어두워지면 되돌린다 (경계에서 깜빡이지 않게)
