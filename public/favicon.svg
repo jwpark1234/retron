@@ -1,30 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <!-- 브라운관 화면: 가운데가 살짝 밝은 검정 -->
-    <radialGradient id="screen" cx=".5" cy=".46" r=".7"><stop offset="0" stop-color="#1d1a17"/><stop offset=".65" stop-color="#0d0c0b"/><stop offset="1" stop-color="#040404"/></radialGradient>
+    <radialGradient id="screen" cx=".5" cy=".46" r=".72"><stop offset="0" stop-color="#211d19"/><stop offset=".65" stop-color="#0e0d0c"/><stop offset="1" stop-color="#040404"/></radialGradient>
     <linearGradient id="o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset=".55" stop-color="#ffa53a"/><stop offset="1" stop-color="#ff7d16"/></linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="22"/></filter>
-    <filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.4"/></filter>
-    <!-- 주사선 (120px에서 3px 간격이 되게) -->
-    <pattern id="scan" width="12.8" height="12.8" patternUnits="userSpaceOnUse"><rect width="12.8" height="5.4" fill="#000" fill-opacity=".42"/></pattern>
-    <!-- 가장자리 어둡게 (볼록한 화면) -->
-    <radialGradient id="vig" cx=".5" cy=".5" r=".72"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".78"/></radialGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <pattern id="scan" width="12.8" height="12.8" patternUnits="userSpaceOnUse"><rect width="12.8" height="5" fill="#000" fill-opacity=".4"/></pattern>
+    <radialGradient id="vig" cx=".5" cy=".5" r=".74"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".8"/></radialGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
     <clipPath id="clip"><rect width="512" height="512" rx="116"/></clipPath>
   </defs>
   <g clip-path="url(#clip)">
     <rect width="512" height="512" fill="url(#screen)"/>
-    <!-- 빛 번짐 -->
-    <circle cx="256" cy="256" r="132" fill="none" stroke="#ff9a2e" stroke-opacity=".75" stroke-width="80" filter="url(#glow)"/>
-    <!-- RGB 어긋남: 빨강은 왼쪽, 파랑은 오른쪽으로 살짝 -->
-    <g filter="url(#soft)" style="mix-blend-mode:screen">
-      <circle cx="249" cy="256" r="132" fill="none" stroke="#ff2a10" stroke-opacity=".55" stroke-width="64"/>
-      <circle cx="263" cy="256" r="132" fill="none" stroke="#1ec8ff" stroke-opacity=".32" stroke-width="64"/>
-    </g>
-    <circle cx="256" cy="256" r="132" fill="none" stroke="url(#o)" stroke-width="62" filter="url(#soft)"/>
+    <g filter="url(#glow)" opacity=".7"><ellipse cx="214" cy="206" rx="86" ry="104" fill="none" stroke="#ff9a2e" stroke-width="54"/><path d="M268 410 V284 H310 L362 362 V284 H404 V410 H362 L310 332 V410 Z" fill="#ffffff"/></g>
+    <g filter="url(#soft)" transform="translate(-6 0)" opacity=".5" style="mix-blend-mode:screen"><ellipse cx="214" cy="206" rx="86" ry="104" fill="none" stroke="#ff2a10" stroke-width="54"/><path d="M268 410 V284 H310 L362 362 V284 H404 V410 H362 L310 332 V410 Z" fill="#ff4030"/></g>
+    <g filter="url(#soft)" transform="translate(6 0)" opacity=".3" style="mix-blend-mode:screen"><ellipse cx="214" cy="206" rx="86" ry="104" fill="none" stroke="#1ec8ff" stroke-width="54"/><path d="M268 410 V284 H310 L362 362 V284 H404 V410 H362 L310 332 V410 Z" fill="#40d0ff"/></g>
+    <g filter="url(#soft)"><ellipse cx="214" cy="206" rx="86" ry="104" fill="none" stroke="url(#o)" stroke-width="54"/><path d="M268 410 V284 H310 L362 362 V284 H404 V410 H362 L310 332 V410 Z" fill="#f5f5f7"/></g>
     <rect width="512" height="512" fill="url(#scan)"/>
     <rect width="512" height="512" fill="url(#vig)"/>
-    <!-- 유리 반사 -->
-    <ellipse cx="256" cy="70" rx="300" ry="150" fill="url(#shine)"/>
+    <ellipse cx="256" cy="64" rx="310" ry="150" fill="url(#shine)"/>
   </g>
 </svg>
