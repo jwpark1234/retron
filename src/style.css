@@ -384,7 +384,7 @@ li.remote .thumb img { filter: saturate(0.6); }
 /* 로고: RETRO 아래 줄 끝(O 밑)에 N */
 .logo { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 0.82; font-weight: 800; letter-spacing: -0.01em; user-select: none; }
 .logo em { font-style: normal; color: var(--tint); }
-/* 로고 글자 전체에 CRT 효과 — 가는 주사선, RGB 어긋남, 빛 번짐. 글자는 형광 흰색, O만 주황. 아이콘(scripts/art/icon-logo.html)도 이 로고를 찍은 것 */
+/* 로고 글자 전체에 CRT 효과 — 가는 주사선, RGB 어긋남, 빛 번짐. 글자는 형광 흰색, O만 주황. 아이콘(scripts/art/icon-o.html)은 이 O를 브라운관 화면에 넣어 찍은 것 */
 .logo > span {
   color: transparent; -webkit-background-clip: text; background-clip: text;
   background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(180deg, #fff, #ecebe6 55%, #c9c6bf);

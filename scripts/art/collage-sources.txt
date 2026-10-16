@@ -1,0 +1,47 @@
+# 첫 화면 콜라주(landing-collage.html)에 쓴 게임 화면: 영어 위키백과 파일 이름 (https://en.wikipedia.org/wiki/File:<이름>)
+# 저장소에는 넣지 않는다. 받아서 한 폴더에 모은 뒤 landing-collage.html의 build()에 넘긴다
+Another World: Megadrive another world.png
+Arkanoid: Arkanoid.png
+Castlevania: Castlevania nes 03.png
+Chrono Trigger: ChronoTriggerInside.PNG
+Civilization: CivilizationAmigaAGA.png
+Commander Keen: Commander Keen Marooned on Mars gameplay.gif
+Contra: Contra (NES version screenshot).png
+Donkey Kong Country: Donkey Kong Country Shot 2.png
+Donkey Kong: Donkey Kong Gameplay.png
+Doom: Doom ingame 1.png
+Dragon Quest: Dragon Quest 1 Remake screenshot.png
+Duck Hunt: Duck Hunt (NES) clay pigeon mode.png
+EarthBound: Mother 2 Summers.png
+F-Zero: SNES F-Zero.png
+Final Fantasy VI: Final Fantasy VI battle.png
+Final Fight: Final Fight gameplay.png
+Frogger: Frogger game arcade.png
+Galaga: Galaga arcade gameplay.png
+Gradius: Gradius 04.png
+Kirby's Adventure: NES Kirbys Adventure.png
+Lemmings: Amiga Lemmings.png
+Mega Man 2: MegaMan2 Platforms Screenshot.png
+Mega Man X: Mega Man X Armadillo stage running.png
+The Secret of Monkey Island: The Secret of Monkey Island SCUMM Bar.jpg
+Mortal Kombat: MortalKombat1992LegacyScreenshot.png
+Ms. Pac-Man: Mspacman.png
+Out Run: Out Run screenshot.png
+Pac-Man: Pac-Man gameplay (1x pixel-perfect recreation).png
+Pokémon Red/Blue: Pokémon Red, Blue, and Yellow battle screenshot.png
+Prince of Persia: Prince of Persia SNES.jpg
+Secret of Mana: Smana.PNG
+SimCity: NES SimCity.png
+Sonic the Hedgehog: MD Sonic the Hedgehog.png
+Space Invaders: SpaceInvaders-Gameplay.gif
+Star Fox: SNES Star Fox (Starwing).png
+Street Fighter II: Street Fighter II (arcade) screenshot.png
+Super Mario Bros.: NES Super Mario Bros.png
+Super Mario Bros. 3: Super Mario Bros 3 Gameplay.png
+Super Mario Kart: Super Mario Kart screen shot.jpg
+Super Mario World: Super Mario World.png
+Super Metroid: Super Metroid Grapple Beam.png
+Zelda: A Link to the Past: Legend of Zelda a Link to the Past Screen02.png
+Zelda: The Minish Cap: The Legend of Zelda The Minish Cap screenshot.png
+Warcraft: Warcraft Orcs v Humans 01.png
+Wolfenstein 3D: Wolf3d pc.png
