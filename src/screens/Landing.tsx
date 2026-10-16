@@ -6,7 +6,8 @@ import { Spinner } from "../ui/Spinner";
 
 // 배경: 고전 게임 장르 화면을 직접 그려 CRT를 씌운 콜라주 (scripts/art/landing-collage.html을 브라우저로 열어 1920×1200으로 찍은 것).
 // 실제 게임 화면은 저작권 때문에 쓰지 않는다
-const BG = { "--landing-bg": `url("${import.meta.env.BASE_URL}landing-bg.jpg")` };
+// 주소는 절대 주소로: CSS 변수 속 상대 주소는 CSS 파일(assets/) 기준으로 풀려서 그림을 못 찾는다 (BASE_URL이 "./"인 배포 빌드)
+const BG = { "--landing-bg": `url("${new URL(`${import.meta.env.BASE_URL}landing-bg.jpg`, document.baseURI).href}")` };
 
 export function Landing({ loading }: { loading?: boolean }) {
   const auth = useAuth();
