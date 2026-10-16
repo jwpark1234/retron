@@ -384,26 +384,27 @@ li.remote .thumb img { filter: saturate(0.6); }
 /* 로고: RETRO 아래 줄 끝(O 밑)에 N */
 .logo { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 0.82; font-weight: 800; letter-spacing: -0.01em; user-select: none; }
 .logo em { font-style: normal; color: var(--tint); }
-/* 큰 로고(첫 화면): 글자 전체에 CRT 효과 — 가는 주사선, RGB 어긋남, 빛 번짐. 글자는 형광 흰색, O만 주황 */
-.logo em i { font-style: normal; display: inline-block; color: transparent; -webkit-background-clip: text; background-clip: text; background-image: linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e); }
-.logo.large > span {
+/* 로고 글자 전체에 CRT 효과 — 가는 주사선, RGB 어긋남, 빛 번짐. 글자는 형광 흰색, O만 주황. 아이콘(scripts/art/icon-logo.html)도 이 로고를 찍은 것 */
+.logo > span {
   color: transparent; -webkit-background-clip: text; background-clip: text;
   background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(180deg, #fff, #ecebe6 55%, #c9c6bf);
   filter: drop-shadow(-0.014em 0 0 rgba(255, 42, 16, 0.55)) drop-shadow(0.014em 0 0 rgba(30, 200, 255, 0.45)) drop-shadow(0 0 0.1em rgba(225, 235, 255, 0.28));
 }
-.logo.large em i {
+.logo em i {
+  font-style: normal; display: inline-block; color: transparent; -webkit-background-clip: text; background-clip: text;
   padding: 0.1em 0; margin: -0.1em 0; /* 줄 간격(0.82)보다 글자가 커서, 칠하는 영역을 위아래로 넓혀야 O 아래가 잘리지 않는다 */
   background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e);
   filter: drop-shadow(0 0 0.09em rgba(255, 154, 46, 0.8));
 }
-/* 위쪽 막대의 작은 로고: 주사선은 너무 촘촘해 뭉개지므로 O의 빛 번짐만 */
-.logo.small em i { filter: drop-shadow(0 0 0.12em rgba(255, 154, 46, 0.6)); }
+/* 위쪽 막대의 작은 로고: 주사선 간격을 좁혀 글자마다 줄이 여러 개 지나가게 */
+.logo.small > span { background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 2px), linear-gradient(180deg, #fff, #ecebe6 55%, #c9c6bf); }
+.logo.small em i { background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 2px), linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e); filter: drop-shadow(0 0 0.12em rgba(255, 154, 46, 0.7)); }
 .logo.large { font-size: clamp(56px, 16vw, 112px); }
 .logo.small { font-size: 21px; }
 .logo .n { margin-top: 0.02em; }
 
 /* 첫 화면 */
-.landing { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; box-sizing: border-box; text-align: center; }
+.landing { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 24px 64px; box-sizing: border-box; text-align: center; }
 .landing .tagline { margin: 10px 0 18px; color: var(--muted); font-size: 16px; }
 .google-signin {
   display: inline-flex; align-items: center; gap: 12px; padding: 13px 26px; font-size: 16px; font-weight: 600;
@@ -412,6 +413,9 @@ li.remote .thumb img { filter: saturate(0.6); }
 .google-signin svg { width: 20px; height: 20px; }
 .landing .fineprint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
 .landing .error { max-width: 420px; }
+.landing .logo { margin-bottom: 36px; }
+/* 개인정보처리방침: 화면 맨 아래 */
+.landing .privacy-link { position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; white-space: nowrap; }
 
 /* 헤더 팝오버: 게임 추가, 계정 */
 .popover-anchor { position: relative; }
