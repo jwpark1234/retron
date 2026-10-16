@@ -3,63 +3,148 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>retron 개인정보처리방침</title>
+    <title>RETRON 개인정보처리방침</title>
     <style>
-      :root { color-scheme: dark; --text: #f5f5f7; --muted: rgba(245, 245, 247, 0.65); --tint: #ffb340; }
-      body { margin: 0; background: #07070c; color: var(--text); font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif; }
-      main { max-width: 720px; margin: 0 auto; padding: 40px 20px 64px; }
-      h1 { font-size: 26px; margin: 0 0 4px; }
-      h2 { font-size: 17px; margin: 32px 0 8px; color: var(--tint); }
-      p, li { color: var(--text); }
-      .muted { color: var(--muted); font-size: 13px; }
+      :root { color-scheme: dark; --text: #f5f5f7; --muted: rgba(245, 245, 247, 0.68); --line: rgba(255, 255, 255, 0.16); --tint: #ffb340; }
+      body { margin: 0; background: #07070c; color: var(--text); font: 15px/1.75 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; }
+      h1 { font-size: 26px; margin: 0 0 20px; text-align: center; }
+      h2 { font-size: 16.5px; margin: 34px 0 10px; }
+      p { margin: 8px 0; }
+      .box { border: 1px dashed var(--line); border-radius: 10px; padding: 12px 16px; margin: 10px 0; }
+      .box p:first-child, .box ul:first-child { margin-top: 0; }
+      .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+      ul, ol { padding-left: 22px; margin: 6px 0; }
+      table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+      th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+      th { background: rgba(255, 255, 255, 0.06); font-weight: 600; white-space: nowrap; }
+      .muted { color: var(--muted); font-size: 13.5px; }
       a { color: var(--tint); }
-      ul { padding-left: 20px; }
-      code { font-size: 13px; background: rgba(255, 255, 255, 0.08); padding: 1px 6px; border-radius: 6px; }
+      @media (max-width: 600px) { table { font-size: 13px; } th, td { padding: 6px 7px; } }
     </style>
   </head>
   <body>
     <main>
-      <h1>retron 개인정보처리방침</h1>
-      <p class="muted">시행일 2026년 10월 16일</p>
+      <h1>개인정보처리방침</h1>
 
-      <p>retron(<a href="https://retron.pages.dev/">retron.pages.dev</a>)은 사용자가 가진 옛날 게임 파일을 브라우저에서 실행하는 웹 앱입니다. 이 문서는 retron이 어떤 정보를 어디에 두고 어떻게 쓰는지 설명합니다.</p>
+      <p>RETRON(이하 "서비스", <a href="https://retron.pages.dev/">https://retron.pages.dev</a>)은 「개인정보 보호법」 등 관련 법령상의 개인정보 보호 규정을 준수하며, 개인정보처리방침은 아래와 같습니다.</p>
+      <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 이 페이지와 서비스 첫 화면을 통하여 고지할 것입니다.</p>
 
-      <h2>1. 받는 정보</h2>
-      <ul>
-        <li><strong>구글 계정 이메일 주소</strong>: 로그인한 계정을 화면에 보여 주고, 다시 열었을 때 같은 계정으로 이어 가기 위해 씁니다.</li>
-        <li><strong>구글 드라이브 접근 권한</strong> (<code>drive.file</code>): retron이 직접 만든 파일만 보고 쓸 수 있는 권한입니다. 사용자의 다른 드라이브 파일은 볼 수 없습니다.</li>
-      </ul>
+      <h2>제1조 (개인정보의 처리 목적)</h2>
+      <p>서비스는 개인정보를 다음의 목적을 위해 처리합니다. 처리한 개인정보는 다음의 목적 이외의 용도로는 사용되지 않으며, 이용 목적이 변경될 시에는 사전 동의를 구할 예정입니다.</p>
+      <div class="box">
+        <ol>
+          <li><strong>이용자 식별 및 로그인</strong>: 구글 계정으로 로그인한 이용자를 식별하고, 로그인 상태를 유지합니다.</li>
+          <li><strong>게임 데이터 보관 및 기기 간 동기화</strong>: 이용자가 직접 등록한 게임 파일, 게임 세이브, 설정을 이용자 본인의 구글 드라이브에 저장하고, 같은 계정으로 다른 기기에서 이어서 이용할 수 있게 합니다.</li>
+        </ol>
+        <p class="muted">서비스는 구글 API로 받은 정보를 위 목적에만 사용하며, 그 사용과 다른 앱으로의 전달은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 서비스 사용자 데이터 정책</a>(제한적 사용 요건 포함)을 따릅니다. 광고, 판매, 이용자 분석에 사용하지 않으며, 사람이 열람하지 않습니다.</p>
+      </div>
 
-      <h2>2. 정보를 두는 곳</h2>
-      <ul>
-        <li><strong>사용자 본인의 구글 드라이브</strong>: 등록한 게임 파일, 세이브, 설정을 드라이브의 <code>retron</code> 폴더에 저장합니다. 다른 기기에서 같은 계정으로 이어서 하기 위해서입니다.</li>
-        <li><strong>사용자의 브라우저</strong>: 게임 파일, 세이브, 설정, 로그인한 계정 이메일을 브라우저 저장소에 둡니다. 오프라인에서도 게임을 하기 위해서입니다.</li>
-        <li><strong>로그인 유지 쿠키</strong>: 드라이브 접근이 한 시간마다 끊기지 않도록, 구글이 준 갱신 토큰을 암호화해 사용자 브라우저의 쿠키에 둡니다. 이 쿠키는 retron 서버로만 보내지고 자바스크립트로 읽을 수 없습니다.</li>
-      </ul>
-      <p>retron 운영자는 사용자의 게임 파일, 세이브, 설정, 드라이브 내용을 서버에 저장하지 않고 볼 수도 없습니다. retron 서버(Cloudflare Pages)는 앱 파일을 내려주고, 위 쿠키로 구글에 새 접근 토큰을 요청하는 일만 합니다.</p>
+      <h2>제2조 (개인정보의 처리 및 보유기간)</h2>
+      <p>서비스 운영자는 이용자의 개인정보를 별도의 서버에 저장·보관하지 않습니다. 개인정보는 아래와 같이 이용자 본인의 기기와 구글 계정에만 있으며, 기간이 지나거나 이용자가 삭제하면 파기됩니다.</p>
+      <div class="box">
+        <table>
+          <tr><th>항목</th><th>보관 위치</th><th>보유기간</th></tr>
+          <tr><td>구글 계정 이메일 주소</td><td>이용자 기기의 브라우저 저장소</td><td>로그아웃하거나 브라우저 데이터를 삭제할 때까지</td></tr>
+          <tr><td>구글 접근 토큰</td><td>이용자 기기의 브라우저 저장소</td><td>발급 후 1시간 (자동 만료)</td></tr>
+          <tr><td>구글 갱신 토큰(암호화)</td><td>이용자 기기의 브라우저 쿠키</td><td>최대 180일, 또는 로그아웃·구글 권한 철회 시까지</td></tr>
+          <tr><td>게임 파일·세이브·설정</td><td>이용자 기기의 브라우저 저장소, 이용자 본인의 구글 드라이브 <code>retron</code> 폴더</td><td>이용자가 직접 삭제할 때까지 (서비스 운영자는 보유하지 않음)</td></tr>
+          <tr><td>접속 기록(IP 주소, 브라우저 정보, 접속 일시)</td><td>호스팅 업체(Cloudflare)</td><td>Cloudflare의 보관 정책에 따름</td></tr>
+        </table>
+      </div>
 
-      <h2>3. 제3자 제공</h2>
-      <p>개인정보를 판매하거나 제3자에게 제공하지 않습니다. 광고·분석 도구를 쓰지 않습니다. 서비스를 위해 다음 업체의 기능을 씁니다.</p>
-      <ul>
-        <li>Google: 로그인, 구글 드라이브 저장</li>
-        <li>Cloudflare: 웹사이트 호스팅 (일반적인 접속 기록이 Cloudflare에 남을 수 있습니다)</li>
-      </ul>
+      <h2>제3조 (개인정보의 제3자 제공에 관한 사항)</h2>
+      <div class="box">
+        <p>서비스는 이용자의 개인정보를 제3자에게 제공하지 않습니다.</p>
+      </div>
 
-      <h2>4. 구글 사용자 데이터 사용</h2>
-      <p>retron이 구글 API로 받은 정보의 사용과 다른 앱으로의 전달은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 서비스 사용자 데이터 정책</a>(제한적 사용 요건 포함)을 따릅니다. 받은 정보는 위에 적은 기능에만 쓰고, 다른 목적으로 쓰거나 사람이 열어 보지 않습니다.</p>
+      <h2>제4조 (개인정보처리 위탁에 관한 사항)</h2>
+      <p>서비스는 원활한 서비스 제공을 위하여 개인정보 처리를 다음과 같이 위탁하고 있습니다.</p>
+      <div class="box">
+        <table>
+          <tr><th>수탁업체명</th><th>위탁하는 업무 내용</th></tr>
+          <tr><td>Google LLC</td><td>구글 계정 로그인 인증, 이용자 본인 구글 드라이브에 게임 데이터 저장</td></tr>
+          <tr><td>Cloudflare, Inc.</td><td>웹사이트 호스팅, 로그인 상태 유지를 위한 토큰 갱신 처리</td></tr>
+        </table>
+        <p><strong>개인정보의 국외 이전</strong>: 위 수탁업체는 국외에 있으며, 서비스 이용 시 다음과 같이 개인정보가 국외로 이전됩니다.</p>
+        <table>
+          <tr><th>이전받는 자</th><th>이전되는 국가</th><th>이전 항목</th><th>이전 일시 및 방법</th><th>이용 목적 및 보유기간</th></tr>
+          <tr><td>Google LLC<br /><span class="muted">privacy.google.com</span></td><td>미국 등 Google 데이터센터 소재국</td><td>구글 계정 정보, 토큰, 이용자가 등록한 게임 데이터</td><td>서비스 이용 시 네트워크를 통해 전송</td><td>로그인 인증 및 드라이브 저장 / 이용자가 삭제하거나 권한을 철회할 때까지</td></tr>
+          <tr><td>Cloudflare, Inc.<br /><span class="muted">cloudflare.com/privacypolicy</span></td><td>미국 등 Cloudflare 데이터센터 소재국</td><td>접속 기록, 암호화된 갱신 토큰(요청 처리 중에만)</td><td>서비스 접속 시 네트워크를 통해 전송</td><td>호스팅 및 토큰 갱신 / Cloudflare 보관 정책에 따름</td></tr>
+        </table>
+        <p class="muted">이용자는 국외 이전을 원하지 않는 경우 서비스 이용을 중단하고 제5조의 방법으로 권한을 철회할 수 있습니다. 다만 이 경우 서비스를 이용할 수 없습니다.</p>
+      </div>
 
-      <h2>5. 삭제와 권한 철회</h2>
-      <ul>
-        <li>앱의 계정 메뉴에서 <strong>로그아웃</strong>하면 로그인 유지 쿠키를 지우고 구글에 갱신 토큰 취소를 요청합니다.</li>
-        <li><a href="https://myaccount.google.com/permissions">구글 계정 → 서드파티 앱 및 서비스</a>에서 retron의 접근 권한을 언제든 철회할 수 있습니다.</li>
-        <li>드라이브의 <code>retron</code> 폴더를 지우면 드라이브에 둔 게임·세이브·설정이 지워집니다.</li>
-        <li>브라우저의 사이트 데이터를 지우면 기기에 둔 정보가 지워집니다.</li>
-      </ul>
+      <h2>제5조 (정보주체의 권리·의무 및 그 행사방법에 관한 사항)</h2>
+      <div class="box">
+        <p>이용자는 개인정보주체로서 다음과 같은 권리를 행사할 수 있습니다.</p>
+        <ol>
+          <li>개인정보 열람 요구</li>
+          <li>오류 등이 있을 경우 정정 요구</li>
+          <li>삭제 요구</li>
+          <li>처리정지 요구</li>
+        </ol>
+        <p>행사 방법은 다음과 같으며, 제10조의 연락처로 요청할 수도 있습니다. 서비스는 이에 대해 지체 없이 조치하겠습니다.</p>
+        <ul>
+          <li>서비스의 계정 메뉴에서 <strong>로그아웃</strong>: 기기에 둔 계정 정보와 로그인 유지 쿠키를 지우고, 구글에 갱신 토큰 취소를 요청합니다.</li>
+          <li><a href="https://myaccount.google.com/permissions">구글 계정 → 서드파티 앱 및 서비스</a>에서 서비스의 접근 권한 철회</li>
+          <li>구글 드라이브의 <code>retron</code> 폴더 삭제 (드라이브에 둔 게임 데이터 삭제)</li>
+          <li>브라우저의 사이트 데이터 삭제 (기기에 둔 정보 삭제)</li>
+        </ul>
+        <p>권리 행사는 이용자의 법정대리인이나 위임을 받은 자 등 대리인을 통하여 하실 수도 있습니다.</p>
+      </div>
 
-      <h2>6. 바뀔 때</h2>
-      <p>이 방침이 바뀌면 이 페이지에 새 시행일과 함께 올립니다.</p>
+      <h2>제6조 (처리하는 개인정보 항목)</h2>
+      <div class="box">
+        <p>가. 필수 항목 : 구글 계정 이메일 주소, 구글 OAuth 토큰(접근 토큰, 갱신 토큰)</p>
+        <p>나. 선택 항목 : 없음</p>
+        <p>다. 서비스 이용 과정에서 자동으로 생성되는 항목 : 접속 IP 주소, 브라우저 정보, 접속 일시 (호스팅 업체의 접속 기록)</p>
+        <p class="muted">이용자가 등록하는 게임 파일, 세이브, 설정은 이용자 본인의 기기와 구글 드라이브에만 저장되며, 서비스 운영자가 수집하지 않습니다.</p>
+      </div>
 
-      <p class="muted" style="margin-top: 40px"><a href="./">retron으로 돌아가기</a></p>
+      <h2>제7조 (개인정보의 파기 절차 및 방법)</h2>
+      <div class="box">
+        <p><strong>파기 절차</strong>: 개인정보는 처리 목적이 달성되거나 보유기간이 지나면 지체 없이 파기합니다. 로그아웃하면 기기의 계정 정보와 로그인 유지 쿠키를 즉시 삭제하고, 구글에 갱신 토큰 취소를 요청합니다. 로그인 유지 쿠키는 보유기간(최대 180일)이 지나면 자동으로 만료됩니다.</p>
+        <p><strong>파기 방법</strong>: 전자적 파일 형태의 정보는 기록을 재생할 수 없는 기술적 방법으로 삭제합니다. 서비스는 종이 문서로 개인정보를 처리하지 않습니다.</p>
+      </div>
+
+      <h2>제8조 (개인정보의 안전성 확보 조치)</h2>
+      <div class="box">
+        <ul>
+          <li><strong>최소 권한</strong>: 구글 드라이브는 서비스가 만든 파일만 접근할 수 있는 권한(<code>drive.file</code>)만 사용합니다.</li>
+          <li><strong>서버 미저장</strong>: 서비스 운영자는 이용자의 개인정보와 게임 데이터를 서버에 저장하지 않습니다.</li>
+          <li><strong>암호화</strong>: 갱신 토큰은 AES-256-GCM으로 암호화하여 저장하고, 암호화 키는 호스팅 업체의 비밀값 저장소에서 별도로 관리합니다.</li>
+          <li><strong>쿠키 보호</strong>: 로그인 유지 쿠키는 스크립트가 읽을 수 없고(HttpOnly), 암호화된 연결로만 전송되며(Secure), 다른 사이트에서 보낸 요청에는 실리지 않습니다(SameSite).</li>
+          <li><strong>전송 구간 암호화</strong>: 모든 통신은 HTTPS로 암호화됩니다.</li>
+        </ul>
+      </div>
+
+      <h2>제9조 (권익침해 구제방법)</h2>
+      <div class="box">
+        <p>개인정보주체는 개인정보침해로 인한 구제를 받기 위하여 한국인터넷진흥원 개인정보침해신고센터 등에 분쟁해결이나 상담 등을 신청할 수 있습니다.</p>
+        <ul>
+          <li>개인정보침해신고센터 : (국번 없이) 118 (privacy.kisa.or.kr)</li>
+          <li>개인정보분쟁조정위원회 : 1833-6972 (www.kopico.go.kr)</li>
+          <li>대검찰청 : (국번 없이) 1301 (www.spo.go.kr)</li>
+          <li>경찰청 : (국번 없이) 182 (ecrm.police.go.kr)</li>
+        </ul>
+      </div>
+
+      <h2>제10조 (개인정보 보호책임자 및 담당자 연락처)</h2>
+      <div class="box">
+        <p>가. 개인정보 보호책임자 : RETRON 운영자</p>
+        <p>나. 연락처 : 메일 <a href="mailto:jwpark1988@gmail.com">jwpark1988@gmail.com</a></p>
+        <p class="muted">개인정보 보호 관련 문의, 불만 처리, 피해 구제 등은 위 연락처로 문의하실 수 있습니다.</p>
+      </div>
+
+      <h2>제11조 (개인정보처리방침 변경)</h2>
+      <div class="box">
+        <ul>
+          <li>이 개인정보처리방침은 2026. 10. 16.부터 적용됩니다.</li>
+        </ul>
+      </div>
+
+      <p class="muted" style="margin-top: 40px; text-align: center"><a href="./">RETRON으로 돌아가기</a></p>
     </main>
   </body>
 </html>
