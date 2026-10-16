@@ -1,32 +1,33 @@
-// 화면 방향: 자동 / 가로 / 세로.
+// 화면 방향: 가로 / 세로 (휴대폰만).
 // 안드로이드는 전체화면 + screen.orientation.lock으로 실제로 돌리고,
-// 안 되는 곳(아이폰, PC)은 게임 화면을 CSS로 90도 돌린다.
+// 안 되는 곳(아이폰)은 게임 화면을 CSS로 90도 돌린다.
+// "자동"은 없앴다: 기기를 돌릴 때마다 조작 배치가 바뀌어 손이 헤맸다. 처음엔 지금 기기 방향으로 시작한다.
 import { useEffect, useState } from "preact/hooks";
 
-export type OrientationMode = "auto" | "landscape" | "portrait";
+export type OrientationMode = "landscape" | "portrait";
 
 const KEY = "orientation";
 
-/** 휴대폰·태블릿 (손가락이 주 입력). 화면 방향, 가상 키, 트랙패드는 여기서만 보여 준다 */
-export const touchDevice = matchMedia("(pointer: coarse)").matches;
+/**
+ * 휴대폰·태블릿 (손가락이 주 입력이고 마우스 커서가 없다). 화면 방향, 가상패드, 트랙패드, 키 버튼은 여기서만 보여 준다.
+ * 터치스크린 노트북은 마우스·키보드가 있으므로 PC로 본다 (pointer: coarse만 보면 휴대폰 조작이 떴다)
+ */
+export const touchDevice = matchMedia("(hover: none) and (pointer: coarse)").matches;
+
+const deviceMode = (): OrientationMode => (innerHeight > innerWidth ? "portrait" : "landscape");
 
 function load(): OrientationMode {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "landscape" || v === "portrait" ? v : "auto";
+    return v === "landscape" || v === "portrait" ? v : deviceMode();
   } catch {
-    return "auto";
+    return deviceMode();
   }
 }
 
 async function tryLock(mode: OrientationMode) {
   const so = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-  if (mode === "auto") {
-    so.unlock?.();
-    if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
-    return;
-  }
-  if (!so.lock || !touchDevice) return;
+  if (!so?.lock || !touchDevice) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
     await so.lock(mode);
@@ -56,7 +57,8 @@ export function useOrientation() {
     void tryLock(m);
   };
 
-  const rotation = mode === "landscape" && portrait ? 90 : mode === "portrait" && !portrait ? -90 : 0;
+  // PC는 창 모양 그대로 쓴다 (세로로 긴 창이어도 돌리지 않는다)
+  const rotation = !touchDevice ? 0 : mode === "landscape" && portrait ? 90 : mode === "portrait" && !portrait ? -90 : 0;
   return { mode, setMode, rotation };
 }
 

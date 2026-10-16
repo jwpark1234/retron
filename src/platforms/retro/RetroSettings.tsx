@@ -1,7 +1,6 @@
-// SFC·GBA 설정: 키보드 설정(PC, 기종마다 그 기종 게임 모두에 공통)과 가상패드 켜고 끄기(휴대폰). 키 입력도 여기서 받는다.
+// SFC·GBA 설정: 키보드 설정(PC, 기본 배치가 있고 기종마다 그 기종 게임 모두에 공통)과 가상패드 켜고 끄기(휴대폰). 키 입력도 여기서 받는다.
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ON_OFF, Row, Segmented } from "../../ui/controls";
-import { StickStyleRow } from "../../player/DirectionPad";
 import { getPrefs, setPrefs, usePrefs } from "../../ui/prefs";
 import { keyLabel, type Input } from "./input";
 import type { RetroButton, RetroKeys, RetroSystem } from "./systems";
@@ -87,17 +86,24 @@ export function KeySettings({ system, capturing, onCapture }: { system: RetroSys
   );
 }
 
-/** 휴대폰: 가상패드 켜고 끄기, 방향 조작 고르기. 게임패드가 연결돼 있으면 가상패드는 저절로 숨는다 */
+/** 휴대폰: 가상패드 켜고 끄기 (방향 조작 모양은 계정 메뉴에서 고른다). 게임패드가 연결돼 있으면 가상패드는 저절로 숨는다 */
 export function VirtualPadSetting({ gamepad }: { gamepad: boolean }) {
   const { virtualPad } = usePrefs();
   return (
-    <>
-      <Row label="가상패드">
-        {gamepad ? <small>게임패드 사용 중</small> : <Segmented value={virtualPad ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ virtualPad: v === "on" })} />}
-      </Row>
-      {!gamepad && virtualPad && (
-        <StickStyleRow />
-      )}
-    </>
+    <Row label="가상패드">
+      {gamepad ? <small>게임패드 사용 중</small> : <Segmented value={virtualPad ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ virtualPad: v === "on" })} />}
+    </Row>
+  );
+}
+
+const FAST_SPEEDS = [2, 3, 4].map((v) => ({ value: String(v), label: `${v}×` }));
+
+/** 빨리가기 배속. 바꾸면 지금 상태를 들고 에뮬레이터를 다시 띄운다 (onChange) */
+export function FastSpeedSetting({ onChange }: { onChange: (speed: number) => void }) {
+  const { fastSpeed } = usePrefs();
+  return (
+    <Row label="빨리가기 배속">
+      <Segmented value={String(fastSpeed)} options={FAST_SPEEDS} onChange={(v) => +v !== fastSpeed && onChange(+v)} />
+    </Row>
   );
 }

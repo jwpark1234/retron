@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import { AUTO_SLOT, writeSlot } from "../library/states";
 import { markDirty } from "../sync/sync";
-import type { StateBridge } from "./GameMenu";
+import type { StateBridge } from "./bridge";
 
 const INTERVAL_MS = 3 * 60 * 1000; // 탭을 갑자기 닫아도 최근 상태가 남도록
 

@@ -21,24 +21,14 @@ function Button({ button, label, press, class: cls }: { button: RetroButton; lab
   );
 }
 
-/** menuButton: SELECT와 START 사이에 둘 메뉴 버튼. quick: 그 위 빠른 버튼 줄. rotation: 화면을 CSS로 돌렸을 때 각도 */
-export function VirtualPad({
-  system,
-  press,
-  rotation,
-  style,
-  menuButton,
-  quick,
-}: {
-  system: RetroSystem;
-  press: Press;
-  rotation: number;
-  style: StickStyle;
-  menuButton: ComponentChildren;
-  quick: ComponentChildren;
-}) {
+/**
+ * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 세로 화면은 조작 영역 맨 위, 가로 화면은 방향 패드·버튼 바로 위에 온다.
+ * rotation: 화면을 CSS로 돌렸을 때 각도
+ */
+export function VirtualPad({ system, press, rotation, style, top }: { system: RetroSystem; press: Press; rotation: number; style: StickStyle; top: ComponentChildren }) {
   return (
     <div class="vpad">
+      {top}
       <div class="vpad-shoulders">
         <Button button="l" label="L" press={press} class="shoulder" />
         <Button button="r" label="R" press={press} class="shoulder" />
@@ -54,13 +44,9 @@ export function VirtualPad({
         <Button button="a" label="A" press={press} class="a" />
         <Button button="b" label="B" press={press} class="b" />
       </div>
-      <div class="vpad-mid">
-        {quick}
-        <div class="vpad-sys">
+      <div class="vpad-sys">
         <Button button="select" label="SELECT" press={press} class="pill" />
-        {menuButton}
         <Button button="start" label="START" press={press} class="pill" />
-        </div>
       </div>
     </div>
   );

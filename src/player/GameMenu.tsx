@@ -1,26 +1,21 @@
-// 게임 중 메뉴(나가기, 화면 설정, 플랫폼별 설정)와 저장·불러오기 팝업(화면의 저장·불러오기 버튼이 연다). DOS와 SFC가 같이 쓴다.
+// 게임 중 메뉴(나가기, 필터, 전체화면, 재시작, 스크린샷, 화면 설정, 플랫폼별 설정)와 저장·불러오기 팝업(화면의 Save·Load 버튼이 연다). DOS와 SFC·GBA가 같이 쓴다.
+// 메뉴나 팝업이 떠 있는 동안 게임을 멈춘다.
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { Row, Segmented } from "../ui/controls";
-import { IconClose, IconExit, IconFullscreen, IconGamepad, IconMonitor } from "../ui/icons";
+import { IconCamera, IconClose, IconExit, IconFullscreen, IconGamepad, IconMonitor, IconRestart } from "../ui/icons";
 import { setPrefs, usePrefs, type ScreenFilter } from "../ui/prefs";
+import type { StateBridge } from "./bridge";
 import { padName, useGamepad } from "./gamepads";
-import { MenuButton, type MenuState } from "./MenuButton";
-import { QuickButtons } from "./QuickButtons";
+import type { MenuState } from "./MenuButton";
+import { SlotButtons, SpeedMenuButtons } from "./QuickButtons";
 import { touchDevice, type OrientationMode } from "./orientation";
+import { saveScreenshot } from "./screenshot";
 import { StateSlots } from "./StateSlots";
 import { useAutoSave } from "./useAutoSave";
 import { useToast } from "./useToast";
 
-/** 플랫폼이 메뉴에 내주는 기능 */
-export interface StateBridge {
-  save(): Promise<{ state: Uint8Array; thumb: Blob | null }>;
-  load(state: Uint8Array): Promise<void>;
-  setFastForward?(on: boolean): Promise<void>;
-}
-
 const ORIENTATIONS: { value: OrientationMode; label: string }[] = [
-  { value: "auto", label: "자동" },
   { value: "landscape", label: "가로" },
   { value: "portrait", label: "세로" },
 ];
@@ -68,7 +63,7 @@ export function GameMenu({
   children,
 }: {
   menu: MenuState;
-  floating: boolean; // 화면 컨트롤이 없어서 빠른 버튼과 메뉴 버튼을 화면 아래에 띄울 때
+  floating: boolean; // 화면 컨트롤이 없어서(PC, 게임패드) Save·Load·빨리가기·메뉴 버튼을 화면 아래에 띄울 때
   gameId: string;
   title: string;
   bridge: StateBridge | null;
@@ -89,6 +84,8 @@ export function GameMenu({
   const [busy, setBusy] = useState("");
   const [toast, showToast] = useToast(1800);
   const autoSave = useAutoSave(gameId, bridge);
+  const paused = open || !!menu.slots;
+  useEffect(() => bridge?.setPaused(paused), [paused, bridge]);
 
   /** 진행 표시를 띄우고, 끝나면 돌려준 문구(또는 실패)를 알린다 */
   const run = async (label: string, fn: () => Promise<string | void>) => {
@@ -105,15 +102,34 @@ export function GameMenu({
   const exit = () =>
     run("자동 저장 중…", async () => {
       await autoSave();
+      bridge?.setPaused(false); // 나가면서 세이브(SRAM)를 쓰는 동안 에뮬레이터가 돌고 있어야 한다
       onExit();
+    });
+
+  // 재시작 전에 자동 저장 슬롯에 남겨 둔다 (잘못 눌렀으면 불러오기 → 자동 저장으로 되돌린다)
+  const restart = () => {
+    if (!bridge || !confirm("처음부터 다시 시작할까요? 지금 상태는 자동 저장 슬롯에 남겨 둡니다.")) return;
+    void run("다시 시작하는 중…", async () => {
+      await autoSave();
+      await bridge.reset();
+      setOpen(false);
+    });
+  };
+
+  const screenshot = () =>
+    run("스크린샷 저장 중…", async () => {
+      const png = await bridge?.screenshot();
+      if (!png) return "화면을 찍지 못했습니다";
+      await saveScreenshot(title, png);
+      return "스크린샷을 저장했습니다";
     });
 
   return (
     <>
       {floating && !open && (
         <div class="floating-bar">
-          <QuickButtons bridge={bridge} onSlots={menu.openSlots} />
-          <MenuButton onClick={() => setOpen(true)} />
+          <SlotButtons menu={menu} bridge={bridge} />
+          <SpeedMenuButtons menu={menu} />
         </div>
       )}
       {open && (
@@ -131,6 +147,8 @@ export function GameMenu({
                 <IconTile icon={<IconExit />} label="나가기" danger disabled={!!busy} onClick={exit} />
                 <IconTile icon={<IconMonitor />} label={`필터 · ${labelOf(FILTERS, prefs.filter)}`} onClick={() => setPrefs({ filter: next(FILTERS, prefs.filter) })} />
                 {document.fullscreenEnabled && <IconTile icon={<IconFullscreen on={fullscreen} />} label="전체화면" on={fullscreen} onClick={toggleFullscreen} />}
+                <IconTile icon={<IconRestart />} label="재시작" disabled={!bridge || !!busy} onClick={restart} />
+                <IconTile icon={<IconCamera />} label="스크린샷" disabled={!bridge || !!busy} onClick={() => void screenshot()} />
               </div>
               <section class="menu-group">
                 {touchDevice && (

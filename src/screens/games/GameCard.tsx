@@ -2,7 +2,7 @@
 import type { RemoteGame, Transfer } from "../../cloud/games";
 import type { Game, Platform } from "../../library/library";
 
-const PLATFORM_LABEL: Record<Platform, string> = { dos: "DOS", sfc: "SFC", gba: "GBA" };
+export const PLATFORM_LABEL: Record<Platform, string> = { dos: "DOS", sfc: "SFC", gba: "GBA" };
 
 function Progress({ t }: { t?: Transfer }) {
   if (!t) return null;

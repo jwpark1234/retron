@@ -1,21 +1,36 @@
-// 게임 메뉴 버튼과 열림 상태. 버튼은 화면 컨트롤(가상패드, 키 막대) 안에 들어가기도 해서 플레이 화면이 상태를 갖는다.
-// 저장·불러오기 팝업도 화면 버튼(QuickButtons)이 열므로 여기서 같이 갖는다.
-import { useState } from "preact/hooks";
+// 플레이 화면이 갖는 상태: 메뉴 열림, 저장·불러오기 팝업, 빨리가기(켜고 끄기).
+// 버튼은 화면 컨트롤(가상패드, DOS 막대) 안에 들어가거나 PC에서는 화면 아래에 떠서 여러 곳에서 쓰므로 여기서 같이 갖는다.
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { StateBridge } from "./bridge";
 
 export type MenuState = ReturnType<typeof useMenuState>;
 export type SlotMode = "save" | "load";
 
-export function useMenuState() {
+export function useMenuState(bridge: StateBridge | null) {
   const [open, setOpen] = useState(false);
   const [slots, setSlots] = useState<SlotMode | null>(null);
-  return { open, setOpen, toggle: () => setOpen((o) => !o), slots, openSlots: (mode: SlotMode | null) => setSlots(mode) };
-}
+  const [fast, setFast] = useState(false);
+  const fastRef = useRef(fast);
+  fastRef.current = fast;
 
-/** 화면 컨트롤이 있으면 그 안에, 없으면 빠른 버튼과 함께 화면 아래 가운데에 흐리게 띄운다(GameMenu). 게임 화면을 가리지 않게 위쪽은 쓰지 않는다 */
-export function MenuButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button class="glass menu-button" aria-label="메뉴" onClick={onClick}>
-      ☰
-    </button>
-  );
+  // 게임이 새로 준비되면(브리지가 바뀌면) 빨리가기는 꺼진 상태에서 시작한다
+  useEffect(() => setFast(false), [bridge]);
+
+  const toggleFast = () => {
+    if (!bridge?.setFastForward) return;
+    const next = !fastRef.current;
+    setFast(next);
+    void bridge.setFastForward(next).catch(() => setFast(!next));
+  };
+
+  return {
+    open,
+    setOpen,
+    toggle: () => setOpen((o) => !o),
+    slots,
+    openSlots: (mode: SlotMode | null) => setSlots(mode),
+    fast,
+    canFast: !!bridge?.setFastForward,
+    toggleFast,
+  };
 }

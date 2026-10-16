@@ -17,7 +17,7 @@ export function Landing() {
         {auth.busy ? "로그인 중…" : "Google 계정으로 로그인"}
       </button>
       {auth.error && <p class="error">로그인하지 못했습니다: {auth.error}</p>}
-      <p class="fineprint">게임과 세이브는 내 구글 드라이브의 retron 폴더에 저장됩니다.</p>
+      <p class="fineprint">모든 데이터는 내 구글 드라이브의 retron 폴더에 저장됩니다.</p>
     </div>
   );
 }

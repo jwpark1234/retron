@@ -1,6 +1,9 @@
 // 노트북 트랙패드처럼 쓰는 마우스: 끌면 커서가 움직이고, 탭=왼쪽 클릭, 길게 누르기=오른쪽 클릭.
+import type { JSX } from "preact";
 import { useRef } from "preact/hooks";
 import { rotateDelta } from "../../player/orientation";
+import { haptic } from "../../ui/haptics";
+import { IconMouse } from "../../ui/icons";
 
 const SPEED = 1 / 260; // 패드 위 260px을 움직이면 화면 끝에서 끝까지
 const TAP_MS = 250;
@@ -11,7 +14,11 @@ export function Trackpad({
   rotation,
   onMove,
   onButton,
+  class: cls,
+  style,
 }: {
+  class?: string;
+  style?: JSX.CSSProperties;
   rotation: number;
   onMove: (dx: number, dy: number) => void;
   onButton: (button: 0 | 1, pressed: boolean) => void;
@@ -20,6 +27,7 @@ export function Trackpad({
   const touch = useRef<{ id: number; x: number; y: number; start: number; moved: number; longPressed: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null);
 
   const click = (b: 0 | 1) => {
+    haptic();
     onButton(b, true);
     setTimeout(() => onButton(b, false), 80);
   };
@@ -56,7 +64,7 @@ export function Trackpad({
   };
 
   return (
-    <div class="trackpad">
+    <div class={`trackpad ${cls ?? ""}`} style={style}>
       <div
         class="pad"
         onPointerDown={down}
@@ -65,7 +73,7 @@ export function Trackpad({
         onPointerCancel={(e) => end(e, true)}
         aria-label="트랙패드: 탭은 왼쪽 클릭, 길게 누르면 오른쪽 클릭"
       >
-        <span>트랙패드</span>
+        <IconMouse />
       </div>
     </div>
   );

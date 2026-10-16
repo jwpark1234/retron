@@ -3,7 +3,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { AUTO_SLOT, QUICK_SLOT, SLOTS, listSlots, readSlot, writeSlot, type SlotInfo } from "../library/states";
 import { markDirty } from "../sync/sync";
-import type { StateBridge } from "./GameMenu";
+import type { StateBridge } from "./bridge";
 import type { SlotMode } from "./MenuButton";
 
 // 예전 빠른 저장 슬롯은 슬롯 5로 쓴다

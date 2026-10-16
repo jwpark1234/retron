@@ -5,7 +5,6 @@ import { RETROARCH_KEYS } from "./input";
 import type { RetroButton, RetroSystem } from "./systems";
 
 const CORE_DIR = `${import.meta.env.BASE_URL}retroarch/v1.22.2/`; // scripts/copy-emulators.mjs가 받아 둔다
-const FAST_RATIO = 3; // 빨리가기 배속
 const SRAM_INTERVAL_S = 5; // RetroArch가 세이브(SRAM)를 파일에 쓰는 주기
 
 export interface RetroEmulator {
@@ -16,10 +15,14 @@ export interface RetroEmulator {
   /** 게임 세이브(SRAM). 배터리 세이브가 없는 게임이면 null */
   readSram(flush?: boolean): Promise<Uint8Array | null>;
   setFastForward(on: boolean): void;
+  pause(): void;
+  resume(): void;
+  reset(): void;
   exit(): void;
 }
 
-export async function createRetro(system: RetroSystem, canvas: HTMLCanvasElement, rom: File, sram: Blob | null): Promise<RetroEmulator> {
+/** fastRatio: 빨리가기 배속. RetroArch는 실행 중에 배속을 바꿀 수 없어서, 바꾸면 다시 띄운다(RetroPlayer) */
+export async function createRetro(system: RetroSystem, canvas: HTMLCanvasElement, rom: File, sram: Blob | null, fastRatio: number): Promise<RetroEmulator> {
   const n = await Nostalgist.launch({
     element: canvas,
     core: system.core,
@@ -34,7 +37,7 @@ export async function createRetro(system: RetroSystem, canvas: HTMLCanvasElement
       ...RETROARCH_KEYS,
       input_joypad_driver: "null", // 게임패드도 retron이 읽는다 (두 번 눌리지 않게)
       autosave_interval: String(SRAM_INTERVAL_S),
-      fastforward_ratio: FAST_RATIO,
+      fastforward_ratio: fastRatio,
       video_smooth: false,
       savestate_thumbnail_enable: false,
       video_font_enable: false, // 화면 위 RetroArch 알림 글자를 끈다
@@ -61,6 +64,9 @@ export async function createRetro(system: RetroSystem, canvas: HTMLCanvasElement
       if (on !== fast) n.sendCommand("FAST_FORWARD"); // RetroArch 명령은 켜고 끄기를 번갈아 한다
       fast = on;
     },
+    pause: () => n.pause(),
+    resume: () => n.resume(),
+    reset: () => n.restart(),
     exit: () => n.exit({ removeCanvas: false }),
   };
 }

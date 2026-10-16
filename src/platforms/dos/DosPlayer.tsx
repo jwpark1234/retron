@@ -6,9 +6,10 @@ import { gameDir, type Game } from "../../library/library";
 import { listFiles, removeFile, writeFile, type FileMap } from "../../library/store";
 import { squarePng } from "../../library/thumbnail";
 import { watchFirstRunThumbnail } from "../../player/first-run-thumbnail";
-import { GameMenu, type StateBridge } from "../../player/GameMenu";
+import { pausable, type StateBridge } from "../../player/bridge";
+import { GameMenu } from "../../player/GameMenu";
 import { useMenuState } from "../../player/MenuButton";
-import { QuickButtons } from "../../player/QuickButtons";
+import { ControlTop } from "../../player/QuickButtons";
 import { rotatedStyle, touchDevice, useOrientation } from "../../player/orientation";
 import { Screen } from "../../player/Screen";
 import { useToast } from "../../player/useToast";
@@ -39,11 +40,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   const [status, setStatus] = useState("불러오는 중…");
   const [toast, showToast] = useToast();
   const [bridge, setBridge] = useState<StateBridge | null>(null);
+  const [run, setRun] = useState(0); // 재시작: 바뀌면 에뮬레이터를 새로 띄운다 (js-dos에는 리셋이 없다)
   const orientation = useOrientation();
   const rotation = useRef(0);
   rotation.current = orientation.rotation;
   const prefs = usePrefs();
-  const menu = useMenuState();
+  const menu = useMenuState(bridge);
   const vkeys = useVirtualKeys(game);
   const dir = gameDir(game.id);
   const info = game.dos!;
@@ -75,11 +77,20 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
 
       const snapshot = () => new Promise<Blob | null>((resolve) => (canvas.current ? canvas.current.toBlob(resolve, "image/png") : resolve(null)));
       const setFast = dosFastForward(dos);
-      setBridge({
-        save: async () => ({ state: await saveDosState(dos), thumb: await snapshot() }),
-        load: (state) => loadDosState(dos, state),
-        setFastForward: async (on) => setFast(on),
-      });
+      setBridge(
+        pausable({
+          save: async () => ({ state: await saveDosState(dos), thumb: await snapshot() }),
+          load: (state) => loadDosState(dos, state),
+          setFastForward: async (on) => setFast(on),
+          pause: () => dos.pause(),
+          resume: () => dos.resume(),
+          reset: async () => {
+            setStatus("다시 시작하는 중…");
+            setRun((n) => n + 1);
+          },
+          screenshot: snapshot,
+        }),
+      );
 
       // 게임 안 세이브 파일이 바뀌면 기기에 저장하고 드라이브 동기화를 예약한다
       const stopWatch = await watchSaves(dos, {
@@ -100,8 +111,9 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       cleanups.forEach((c) => c());
       void ci.current?.exit();
       ci.current = null;
+      setBridge(null);
     };
-  }, []);
+  }, [run]);
 
   return (
     <div class="game" ref={stage} style={rotatedStyle(orientation.rotation)}>
@@ -109,7 +121,9 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       <GameMenu menu={menu} floating={!touchDevice} gameId={game.id} title={game.title} bridge={bridge} onExit={onExit} orientation={orientation}>
         {() => (
           <>
-            {touchDevice && <DosTouchSettings keys={vkeys.keys} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />}
+            {touchDevice && (
+              <DosTouchSettings keys={vkeys.keys} landscape={orientation.mode === "landscape"} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />
+            )}
             <MouseSpeedSetting />
           </>
         )}
@@ -118,11 +132,11 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         <DosTouchControls
           keys={vkeys.keys}
           rotation={orientation.rotation}
+          landscape={orientation.mode === "landscape"}
           onKey={(k, p) => ci.current?.sendKeyEvent(k, p)}
           onMove={(dx, dy) => nudgeCursor(cursor.current, ci.current, dx, dy)}
           onButton={(b, p) => ci.current?.sendMouseButton(b, p)}
-          onMenu={menu.toggle}
-          quick={<QuickButtons bridge={bridge} onSlots={menu.openSlots} />}
+          top={<ControlTop menu={menu} bridge={bridge} />}
         />
       )}
       {status && <div class="overlay">{status}</div>}

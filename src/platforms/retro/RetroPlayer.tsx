@@ -2,21 +2,23 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { uploadGame } from "../../cloud/games";
 import { gameDir, type Game } from "../../library/library";
+import { AUTO_SLOT, writeSlot } from "../../library/states";
 import { getFile, writeFile } from "../../library/store";
 import { imageFileToSquare } from "../../library/thumbnail";
 import { watchFirstRunThumbnail } from "../../player/first-run-thumbnail";
 import { Screen } from "../../player/Screen";
 import { useToast } from "../../player/useToast";
 import { markDirty } from "../../sync/sync";
-import { GameMenu, type StateBridge } from "../../player/GameMenu";
-import { MenuButton, useMenuState } from "../../player/MenuButton";
-import { QuickButtons } from "../../player/QuickButtons";
+import { pausable, type StateBridge } from "../../player/bridge";
+import { GameMenu } from "../../player/GameMenu";
+import { useMenuState } from "../../player/MenuButton";
+import { ControlTop } from "../../player/QuickButtons";
 import { useGamepad } from "../../player/gamepads";
 import { rotatedStyle, touchDevice, useOrientation } from "../../player/orientation";
-import { usePrefs } from "../../ui/prefs";
+import { getPrefs, setPrefs, usePrefs } from "../../ui/prefs";
 import { createRetro, type RetroEmulator } from "./create-retro";
 import { createInput, watchRetroGamepad } from "./input";
-import { KeySettings, VirtualPadSetting, useRetroKeyboard } from "./RetroSettings";
+import { FastSpeedSetting, KeySettings, VirtualPadSetting, useRetroKeyboard } from "./RetroSettings";
 import type { RetroSystem } from "./systems";
 import { VirtualPad } from "./VirtualPad";
 
@@ -32,13 +34,15 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const orientation = useOrientation();
   const prefs = usePrefs();
   const pad = useGamepad();
-  const menu = useMenuState();
   const input = useMemo(() => createInput((b, p) => emu.current?.press(b, p)), []);
   const { capturing, setCapturing } = useRetroKeyboard(system, input);
   const dir = gameDir(game.id);
   const sramPath = `${dir}/sram.srm`;
   const lastSram = useRef<Uint8Array | null>(null);
   const finishThumb = useRef<() => Promise<void>>(async () => {});
+  // 빨리가기 배속을 바꾸면 에뮬레이터를 다시 띄운다 (RetroArch는 실행 중에 배속을 못 바꾼다). 그동안 상태를 들고 간다
+  const [launch, setLaunch] = useState(0);
+  const carry = useRef<Uint8Array | null>(null);
 
   // 세이브(SRAM)가 바뀌었으면 기기에 저장하고 드라이브 동기화를 예약한다
   const persistSram = async (flush = false) => {
@@ -60,9 +64,13 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
       const sram = await getFile(sramPath);
       if (sram) lastSram.current = new Uint8Array(await sram.arrayBuffer());
       setStatus("에뮬레이터 준비 중…");
-      const e = await createRetro(system, canvas.current!, new File([rom], romName), sram);
+      const e = await createRetro(system, canvas.current!, new File([rom], romName), sram, getPrefs().fastSpeed);
       if (disposed) return e.exit();
       emu.current = e;
+      if (carry.current) {
+        await e.loadState(carry.current);
+        carry.current = null;
+      }
       setReady(true);
       setStatus("");
       stops.push(watchRetroGamepad(system, input));
@@ -78,25 +86,51 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
       disposed = true;
       stops.forEach((s) => s());
       input.releaseAll();
+      void finishThumb.current().catch(() => undefined);
       emu.current?.exit();
       emu.current = null;
+      setReady(false);
     };
-  }, []);
+  }, [launch]);
 
   const bridge = useMemo<StateBridge | null>(
     () =>
       ready
-        ? {
+        ? pausable({
             save: async () => {
               const e = emu.current!;
               return { state: await e.saveState(), thumb: await e.screenshot().catch(() => null) };
             },
             load: (state) => emu.current!.loadState(state),
             setFastForward: async (on) => emu.current!.setFastForward(on),
-          }
+            pause: () => emu.current?.pause(),
+            resume: () => emu.current?.resume(),
+            reset: async () => emu.current!.reset(),
+            screenshot: () => emu.current!.screenshot(),
+          })
         : null,
     [ready],
   );
+  const menu = useMenuState(bridge);
+
+  const changeSpeed = async (speed: number) => {
+    setPrefs({ fastSpeed: speed });
+    if (!bridge) return;
+    setStatus("배속 바꾸는 중…");
+    try {
+      const { state, thumb } = await bridge.save();
+      carry.current = state;
+      // 다시 띄운 뒤 상태를 못 불러와도 되돌릴 수 있게 자동 저장 슬롯에도 남긴다
+      await writeSlot(game.id, AUTO_SLOT, state, thumb);
+      markDirty(game.id, "states");
+      await persistSram(true);
+    } catch {
+      carry.current = null; // 상태를 못 들고 가면 처음부터 시작하지 않도록 다시 띄우지 않는다
+      setStatus("");
+      return;
+    }
+    setLaunch((n) => n + 1);
+  };
 
   const exit = async () => {
     await persistSram(true).catch(() => undefined);
@@ -110,7 +144,12 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
     <div class="game" style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
       <GameMenu menu={menu} floating={!showPad} gameId={game.id} title={game.title} bridge={bridge} onExit={exit} orientation={orientation} onClose={() => setCapturing(null)}>
-        {() => (touchDevice ? <VirtualPadSetting gamepad={!!pad} /> : <KeySettings system={system} capturing={capturing} onCapture={setCapturing} />)}
+        {() => (
+          <>
+            <FastSpeedSetting onChange={(v) => void changeSpeed(v)} />
+            {touchDevice ? <VirtualPadSetting gamepad={!!pad} /> : <KeySettings system={system} capturing={capturing} onCapture={setCapturing} />}
+          </>
+        )}
       </GameMenu>
       {showPad && (
         <VirtualPad
@@ -118,8 +157,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
           press={input.set}
           rotation={orientation.rotation}
           style={prefs.stickStyle}
-          menuButton={<MenuButton onClick={menu.toggle} />}
-          quick={<QuickButtons bridge={bridge} onSlots={menu.openSlots} />}
+          top={<ControlTop menu={menu} bridge={bridge} />}
         />
       )}
       {status && <div class="overlay">{status}</div>}
