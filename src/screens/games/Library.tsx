@@ -1,5 +1,6 @@
 // 라이브러리 화면: 게임 목록(정렬), 게임 추가(고르기·끌어다 놓기), 게임 설정.
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
+import { Spinner } from "../../ui/Spinner";
 import { useUploadIssues } from "../../cloud/games";
 import { useAuth } from "../../cloud/google-auth";
 import { Popover } from "../../ui/controls";
@@ -67,6 +68,73 @@ function useThumbLuma() {
   );
 }
 
+// --- 당겨서 새로고침 (휴대폰) ---
+const PULL_MAX = 110;
+const PULL_GO = 70; // 이만큼 당겼다 놓으면 새로고침
+const PULL_RATE = 0.5; // 손가락 이동의 절반만 따라 내려온다 (당기는 느낌)
+
+/** 맨 위에서 아래로 쓸어내리면 드라이브 목록·썸네일을 다시 읽는다. 창(게임 설정, 계정)이 떠 있을 때는 하지 않는다 */
+function usePullToRefresh(refresh: () => Promise<void>) {
+  const [pull, setPull] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const latest = useRef(refresh);
+  latest.current = refresh;
+  const busyRef = useRef(false);
+  useEffect(() => {
+    let startY: number | null = null;
+    let dist = 0;
+    const start = (e: TouchEvent) => {
+      if (busyRef.current || e.touches.length !== 1 || scrollY > 0 || document.querySelector(".modal, .menu-backdrop")) return;
+      startY = e.touches[0].clientY;
+      dist = 0;
+    };
+    const move = (e: TouchEvent) => {
+      if (startY === null) return;
+      if (e.touches.length !== 1) return void ((startY = null), setPull(0));
+      dist = (e.touches[0].clientY - startY) * PULL_RATE;
+      if (dist <= 0 || scrollY > 0) return setPull(0);
+      if (e.cancelable) e.preventDefault(); // 내려 당기는 동안 화면이 같이 끌려 내려가지 않게
+      setPull(Math.min(PULL_MAX, dist));
+    };
+    const end = async () => {
+      if (startY === null) return;
+      startY = null;
+      setPull(0);
+      if (dist < PULL_GO) return;
+      busyRef.current = true;
+      setBusy(true);
+      try {
+        await latest.current();
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    };
+    addEventListener("touchstart", start, { passive: true });
+    addEventListener("touchmove", move, { passive: false });
+    addEventListener("touchend", end);
+    addEventListener("touchcancel", end);
+    return () => {
+      removeEventListener("touchstart", start);
+      removeEventListener("touchmove", move);
+      removeEventListener("touchend", end);
+      removeEventListener("touchcancel", end);
+    };
+  }, []);
+  return { pull, busy };
+}
+
+/** 위쪽 막대 아래로 내려오는 동그라미: 당기는 동안 화살표가 돌고, 놓으면(새로고침 중) 도는 고리 */
+function PullIndicator({ pull, busy }: { pull: number; busy: boolean }) {
+  if (!pull && !busy) return null;
+  const y = busy ? PULL_GO : pull;
+  return (
+    <div class={`ptr glass${pull >= PULL_GO || busy ? " ready" : ""}`} style={{ transform: `translate(-50%, ${y}px)`, opacity: busy ? 1 : Math.min(1, pull / PULL_GO) }}>
+      {busy ? <Spinner small /> : <span style={{ transform: `rotate(${pull * 4}deg)` }}>↻</span>}
+    </div>
+  );
+}
+
 // --- 정렬 ---
 type Item = { kind: "local"; game: Game } | { kind: "remote"; remote: RemoteGame };
 const SORTS: { value: LibrarySort; label: string }[] = [
@@ -119,6 +187,7 @@ function SortMenu({ count }: { count: number }) {
 
 export function Library({ onPlay, onDownload }: { onPlay: (game: Game) => void; onDownload: (r: RemoteGame) => void }) {
   const { games, thumbs, remote, onDrive, transfers, refresh } = useGames();
+  const ptr = usePullToRefresh(refresh);
   useThumbLuma();
   // 드라이브 목록을 못 읽었으면 null (모름)
   const driveState = (g: Game) => (onDrive ? !!g.syncKey && onDrive.has(g.syncKey) : null);
@@ -141,7 +210,15 @@ export function Library({ onPlay, onDownload }: { onPlay: (game: Game) => void; 
     <div class="library">
       <LibraryHeader picker={picker} progress={imp.progress} />
 
-      {/* 오류는 목록 위에 끼워 넣지 않고 아래쪽에 띄운다 (그리드가 밀리지 않게) */}
+      <PullIndicator pull={ptr.pull} busy={ptr.busy} />
+
+      {/* 게임 추가 진행 메시지와 오류는 목록 위에 끼워 넣지 않고 아래쪽에 띄운다 (그리드가 밀리지 않게, 위쪽 막대가 찌그러지지 않게) */}
+      {imp.progress && (
+        <div class="add-toast glass" role="status">
+          <Spinner small />
+          <span>{imp.progress}</span>
+        </div>
+      )}
       {imp.error && (
         <div class="import-error glass" role="alert">
           <span>{imp.error}</span>

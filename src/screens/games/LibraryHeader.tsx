@@ -171,7 +171,7 @@ function fractionOf(msg: string): number | null {
 }
 
 /**
- * 게임 추가 중에는 버튼 왼쪽에 진행 메시지를, 버튼 테두리에 진행률 고리를 보여 준다.
+ * 게임 추가 중에는 버튼 테두리에 진행률 고리를 보여 준다. 진행 메시지는 화면 아래에 띄운다(Library) — 막대 안에 두면 로고·버튼이 찌그러졌다.
  * 목록 위에 줄을 끼워 넣지 않아서 그리드가 들썩이지 않는다.
  * 위쪽 띠(lib-top)가 화면 맨 위부터 막대 아래까지를 덮는다. 막대 위 틈과 둥근 모서리 사이로 아래 카드가 눌리던 것을 막는다
  */
@@ -182,11 +182,6 @@ export function LibraryHeader({ picker, progress }: { picker: ReturnType<typeof 
       <header class="glass">
         <Logo size="small" />
         <div class="actions">
-          {progress && (
-            <span class="add-status" role="status" title={progress}>
-              {progress}
-            </span>
-          )}
           <button
             class={`primary add${progress ? (f === null ? " busy spin" : " busy") : ""}`}
             style={f === null ? undefined : { "--p": f }}
