@@ -211,6 +211,9 @@ export async function uploadGame(gameId: string, { force = false } = {}) {
     const { games } = await driveFolders();
     const folder = (await findGameFolder(key)) ?? (await createFolder(games, folderName(game.title), { key }));
     const remote = await listChildren(folder.id);
+    // 이미 다 올라간 게임(manifest가 있음)은 파일을 다시 올리지 않고 게임 정보·썸네일만 고친다.
+    // 첫 실행 썸네일을 저장할 때마다 여기로 와서, 원본을 지운 기기에서는 풀린 파일을 통째로 다시 올리던 것을 막는다
+    if (remote.some((c) => c.name === MANIFEST)) return void (await updateRemoteGame({ ...game, syncKey: key }));
     const source = await sourceFiles(game);
     const items: UploadItem[] = source
       ? source.map(({ name, file }) => ({ name, file, props: { source: "1" }, old: remote.find((c) => c.name === name && c.appProperties?.source === "1") }))
