@@ -1,4 +1,5 @@
-// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정(동기화 상태, 기기 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 로그아웃).
+// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정 창(동기화 상태, 기기 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 로그아웃).
+import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { reconnectDrive, signOut, useAuth } from "../../cloud/google-auth";
 import type { Entry } from "../../library/import";
@@ -7,7 +8,8 @@ import { StickStyleRow } from "../../player/DirectionPad";
 import { touchDevice } from "../../player/orientation";
 import { useSync } from "../../sync/sync";
 import { CONTROL_OPACITIES, CONTROL_SIZES } from "../../ui/control-style";
-import { ON_OFF, Popover, Row, Segmented } from "../../ui/controls";
+import { ON_OFF, Row, Segmented } from "../../ui/controls";
+import { IconClose } from "../../ui/icons";
 import { useInstall } from "../../ui/install";
 import { Logo } from "../../ui/Logo";
 import { setPrefs, usePrefs } from "../../ui/prefs";
@@ -59,11 +61,21 @@ function InstallRow() {
   return null;
 }
 
-function AccountMenu() {
+/** 기기 저장 공간을 브라우저가 마음대로 비울 수 있는지. 휴대폰 브라우저는 공간이 모자라거나 오래 안 쓰면 지울 수 있다 */
+function PersistLine() {
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  useEffect(() => {
+    void navigator.storage?.persisted?.().then(setPersisted, () => undefined);
+  }, []);
+  if (persisted !== false) return null;
+  return <p class="muted account-note">이 브라우저는 저장 공간이 모자라면 게임 파일을 지울 수 있습니다. 앱으로 설치하면 지우지 않고 보관합니다 (지워져도 드라이브에서 다시 받습니다).</p>;
+}
+
+/** 계정 창: 동기화 상태, 드라이브 다시 연결, 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 앱 설치, 로그아웃 */
+function AccountDialog({ onClose }: { onClose: () => void }) {
   const auth = useAuth();
   const sync = useSync();
   const { wifiOnlyUpload, haptics, controlScale, controlOpacity } = usePrefs();
-  const [open, setOpen] = useState(false);
   const state = sync.conflict ? "warn" : sync.pending || !auth.driveReady ? "pending" : "ok";
   const label = sync.conflict
     ? `세이브 충돌: ${sync.conflictTitles.join(", ")} · 게임을 열면 이 기기 것과 드라이브 것 중 고릅니다`
@@ -72,45 +84,81 @@ function AccountMenu() {
       : sync.pending
         ? `드라이브에 올릴 세이브 ${sync.pending}개`
         : "드라이브와 동기화됨";
+  // 위쪽 막대(유리 효과)가 fixed 자식의 기준이 되어 버리므로 창은 body에 그린다
+  return createPortal(
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div class="dialog glass account-dialog">
+        <div class="menu-head">
+          <span />
+          <strong>계정</strong>
+          <button class="icon-btn" aria-label="닫기" onClick={onClose}>
+            <IconClose />
+          </button>
+        </div>
+        <div class="settings-body">
+          <section class="menu-group">
+            <strong class="email">{auth.email}</strong>
+            <span class={`sync-line ${state}`}>{label}</span>
+            {/* 드라이브 연결이 끊겼을 때만 (보통은 서버가 조용히 다시 이어 준다. 권한을 거뒀거나 오래 안 쓴 경우) */}
+            {!auth.driveReady && navigator.onLine && (
+              <button class="reconnect small" disabled={auth.busy} onClick={() => void reconnectDrive().catch(() => undefined)}>
+                드라이브 다시 연결
+              </button>
+            )}
+          </section>
+          <section class="menu-group">
+            <StorageLine />
+            <PersistLine />
+            <Row label="모바일 데이터로 게임 안 올리기">
+              <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="모바일 데이터로 게임 안 올리기" />
+            </Row>
+          </section>
+          {touchDevice && (
+            <>
+              <h3>조작 (모든 게임)</h3>
+              <section class="menu-group">
+                <StickStyleRow />
+                <Row label="버튼 크기">
+                  <Segmented value={String(controlScale)} options={CONTROL_SIZES} onChange={(v) => setPrefs({ controlScale: +v })} label="버튼 크기" />
+                </Row>
+                <Row label="버튼 투명도">
+                  <Segmented value={String(controlOpacity)} options={CONTROL_OPACITIES} onChange={(v) => setPrefs({ controlOpacity: +v })} label="버튼 투명도" />
+                </Row>
+                <Row label="버튼 햅틱">
+                  <Segmented value={haptics ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ haptics: v === "on" })} label="버튼 햅틱" />
+                </Row>
+              </section>
+            </>
+          )}
+          <InstallRow />
+        </div>
+        <div class="row end">
+          <button class="danger" onClick={signOut}>
+            로그아웃
+          </button>
+          <span class="spacer" />
+          <button class="glass" onClick={onClose}>
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function AccountMenu() {
+  const auth = useAuth();
+  const sync = useSync();
+  const [open, setOpen] = useState(false);
+  const state = sync.conflict ? "warn" : sync.pending || !auth.driveReady ? "pending" : "ok";
   return (
-    <div class="popover-anchor">
-      <button class={`avatar ${state}`} aria-label="계정" title={auth.email} onClick={() => setOpen(!open)}>
+    <>
+      <button class={`avatar ${state}`} aria-label="계정" title={auth.email} onClick={() => setOpen(true)}>
         {(auth.email ?? "?").slice(0, 1).toUpperCase()}
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} class="account">
-        <strong class="email">{auth.email}</strong>
-        <span class={`sync-line ${state}`}>{label}</span>
-        {/* 드라이브 연결이 끊겼을 때만 (보통은 서버가 조용히 다시 이어 준다. 권한을 거뒀거나 오래 안 쓴 경우) */}
-        {!auth.driveReady && navigator.onLine && (
-          <button class="reconnect" disabled={auth.busy} onClick={() => void reconnectDrive().catch(() => undefined)}>
-            드라이브 다시 연결
-          </button>
-        )}
-        <StorageLine />
-        <Row label="모바일 데이터로 게임 안 올리기">
-          <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="모바일 데이터로 게임 안 올리기" />
-        </Row>
-        {touchDevice && (
-          <>
-            <h3 class="popover-title">조작 (모든 게임)</h3>
-            <StickStyleRow />
-            <Row label="버튼 크기">
-              <Segmented value={String(controlScale)} options={CONTROL_SIZES} onChange={(v) => setPrefs({ controlScale: +v })} label="버튼 크기" />
-            </Row>
-            <Row label="버튼 투명도">
-              <Segmented value={String(controlOpacity)} options={CONTROL_OPACITIES} onChange={(v) => setPrefs({ controlOpacity: +v })} label="버튼 투명도" />
-            </Row>
-            <Row label="버튼 햅틱">
-              <Segmented value={haptics ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ haptics: v === "on" })} label="버튼 햅틱" />
-            </Row>
-          </>
-        )}
-        <InstallRow />
-        <button class="logout" onClick={signOut}>
-          로그아웃
-        </button>
-      </Popover>
-    </div>
+      {open && <AccountDialog onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
@@ -124,30 +172,33 @@ function fractionOf(msg: string): number | null {
 
 /**
  * 게임 추가 중에는 버튼 왼쪽에 진행 메시지를, 버튼 테두리에 진행률 고리를 보여 준다.
- * 목록 위에 줄을 끼워 넣지 않아서 그리드가 들썩이지 않는다
+ * 목록 위에 줄을 끼워 넣지 않아서 그리드가 들썩이지 않는다.
+ * 위쪽 띠(lib-top)가 화면 맨 위부터 막대 아래까지를 덮는다. 막대 위 틈과 둥근 모서리 사이로 아래 카드가 눌리던 것을 막는다
  */
 export function LibraryHeader({ picker, progress }: { picker: ReturnType<typeof useAddPicker>; progress: string }) {
   const f = progress ? fractionOf(progress) : null;
   return (
-    <header class="glass">
-      <Logo size="small" />
-      <div class="actions">
-        {progress && (
-          <span class="add-status" role="status" title={progress}>
-            {progress}
-          </span>
-        )}
-        <button
-          class={`primary add${progress ? (f === null ? " busy spin" : " busy") : ""}`}
-          style={f === null ? undefined : { "--p": f }}
-          disabled={!!progress}
-          onClick={picker.open}
-        >
-          + 게임 추가
-        </button>
-        <AccountMenu />
-      </div>
-      {picker.inputs}
-    </header>
+    <div class="lib-top">
+      <header class="glass">
+        <Logo size="small" />
+        <div class="actions">
+          {progress && (
+            <span class="add-status" role="status" title={progress}>
+              {progress}
+            </span>
+          )}
+          <button
+            class={`primary add${progress ? (f === null ? " busy spin" : " busy") : ""}`}
+            style={f === null ? undefined : { "--p": f }}
+            disabled={!!progress}
+            onClick={picker.open}
+          >
+            + 게임 추가
+          </button>
+          <AccountMenu />
+        </div>
+        {picker.inputs}
+      </header>
+    </div>
   );
 }

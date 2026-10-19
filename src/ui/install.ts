@@ -16,8 +16,10 @@ addEventListener("beforeinstallprompt", (e) => {
   deferred = e as InstallPrompt;
   changed();
 });
+let installed = false; // 이 페이지에서 방금 설치했다 (설치한 앱은 홈 화면에서 따로 열린다)
 addEventListener("appinstalled", () => {
   deferred = null;
+  installed = true;
   changed();
 });
 
@@ -25,9 +27,9 @@ addEventListener("appinstalled", () => {
 export const standalone = () => matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 /** 아이폰·아이패드 (아이패드는 데스크톱 사파리처럼 보이므로 터치로 가린다) */
-const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+export const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
-export type InstallState = { kind: "prompt"; install: () => Promise<void> } | { kind: "ios" } | { kind: "none" };
+export type InstallState = { kind: "prompt"; install: () => Promise<void> } | { kind: "ios" } | { kind: "installed" } | { kind: "none" };
 
 export function useInstall(): InstallState {
   const [, setTick] = useState(0);
@@ -37,6 +39,7 @@ export function useInstall(): InstallState {
     return () => void listeners.delete(l);
   }, []);
   if (standalone()) return { kind: "none" };
+  if (installed) return { kind: "installed" };
   if (deferred) {
     const d = deferred;
     return {

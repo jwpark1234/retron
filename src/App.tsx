@@ -1,20 +1,25 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { downloadGame, pendingDownloadIds, uploadMissingGames, type RemoteGame } from "./cloud/games";
+import { cachedRemoteGames, downloadGame, pendingDownloadIds, uploadMissingGames, type RemoteGame } from "./cloud/games";
 import { restoreSession, useAuth } from "./cloud/google-auth";
 import { onCellular, onNetworkChange } from "./cloud/network";
 import { initSettingsSync, retrySettings, syncSettings } from "./cloud/settings";
-import { removeOrphans, touchGame, type Game } from "./library/library";
+import { missingGameFile, removeOrphans, touchGame, type Game } from "./library/library";
 import { migrateLegacy, migrateThumbnails } from "./library/migrate";
 import { PLAYERS } from "./platforms/players";
 import { ConflictDialog } from "./screens/ConflictDialog";
 import { Library } from "./screens/games/Library";
+import { InstallGate } from "./screens/InstallGate";
 import { Landing } from "./screens/Landing";
+import { touchDevice } from "./player/orientation";
+import { standalone } from "./ui/install";
 import { initSync, prepareForPlay, resolveConflict, retryAll, setPlaying as setSyncPlaying } from "./sync/sync";
 import { BusyOverlay } from "./ui/Spinner";
 import { onPrefsChange } from "./ui/prefs";
 
 const RETRY_UPLOAD_MS = 5 * 60 * 1000;
 const MIN_SPLASH_MS = 900; // 로그인해 둔 기기도 첫 화면(로고 + 로딩)을 잠깐 보여 주고 라이브러리로 넘어간다
+// 휴대폰·태블릿 브라우저(설치한 앱이 아닌 탭)로 열면 설치 화면만 보여 준다. 개발 서버 자동 테스트(?e2e)는 건너뛴다
+const MUST_INSTALL = touchDevice && !standalone() && !(import.meta.env.DEV && new URLSearchParams(location.search).has("e2e"));
 
 export function App() {
   const [ready, setReady] = useState(false);
@@ -87,8 +92,30 @@ export function App() {
     setPlaying(g);
   };
 
+  // 게임 파일이 기기에서 사라졌으면(휴대폰 브라우저가 저장 공간을 비움) 드라이브에서 같은 자리로 다시 받는다. 세이브는 그대로 둔다
+  const repair = async (g: Game): Promise<Game | null> => {
+    const remote = g.syncKey ? (await cachedRemoteGames()).find((r) => r.key === g.syncKey) : undefined;
+    if (!remote) {
+      alert("이 게임의 파일이 기기에서 지워졌습니다. 드라이브에도 없어서 다시 받을 수 없습니다. 게임을 삭제하고 다시 추가해 주세요.");
+      return null;
+    }
+    if (!navigator.onLine) {
+      alert("이 게임의 파일이 기기에서 지워졌습니다. 인터넷에 연결되면 다시 눌러 드라이브에서 받아 주세요.");
+      return null;
+    }
+    if (!confirm("이 게임의 파일이 기기에서 지워졌습니다 (브라우저가 저장 공간을 비웠을 수 있습니다). 드라이브에서 다시 받을까요? 세이브는 그대로 남아 있습니다.")) return null;
+    try {
+      return await downloadGame(remote, g);
+    } catch (e) {
+      alert(`게임을 받지 못했습니다: ${(e as Error).message}`);
+      return null;
+    }
+  };
+
   // 게임을 열기 전에 다른 기기에서 한 세이브를 받아 온다
-  const play = async (g: Game) => {
+  const play = async (game: Game) => {
+    const g = (await missingGameFile(game)) ? await repair(game) : game;
+    if (!g) return;
     setPreparing("동기화 중…");
     const r = await prepareForPlay(g);
     if ("conflict" in r) {
@@ -98,12 +125,11 @@ export function App() {
     start(g);
   };
 
-  // 드라이브에만 있는 게임: 이 기기로 받은 뒤 실행한다
-  const playRemote = async (r: RemoteGame) => {
+  // 드라이브에만 있는 게임: 이 기기로 받기만 한다. 다 받으면 보통 카드가 되고, 그때 누르면 실행한다
+  const downloadRemote = async (r: RemoteGame) => {
     if (!navigator.onLine) return alert("오프라인이라 드라이브에서 게임을 받을 수 없습니다. 연결되면 다시 눌러 주세요.");
     try {
-      const g = await downloadGame(r);
-      await play(g);
+      await downloadGame(r);
     } catch (e) {
       alert(`게임을 받지 못했습니다: ${(e as Error).message}`);
     }
@@ -120,6 +146,7 @@ export function App() {
     start(g);
   };
 
+  if (MUST_INSTALL) return <InstallGate />;
   if (!ready || (auth.signedIn && splash)) return <Landing loading />;
   if (!auth.signedIn) return <Landing />;
   if (playing) {
@@ -128,7 +155,7 @@ export function App() {
   }
   return (
     <>
-      <Library onPlay={(g) => void play(g)} onPlayRemote={(r) => void playRemote(r)} />
+      <Library onPlay={(g) => void play(g)} onDownload={(r) => void downloadRemote(r)} />
       {preparing && !conflict && <BusyOverlay text={preparing} />}
       {conflict && <ConflictDialog onChoose={(use) => void choose(use)} />}
     </>

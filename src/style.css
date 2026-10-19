@@ -12,23 +12,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
-html, body, #app { margin: 0; height: 100%; color: var(--text); background: #07070c; overscroll-behavior: none; }
+html, body, #app { margin: 0; height: 100%; color: var(--text); overscroll-behavior: none; }
+/* 배경은 html·body에만 칠한다. #app은 화면 한 장 높이라서, 거기에 칠하면 스크롤해 내려간 아래쪽만 다른 배경이 보였다 */
+html, body { background: #07070c; }
 /* 두 번 탭 확대 막기 (핀치 줌은 ui/no-zoom.ts가 막는다). touch-action은 자식에게 겹쳐 적용된다 */
 html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-
-/* 배경: 은은하게 움직이는 색 덩어리 위에 유리가 놓인다 */
-body::before {
-  content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(40% 35% at 20% 25%, #ff6a3d55, transparent 70%),
-    radial-gradient(35% 30% at 80% 20%, #7a5cff55, transparent 70%),
-    radial-gradient(45% 40% at 70% 80%, #00c2ff40, transparent 70%),
-    radial-gradient(35% 35% at 15% 85%, #ff3d9a35, transparent 70%);
-  filter: blur(40px);
-  animation: drift 30s ease-in-out infinite alternate;
-}
-@keyframes drift { to { transform: translate3d(4%, -3%, 0) rotate(6deg) scale(1.05); } }
-@media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
 
 .glass {
   background: linear-gradient(180deg, var(--glass-strong), var(--glass));
@@ -51,9 +39,14 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
 .muted, .hint, .progress { color: var(--muted); }
 
 /* 라이브러리 */
-.library { max-width: 1120px; margin: 0 auto; padding: 16px; padding-top: max(16px, env(safe-area-inset-top)); }
+.library { max-width: 1120px; margin: 0 auto; padding: 0 16px 16px; }
+/* 위쪽 띠: 화면 맨 위부터 막대 아래까지 덮고(불투명), 그 아래로 짧게 흐려진다. 띠가 눌림을 받아서 가려진 카드가 눌리지 않는다 */
+.lib-top {
+  position: sticky; top: 0; z-index: 5; margin: 0 -16px; padding: max(12px, env(safe-area-inset-top)) 16px 14px;
+  background: linear-gradient(180deg, #07070c calc(100% - 14px), rgba(7, 7, 12, 0));
+}
 .library header {
-  position: sticky; top: max(12px, env(safe-area-inset-top)); z-index: 5;
+  position: relative;
   display: flex; gap: 12px; align-items: center; justify-content: space-between;
   padding: 8px 8px 8px 20px; border-radius: 999px;
 }
@@ -79,7 +72,6 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
 .meta strong { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; padding: 1px 7px; margin-right: 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(255, 255, 255, 0.16); color: var(--text); }
-.badge.local { background: rgba(255, 179, 64, 0.22); color: var(--tint); }
 .more { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; padding: 0; opacity: 0; font-size: 16px; line-height: 1; }
 li:hover .more, .more:focus-visible { opacity: 1; }
 @media (pointer: coarse) { .more { opacity: 0.85; } }
@@ -231,7 +223,7 @@ ul.grid .thumb { aspect-ratio: 1; }
 .trackpad .pad { flex: 1; display: grid; place-items: center; touch-action: none; }
 .trackpad .pad .icon { width: 30px; height: 30px; color: rgba(255, 255, 255, 0.18); pointer-events: none; }
 .trackpad .pad:active { background: rgba(255, 255, 255, 0.03); }
-.overlay { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--muted); font-size: 15px; }
+.overlay { position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--muted); font-size: 15px; }
 .toast { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
 /* 세로 화면: 게임은 위에, 컨트롤은 그 아래에 */
 @media (orientation: portrait) { .game:not([style]) { justify-content: flex-start; padding-top: env(safe-area-inset-top); } }
@@ -301,12 +293,12 @@ ul.grid .thumb { aspect-ratio: 1; }
 .slot-info small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 키 버튼 고르기: 전체 키보드 (1/4 키 단위 격자) */
 .kb-backdrop { z-index: 22; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.menu-sheet.kb-sheet { width: min(860px, 100%); }
+.menu-sheet.kb-sheet { width: min(1040px, 100%); }
 .kb-hint { margin: -4px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
 .kb-scroll { flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
 /* 세로 화면에서는 옆으로 밀어서 본다. 오른쪽 끝을 흐리게 해서 더 있다는 걸 보여 준다 */
 @media (max-width: 640px) { .kb-scroll { mask-image: linear-gradient(90deg, #000 85%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); } }
-.kb { display: grid; gap: 4px; min-width: 620px; grid-auto-rows: 36px; }
+.kb { display: grid; gap: 4px; min-width: 800px; grid-auto-rows: 36px; }
 .kb button {
   padding: 0; min-width: 0; border-radius: 8px; font: 600 11.5px "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--muted); white-space: nowrap; overflow: hidden;
   background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
@@ -343,13 +335,6 @@ button.primary { background: var(--tint); border-color: var(--tint); color: #1a1
 .menu-row .seg button { font-size: 13px; padding: 5px 12px; }
 .menu-row > small { font-size: 13px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .menu-row button.small { align-self: center; }
-/* SFC 키보드 설정 (PC) */
-.key-map { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 0 4px 4px; }
-.key-map button { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px; font-size: 13px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: none; }
-.key-map kbd { font: inherit; color: var(--muted); }
-.key-map button.waiting { border-color: var(--tint); background: rgba(255, 179, 64, 0.18); }
-.key-map button.waiting kbd { color: var(--text); }
-.key-map .reset { grid-column: 1 / -1; justify-content: center; color: var(--muted); }
 /* 설정 줄 아래 작은 설명, DOS 가로 배치(누른 두 자리를 바꾼다) */
 .row-hint { margin: -2px 4px 2px; font-size: 12px; color: var(--muted); line-height: 1.4; }
 .seg.order button.on { background: rgba(255, 179, 64, 0.32); }
@@ -377,8 +362,14 @@ button.primary { background: var(--tint); color: #1a1205; border: 1px solid var(
 button.danger { background: transparent; border: 1px solid rgba(255, 110, 100, 0.5); color: #ff8a80; }
 .dialog .row button, .settings > button { text-align: center; }
 
-li.remote .card { opacity: 0.85; }
-li.remote .thumb img { filter: saturate(0.6); }
+/* 드라이브에만 있는 게임: 썸네일을 어둡게 덮고 받기 표시. 받는 중에는 막 없이 진행 막대만 */
+li.remote .thumb img { filter: saturate(0.5) brightness(0.8); }
+li.remote .card:disabled { opacity: 1; }
+.need-download {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: rgba(7, 7, 12, 0.55); color: #fff; font-size: 13px; font-weight: 600; pointer-events: none;
+}
+.need-download .icon { width: 30px; height: 30px; padding: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.35); }
 .transfer { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 22px; border-radius: 999px; overflow: hidden; background: rgba(0, 0, 0, 0.55); font-size: 11px; display: grid; place-items: center; pointer-events: none; }
 .transfer .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 179, 64, 0.55); transition: width 0.3s; }
 .transfer span { position: relative; }
@@ -473,8 +464,19 @@ button.add { white-space: nowrap; }
 .settings > .row.end { margin-top: 0; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 @media (max-width: 600px) { .dialog.settings { padding: 20px 18px 18px; } }
 
-/* 계정 메뉴: 드라이브 연결이 끊겼을 때 다시 연결 */
-.popover.account .reconnect { margin-top: 2px; padding: 8px 12px; align-items: center; color: var(--tint); background: rgba(255, 179, 64, 0.12); border: 1px solid rgba(255, 179, 64, 0.4); }
+/* 계정 창: 게임 설정 창과 같은 모양 */
+.dialog.account-dialog { width: min(460px, 100%); box-sizing: border-box; max-height: 100%; padding: 20px 22px 18px; gap: 12px; overflow: hidden; }
+.account-dialog .menu-group { gap: 8px; padding: 12px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+.account-dialog .email { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-dialog h3 { margin: 6px 4px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.account-dialog .menu-row > span { font-size: 14px; white-space: normal; }
+.account-dialog .account-note { margin: 0; font-size: 12.5px; line-height: 1.5; }
+.account-dialog > .row.end { margin-top: 0; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.account-dialog button.reconnect { align-self: flex-start; text-align: center; color: var(--tint); background: rgba(255, 179, 64, 0.12); border: 1px solid rgba(255, 179, 64, 0.4); }
+.account-dialog .install { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 14px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); }
+.account-dialog .install small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.account-dialog .install-hint { margin: 4px; font-size: 12.5px; line-height: 1.5; }
+@media (max-width: 600px) { .dialog.account-dialog { padding: 18px 16px 16px; } }
 
 /* 로딩 고리 */
 .spinner { display: inline-block; width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.18); border-top-color: var(--tint); animation: spin 0.8s linear infinite; flex-shrink: 0; vertical-align: middle; box-sizing: border-box; }
@@ -543,8 +545,6 @@ button.add.busy.spin::before { background: conic-gradient(from var(--ring-a), #f
 .import-error { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; width: max-content; max-width: min(560px, calc(100vw - 32px)); padding: 10px 8px 10px 18px; border-radius: 18px; color: #ffb4ab; font-size: 14px; line-height: 1.5; }
 .import-error .icon-btn { flex-shrink: 0; color: var(--muted); }
 
-/* 카드: 드라이브에 못 올린 게임 */
-.badge.local.failed { background: rgba(255, 110, 100, 0.22); color: #ffb4ab; }
 
 /* 게임 설정: 썸네일 */
 .menu-group.thumb-field { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; text-align: left; }
@@ -555,3 +555,38 @@ button.add.busy.spin::before { background: conic-gradient(from var(--ring-a), #f
 /* 계정 메뉴: 앱으로 설치 */
 .popover.account .install { margin-top: 8px; padding: 9px 12px; background: rgba(255, 255, 255, 0.06); }
 .popover.account .install-hint { margin: 10px 2px 0; line-height: 1.5; }
+
+/* 휴대폰 브라우저: 앱으로 설치하라는 첫 화면 */
+.install-gate .gate-text { margin: 0; max-width: 340px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.install-gate .gate-text strong { color: var(--text); }
+.install-gate .gate-steps { margin: 6px 0 0; padding: 14px 18px 14px 34px; max-width: 320px; border-radius: 20px; text-align: left; font-size: 14.5px; line-height: 1.7; }
+.install-gate .gate-steps b { color: var(--tint); font-weight: 600; }
+.install-gate button.primary { padding: 13px 30px; font-size: 16px; }
+
+/* SFC·GBA 키보드 설정 팝업: 컨트롤러 그림 위에 버튼을 실제 자리에 놓고, 버튼마다 지금 키를 자판 모양으로 */
+.padkey-backdrop { position: fixed; z-index: 40; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.menu-sheet.padkey-sheet { width: min(720px, 100%); }
+.padkey { position: relative; width: 100%; aspect-ratio: 600 / 290; margin: 4px 0; }
+.padkey-body {
+  position: absolute; inset: 16% 0 0; border-radius: 999px;
+  background: linear-gradient(180deg, #3b3b47, #24242c); border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.1), inset 0 -6px 16px rgba(0, 0, 0, 0.35), 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.padkey.pair .padkey-body { border-radius: 26% / 45%; }
+.padkey-screen { position: absolute; left: 39%; top: 30%; width: 22%; height: 40%; border-radius: 6px; background: #101014; border: 6px solid #2c2c35; box-sizing: border-box; }
+.pk {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0;
+  width: 10%; aspect-ratio: 1; border-radius: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.pk:active { transform: translate(-50%, -50%) scale(0.95); }
+.pk:hover { background: rgba(255, 255, 255, 0.16); }
+.pk.face { width: 11%; border-radius: 50%; }
+.pk.shoulder { width: 20%; aspect-ratio: auto; height: 15%; border-radius: 14px 14px 8px 8px; flex-direction: row; gap: 8px; }
+.pk.pill { width: 12%; aspect-ratio: auto; height: 12%; border-radius: 999px; flex-direction: row; gap: 6px; }
+.pk-name { font-size: 11px; font-weight: 700; color: var(--muted); line-height: 1; }
+.pk kbd { font: inherit; font-size: 12.5px; font-weight: 700; color: var(--text); line-height: 1.1; white-space: nowrap; }
+.pk.pill .pk-name { font-size: 9.5px; }
+.pk.pill kbd { font-size: 11px; }
+.pk.waiting { background: rgba(255, 179, 64, 0.38); border-color: var(--tint); }
+.pk.waiting kbd { color: #fff; }

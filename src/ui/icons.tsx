@@ -79,3 +79,11 @@ export const IconCamera = () => (
     <circle cx="12" cy="13" r="4" />
   </Svg>
 );
+
+/** 드라이브에서 받기 */
+export const IconDownload = () => (
+  <Svg>
+    <path d="M12 3v12M7 10l5 5 5-5" />
+    <path d="M5 21h14" />
+  </Svg>
+);

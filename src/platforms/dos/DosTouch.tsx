@@ -9,13 +9,17 @@ import { DirectionPad, type Direction } from "../../player/DirectionPad";
 import { Row, Segmented } from "../../ui/controls";
 import { setPrefs, usePrefs, type DosSlot, type PadSide } from "../../ui/prefs";
 import { dosKeyLabel } from "./create-dos";
-import { ARROWS, isArrow, isWide, orderKeys } from "./keyboard";
+import { ARROWS, NUM_ARROWS, isArrow, isWide, orderKeys } from "./keyboard";
 import { KeyPicker } from "./KeyPicker";
 import { Trackpad } from "./Trackpad";
 import { VirtualKeys } from "./VirtualKeys";
 
 export const DEFAULT_KEYS = [256, 257, 32, ...ARROWS]; // ESC, Enter, Space + 방향 패드
-const DIR_KEY: Record<Direction, number> = { up: 265, down: 264, left: 263, right: 262 };
+const DIRS: Direction[] = ["up", "down", "left", "right"]; // ARROWS·NUM_ARROWS와 같은 순서
+
+/** 방향 패드가 누를 키: 고른 묶음(방향키, 키패드 8·2·4·6) 모두. 둘 다 켰으면 둘 다 누른다 */
+const dirKeys = (keys: number[], dir: Direction) =>
+  [ARROWS, NUM_ARROWS].filter((g) => g.some((k) => keys.includes(k))).map((g) => g[DIRS.indexOf(dir)]);
 
 /** 이 게임의 화면 키 (예전 vkeys에는 방향 패드가 없었으므로 붙여 준다) */
 export const touchKeysOf = (game: Game) => game.dos!.touchKeys ?? (game.dos!.vkeys ? [...game.dos!.vkeys, ...ARROWS] : DEFAULT_KEYS);
@@ -81,7 +85,7 @@ export function DosTouchControls({
       )}
       {dpad && (
         <div class={`vbar-dpad ${mid("dpad")}`} style={place("dpad")}>
-          <DirectionPad key={stickStyle} style={stickStyle} rotation={rotation} press={(_, dir, pressed) => onKey(DIR_KEY[dir], pressed)} />
+          <DirectionPad key={stickStyle} style={stickStyle} rotation={rotation} press={(_, dir, pressed) => dirKeys(keys, dir).forEach((k) => onKey(k, pressed))} />
         </div>
       )}
       <Trackpad class={mid("pad")} style={place("pad")} rotation={rotation} onMove={onMove} onButton={onButton} />

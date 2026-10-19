@@ -1,5 +1,5 @@
 // 등록한 게임 목록. OPFS의 library.json에 두고, 게임 파일은 games/{id}/ 아래에 둔다.
-import { splitConf } from "../platforms/dos/profiles";
+import { HDD_DIR, splitConf } from "../platforms/dos/profiles";
 import { getFile, listDirs, readJson, removeDir, writeFile, writeJson } from "./store";
 
 export type Platform = "dos" | "sfc" | "gba";
@@ -41,11 +41,25 @@ export interface Game {
   sfc?: RomInfo; // 예전 형식 (normalize에서 rom으로 옮긴다)
   thumbVersion?: number; // 2 = 1:1 썸네일
   syncKey?: string; // 기기 사이에서 같은 게임을 알아보는 키 (ROM/실행 파일 해시)
+  source?: GameSource; // 없으면 예전에 추가한 게임 (드라이브에 풀린 파일을 하나씩 올린다)
+}
+
+/**
+ * 추가할 때 고른 원본. 드라이브에는 이 파일들을 이름 그대로 올린다 (기기에서는 풀어서 쓴다).
+ * files: 고른 파일 이름·크기. pick: 원본 안에서 고른 실행 파일·롬 경로 (다시 풀 때 같은 것을 고른다).
+ * romFile: 원본이 롬 파일 하나라서 따로 보관하지 않고 games/{id}/{rom.rom}을 원래 이름으로 올린다.
+ * 그 밖의 원본은 올리기 전까지 games/{id}/source/에 보관하고, 다 올리면 지운다
+ */
+export interface GameSource {
+  files: { name: string; size: number }[];
+  pick?: string;
+  romFile?: boolean;
 }
 
 const LIBRARY = "library.json";
 
 export const gameDir = (id: string) => `games/${id}`;
+export const sourceDir = (id: string) => `${gameDir(id)}/source`;
 
 export async function listGames(): Promise<Game[]> {
   return (await readJson<Game[]>(LIBRARY, [])).map(normalize);
@@ -66,26 +80,55 @@ export async function getGame(id: string): Promise<Game | undefined> {
   return (await listGames()).find((g) => g.id === id);
 }
 
-export async function putGame(game: Game) {
-  const games = (await listGames()).filter((g) => g.id !== game.id);
-  await writeJson(LIBRARY, [...games, game]);
+// library.json은 읽고-고치고-쓰기를 한 번에 하나씩 한다. 두 곳에서 동시에 고치면(플레이 시각 적기와 받기 끝 등)
+// 늦게 쓴 쪽이 먼저 쓴 쪽의 게임을 목록에서 빼 버리고, 다음 시작 때 그 게임 폴더가 "목록에 없는 폴더"로 지워졌다
+let queue: Promise<unknown> = Promise.resolve();
+function editLibrary(fn: (games: Game[]) => Game[]): Promise<void> {
+  const run = queue.then(async () => writeJson(LIBRARY, fn(await listGames())));
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+export function putGame(game: Game) {
+  return editLibrary((games) => [...games.filter((g) => g.id !== game.id), game]);
+}
+
+/** 바뀐 칸만 고친다 (그 사이 다른 곳에서 고친 칸을 덮지 않게) */
+export function patchGame(id: string, patch: Partial<Game>) {
+  return editLibrary((games) => games.map((g) => (g.id === id ? { ...g, ...patch } : g)));
 }
 
 export async function removeGame(id: string) {
-  await writeJson(LIBRARY, (await listGames()).filter((g) => g.id !== id));
+  await editLibrary((games) => games.filter((g) => g.id !== id));
   await removeDir(gameDir(id));
 }
 
-/** 라이브러리에 없는 게임 폴더(등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다. keep: 이어 받을 폴더 */
+/**
+ * 라이브러리에 없는 게임 폴더(등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다. keep: 이어 받을 폴더.
+ * library.json을 못 읽었거나 비어 있으면 아무것도 지우지 않는다 (목록을 잘못 읽은 탓에 멀쩡한 게임을 지우지 않게)
+ */
 export async function removeOrphans(keep: Set<string> = new Set()) {
-  const ids = new Set([...(await listGames()).map((g) => g.id), ...keep]);
+  if (!(await getFile(LIBRARY))) return;
+  const games = await listGames();
+  if (!games.length) return;
+  const ids = new Set([...games.map((g) => g.id), ...keep]);
   for (const name of await listDirs("games")) if (!ids.has(name)) await removeDir(gameDir(name));
   await removeDir("_incoming");
 }
 
-export async function touchGame(id: string) {
-  const g = await getGame(id);
-  if (g) await putGame({ ...g, lastPlayedAt: Date.now() });
+export function touchGame(id: string) {
+  return patchGame(id, { lastPlayedAt: Date.now() });
+}
+
+/**
+ * 실행에 꼭 필요한 파일(롬, DOS 실행 파일)이 기기에 있는지. 없으면 그 경로.
+ * 휴대폰 브라우저가 저장 공간을 비우면 게임 파일이 사라질 수 있다 (목록과 세이브만 남고 실행이 안 됐다)
+ */
+export async function missingGameFile(game: Game): Promise<string | null> {
+  const dir = gameDir(game.id);
+  const path = game.rom ? `${dir}/${game.rom.rom}` : `${dir}/${HDD_DIR}/${game.dos!.exe.toUpperCase()}`;
+  const f = await getFile(path).catch(() => null);
+  return f && f.size > 0 ? null : path;
 }
 
 export function newGameId(title: string) {

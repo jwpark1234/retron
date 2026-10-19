@@ -1,4 +1,4 @@
-// 게임 설정 (라이브러리 카드의 ⋯): 이름, 썸네일, 플랫폼별 설정(DOS 실행·조작), 세이브 백업, 정보(드라이브, 용량, 날짜), 삭제
+// 게임 설정 (라이브러리 카드의 ⋯): 이름, 썸네일, 플랫폼별 설정(DOS 실행·조작, SFC·GBA 키보드), 세이브 백업, 정보(드라이브, 용량, 날짜), 삭제(이 기기 / 드라이브까지)
 import { useEffect, useState } from "preact/hooks";
 import { deleteRemoteGame, updateRemoteGame, uploadGame } from "../../cloud/games";
 import { authState } from "../../cloud/google-auth";
@@ -11,6 +11,9 @@ import { markDirty } from "../../sync/sync";
 import { IconClose } from "../../ui/icons";
 import { Spinner } from "../../ui/Spinner";
 import { PLATFORM_LABEL } from "./GameCard";
+import { touchDevice } from "../../player/orientation";
+import { RetroKeysEditor } from "../../platforms/retro/RetroSettings";
+import { RETRO_SYSTEMS } from "../../platforms/retro/systems";
 
 const fmtDate = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "numeric", day: "numeric" }) : "아직 안 함");
 const fmtSize = (n: number) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)}GB` : n >= 1024 ** 2 ? `${(n / 1024 ** 2).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
@@ -86,6 +89,7 @@ export function GameSettings({
 }) {
   const [title, setTitle] = useState(game.title);
   const dos = game.platform === "dos";
+  const retro = RETRO_SYSTEMS.find((r) => r.platform === game.platform);
   const [dosEdit, setDosEdit] = useState<DosEdit | null>(dos ? dosEditOf(game) : null);
   const [message, setMessage] = useState("");
   const size = useGameSize(game.id);
@@ -142,10 +146,21 @@ export function GameSettings({
     }
   };
 
-  const remove = async () => {
-    if (!confirm(`${game.title}을(를) 이 기기에서 삭제할까요? 이 기기의 세이브와 상태 슬롯도 함께 지워집니다.`)) return;
-    if (authState().signedIn && game.syncKey && confirm("구글 드라이브에 올린 게임 파일도 지울까요? (세이브는 드라이브에 남깁니다. 지운 파일은 드라이브 휴지통에서 30일 안에 되살릴 수 있습니다)")) {
-      await deleteRemoteGame(game.syncKey).catch(() => undefined);
+  // 삭제: 이 기기에서만(드라이브에 남아 있으면 카드가 "받기" 카드로 바뀐다) 또는 드라이브에서도
+  const onDriveNow = authState().signedIn && !!game.syncKey && onDrive === true;
+  const removeHere = async () => {
+    const note = onDriveNow ? " 드라이브에는 그대로 남아서, 라이브러리에서 다시 받을 수 있습니다." : " 드라이브에 올라가 있지 않아 되살릴 수 없습니다.";
+    if (!confirm(`${game.title}을(를) 이 기기에서 삭제할까요? 이 기기의 게임 파일과 세이브가 지워집니다.${note}`)) return;
+    await removeGame(game.id);
+    onChanged();
+    onClose();
+  };
+  const removeEverywhere = async () => {
+    if (!confirm(`${game.title}을(를) 이 기기와 구글 드라이브에서 모두 삭제할까요? 다른 기기 라이브러리에서도 사라집니다. (드라이브의 세이브는 남기고, 지운 게임 파일은 드라이브 휴지통에서 30일 안에 되살릴 수 있습니다)`)) return;
+    try {
+      await deleteRemoteGame(game.syncKey!);
+    } catch (e) {
+      return setMessage(`드라이브에서 지우지 못했습니다: ${(e as Error).message}`);
     }
     await removeGame(game.id);
     onChanged();
@@ -175,7 +190,15 @@ export function GameSettings({
           <ThumbnailField game={game} onChanged={onChanged} />
 
           {dos && <DosGameSettings game={game} value={dosEdit!} onChange={setDosEdit} />}
-          {!dos && <p class="muted">키보드 배치와 가상패드는 게임 중 메뉴(☰)에서 바꿉니다. 같은 기종 게임 모두에 적용됩니다.</p>}
+          {retro && !touchDevice && (
+            <>
+              <h3>키보드 ({retro.label} 게임 모두)</h3>
+              <section class="menu-group">
+                <RetroKeysEditor system={retro} />
+              </section>
+            </>
+          )}
+          {retro && touchDevice && <p class="muted">가상패드는 게임 중 메뉴(☰)에서 켜고 끕니다.</p>}
 
           <h3>세이브 백업</h3>
           <section class="menu-group">
@@ -221,12 +244,30 @@ export function GameSettings({
               <small>{fmtDate(game.lastPlayedAt)}</small>
             </div>
           </section>
+
+          <h3>삭제</h3>
+          <section class="menu-group">
+            <p class="muted">
+              {onDriveNow
+                ? "이 기기에서만 지우면 드라이브에는 남아서 다시 받을 수 있습니다. 드라이브에서도 지우면 다른 기기 라이브러리에서도 사라집니다."
+                : onDrive === false
+                  ? "드라이브에 올라가 있지 않아서 지우면 되살릴 수 없습니다."
+                  : "드라이브에 연결되지 않아 이 기기에서만 지울 수 있습니다."}
+            </p>
+            <div class="row">
+              <button class="danger small" onClick={() => void removeHere()}>
+                이 기기에서 삭제
+              </button>
+              {onDriveNow && (
+                <button class="danger small" onClick={() => void removeEverywhere()}>
+                  드라이브에서도 삭제
+                </button>
+              )}
+            </div>
+          </section>
         </div>
 
         <div class="row end">
-          <button class="danger" onClick={remove}>
-            게임 삭제
-          </button>
           <span class="spacer" />
           <button class="glass" onClick={onClose}>
             취소

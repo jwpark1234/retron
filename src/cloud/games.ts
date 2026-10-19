@@ -1,10 +1,30 @@
-// 게임 파일을 사용자 구글 드라이브의 retron/games/{게임키}/ 에 올리고 받는다.
-// 각 파일은 원래 경로를 appProperties.path에 적어 둔다. manifest.json은 모든 파일을 올린 뒤 마지막에 쓴다.
+// 게임 파일을 사용자 구글 드라이브의 retron/games/ 에 올리고 받는다. 게임마다 폴더 하나, manifest.json은 모든 파일을 올린 뒤 마지막에 쓴다.
+// - 지금 방식: 폴더 이름은 게임 이름, 키는 폴더의 appProperties.key. 안에는 추가할 때 고른 원본(zip, 롬)을 이름 그대로 올린다.
+//   받는 기기는 원본을 받아 처음 추가할 때와 같은 방식으로 다시 푼다 (library/import.ts reimportFiles).
+// - 예전 방식: 폴더 이름이 키이고, 기기에서 풀린 파일을 하나씩 올렸다 (원래 경로는 appProperties.path). 받기는 그대로 된다.
+//   원본을 보관하지 않던 때 추가한 게임은 원본이 없어서 올릴 때도 예전 방식을 쓴다.
 import { useEffect, useState } from "preact/hooks";
-import { gameDir, getGame, listGames, newGameId, putGame, type Game } from "../library/library";
-import { getFile, listFiles, openWritable, readJson, writeJson } from "../library/store";
+import { gameDir, getGame, listGames, newGameId, putGame, sourceDir, type Game, type GameSource } from "../library/library";
+import { reimportFiles, type Entry } from "../library/import";
+import { getFile, listFiles, openWritable, readJson, removeDir, writeFile, writeJson } from "../library/store";
 import { keepAwake } from "../ui/wake-lock";
-import { createFile, createLargeFile, download, downloadRange, ensureFolder, findChild, listAll, listChildren, rootFolder, trash, updateFile } from "./drive";
+import {
+  createFile,
+  createFolder,
+  createLargeFile,
+  download,
+  downloadRange,
+  ensureFolder,
+  findChild,
+  listAll,
+  listChildren,
+  renameFile,
+  rootFolder,
+  trash,
+  updateFile,
+  updateMeta,
+  type DriveFile,
+} from "./drive";
 import { getPrefs } from "../ui/prefs";
 import { authState } from "./google-auth";
 import { onCellular } from "./network";
@@ -12,18 +32,23 @@ import { syncKey } from "./keys";
 
 const ROOT = "retron";
 const SMALL = 5 * 1024 * 1024;
+const MANIFEST = "manifest.json";
+const FOLDER_MIME = "mimeType = 'application/vnd.google-apps.folder'";
 
 /** 다른 기기에서 쓸 게임 정보 (기기마다 다른 id, 마지막 플레이 시각은 빼고) */
 export interface RemoteGame {
   key: string;
   folderId: string;
-  game: Omit<Game, "id" | "lastPlayedAt">;
-  files: { path: string; size: number }[];
+  game: Omit<Game, "id" | "lastPlayedAt" | "source">;
+  /** 지금 방식: 추가할 때 고른 원본을 그대로 올렸다 */
+  source?: GameSource;
+  /** 예전 방식: 풀린 파일을 하나씩 올렸다 */
+  files?: { path: string; size: number }[];
   thumb?: string; // 썸네일 (data URL) — 받기 전에도 카드에 보여 준다
 }
 
 export interface Transfer {
-  label: string; // "올리는 중" / "받는 중"
+  label: string; // "드라이브에 올리는 중" / "받는 중" / "설치 중"
   done: number;
   total: number;
 }
@@ -94,6 +119,40 @@ export function driveFolders() {
   return folders;
 }
 
+/** 게임 폴더의 키: 지금은 appProperties.key, 예전에는 폴더 이름 */
+const folderKey = (f: DriveFile) => f.appProperties?.key ?? f.name;
+/** 드라이브에서 알아볼 수 있게 폴더 이름은 게임 이름으로 (윈도우에서 못 쓰는 글자는 뺀다) */
+const folderName = (title: string) => title.replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 100) || "game";
+
+async function gameFolders(): Promise<DriveFile[]> {
+  const { games } = await driveFolders();
+  return listChildren(games, FOLDER_MIME);
+}
+
+async function findGameFolder(key: string): Promise<DriveFile | undefined> {
+  return (await gameFolders()).find((f) => folderKey(f) === key);
+}
+
+/** 한 번에 n개씩 돌린다. 하나가 실패하면 남은 것은 시작하지 않고 그 오류를 던진다 */
+async function pool<T, R>(items: T[], n: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  let failed = false;
+  const worker = async () => {
+    while (!failed && next < items.length) {
+      const i = next++;
+      try {
+        out[i] = await fn(items[i]);
+      } catch (e) {
+        failed = true;
+        throw e;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+  return out;
+}
+
 async function thumbDataUrl(gameId: string): Promise<string | undefined> {
   const f = await getFile(`${gameDir(gameId)}/thumb.png`);
   if (!f) return undefined;
@@ -103,20 +162,43 @@ async function thumbDataUrl(gameId: string): Promise<string | undefined> {
   return `data:image/png;base64,${btoa(bin)}`;
 }
 
-const manifestOf = async (game: Game, key: string, files: { path: string; size: number }[]) => {
-  const { id, lastPlayedAt, ...rest } = game;
-  return { key, game: rest, files, thumb: await thumbDataUrl(id) };
-};
+/** 드라이브에 적는 게임 정보 (기기마다 다른 id, 마지막 플레이 시각, 기기의 원본 보관 정보는 빼고) */
+function remoteInfo(game: Game): RemoteGame["game"] {
+  const { id, lastPlayedAt, source, ...rest } = game;
+  return rest;
+}
 
 async function writeManifest(folderId: string, body: object) {
   const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
-  const existing = await findChild(folderId, "manifest.json");
+  const existing = await findChild(folderId, MANIFEST);
   if (existing) await updateFile(existing.id, blob);
-  else await createFile(folderId, "manifest.json", blob);
+  else await createFile(folderId, MANIFEST, blob);
 }
 
 // --- 올리기 ---
 const uploading = new Set<string>();
+
+interface UploadItem {
+  name: string; // 드라이브 파일 이름
+  file: File;
+  props: Record<string, string>;
+  old?: DriveFile; // 드라이브에 이미 있는 같은 파일 (올리다 만 것일 수 있다)
+}
+
+/** 추가할 때 고른 원본이 기기에 다 남아 있으면 그 파일들 (없으면 null: 예전 방식으로 올린다) */
+async function sourceFiles(game: Game): Promise<{ name: string; file: File }[] | null> {
+  if (!game.source) return null;
+  const out: { name: string; file: File }[] = [];
+  for (const s of game.source.files) {
+    const f = game.source.romFile && game.rom ? await getFile(`${gameDir(game.id)}/${game.rom.rom}`) : await getFile(`${sourceDir(game.id)}/${s.name}`);
+    if (!f || f.size !== s.size) return null;
+    out.push({ name: s.name, file: f });
+  }
+  return out;
+}
+
+// 예전 방식으로 올릴 때 빼는 것: 세이브·상태(따로 동기화), 원본 보관 폴더
+const notGameFile = (p: string) => /^(saves|states|source)\//.test(p) || /^(sram\.srm|conflict-backup\.zip)$/.test(p);
 
 /** 기기의 게임을 드라이브에 올린다. 이미 올라간 파일(같은 크기)은 건너뛴다. force: 모바일 데이터여도 올린다 (사용자가 직접 누름) */
 export async function uploadGame(gameId: string, { force = false } = {}) {
@@ -127,41 +209,53 @@ export async function uploadGame(gameId: string, { force = false } = {}) {
     const key = await syncKey(game);
     if (!key) return;
     const { games } = await driveFolders();
-    const folderId = await ensureFolder(games, key);
-    const remote = new Map((await listChildren(folderId)).map((f) => [f.appProperties?.path ?? "", f]));
-    // 세이브와 상태는 따로 동기화하므로 게임 파일만 올린다
-    const local = [...(await listFiles(gameDir(game.id)))].filter(([p]) => !/^(saves|states)\//.test(p) && !/^(sram\.srm|conflict-backup\.zip)$/.test(p));
+    const folder = (await findGameFolder(key)) ?? (await createFolder(games, folderName(game.title), { key }));
+    const remote = await listChildren(folder.id);
+    const source = await sourceFiles(game);
+    const items: UploadItem[] = source
+      ? source.map(({ name, file }) => ({ name, file, props: { source: "1" }, old: remote.find((c) => c.name === name && c.appProperties?.source === "1") }))
+      : [...(await listFiles(gameDir(game.id)))]
+          .filter(([p]) => !notGameFile(p))
+          .map(([path, file]) => ({ name: path.split("/").pop()!, file, props: { path }, old: remote.find((c) => c.appProperties?.path === path) }));
+    const todo = items.filter((it) => Number(it.old?.size ?? -1) !== it.file.size);
     // 모바일 데이터면 큰 파일은 Wi-Fi에 연결됐을 때 올린다 (uploadMissingGames)
-    const big = local.some(([path, f]) => f.size > SMALL && Number(remote.get(path)?.size ?? -1) !== f.size);
-    if (big && !force && getPrefs().wifiOnlyUpload && onCellular()) return setIssue(gameId, WAIT_WIFI);
+    if (todo.some((it) => it.file.size > SMALL) && !force && getPrefs().wifiOnlyUpload && onCellular()) return setIssue(gameId, WAIT_WIFI);
     setIssue(gameId, null);
-    const total = local.reduce((n, [, f]) => n + f.size, 0);
-    let done = 0;
-    setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });
-    for (const [path, file] of local) {
-      const old = remote.get(path);
-      if (Number(old?.size ?? -1) !== file.size) {
-        const props = { path };
-        const name = path.split("/").pop()!;
-        if (old && file.size <= SMALL) await updateFile(old.id, file);
+
+    const total = items.reduce((n, it) => n + it.file.size, 0);
+    let done = total - todo.reduce((n, it) => n + it.file.size, 0);
+    const report = () => setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });
+    report();
+    const put = async (it: UploadItem) => {
+      const { name, file, props, old } = it;
+      if (old && file.size <= SMALL) await updateFile(old.id, file);
+      else {
+        if (old) await trash(old.id); // 크기가 다르면 올리다 만 파일이다
+        if (file.size <= SMALL) await createFile(folder.id, name, file, props);
         else {
-          if (old) await trash(old.id); // 크기가 다르면 올리다 만 파일이다
-          if (file.size <= SMALL) await createFile(folderId, name, file, props);
-          else
-            await createLargeFile(
-              folderId,
-              name,
-              file,
-              props,
-              (sent) => setTransfer(gameId, { label: "드라이브에 올리는 중", done: done + sent, total }),
-              `${folderId}/${path}/${file.size}`,
-            );
+          const base = done;
+          await createLargeFile(folder.id, name, file, props, (sent) => setTransfer(gameId, { label: "드라이브에 올리는 중", done: base + sent, total }), `${folder.id}/${props.path ?? name}/${file.size}`);
         }
       }
       done += file.size;
-      setTransfer(gameId, { label: "드라이브에 올리는 중", done, total });
-    }
-    await writeManifest(folderId, await manifestOf(game, key, local.map(([path, f]) => ({ path, size: f.size }))));
+      report();
+    };
+    // 작은 파일은 여럿을 동시에 (예전 방식 DOS 게임은 파일이 수백 개라 하나씩 올리면 아주 느렸다), 큰 파일은 하나씩
+    await pool(
+      todo.filter((it) => it.file.size <= SMALL),
+      4,
+      put,
+    );
+    for (const it of todo.filter((it) => it.file.size > SMALL)) await put(it);
+
+    const info = remoteInfo(game);
+    const thumb = await thumbDataUrl(game.id);
+    await writeManifest(
+      folder.id,
+      source ? { key, game: info, source: game.source, thumb } : { key, game: info, files: items.map((it) => ({ path: it.props.path, size: it.file.size })), thumb },
+    );
+    // 원본은 드라이브에 올렸으니 기기에서는 지운다 (기기에는 풀어 둔 것만 있으면 된다)
+    if (source && !game.source!.romFile) await removeDir(sourceDir(game.id));
   } catch (e) {
     setIssue(gameId, `올리지 못했습니다: ${(e as Error).message}`);
     throw e;
@@ -171,34 +265,112 @@ export async function uploadGame(gameId: string, { force = false } = {}) {
   }
 }
 
-/** 이름이나 설정을 바꿨을 때 드라이브의 게임 정보도 고친다 */
+/**
+ * 게임 추가와 동시에 올리기: 고른 파일을 기기에서 푸는 동안 같은 파일을 드라이브에 바로 올린다.
+ * 게임 키(실행 파일·롬 해시)는 다 푼 뒤에야 알아서, 처음에는 adding 표시를 단 폴더에 올리고 finish에서 키와 게임 정보를 적는다.
+ * 지금 올릴 수 없으면(드라이브 연결 안 됨, 오프라인, 모바일 데이터인데 큰 파일) null — 나중에 uploadGame이 올린다
+ */
+export interface PickedUpload {
+  state(): "running" | "ok" | "failed";
+  /** 이 게임 카드에 진행률을 보여 준다 (등록이 끝난 뒤). 그동안 다른 곳에서 같은 게임을 또 올리지 않는다 */
+  setCard(gameId: string): void;
+  /** 다 올라가면 폴더에 게임 키·이름과 manifest를 적는다. 같은 게임이 드라이브에 이미 있으면 새로 올린 것은 버린다 */
+  finish(game: Game): Promise<void>;
+  /** 쓰지 않는다 (등록 실패, zip 하나에 게임이 여럿): 올린 것을 휴지통으로 */
+  discard(): void;
+}
+
+export function startPickedUpload(picked: { name: string; file: File }[], title: string, onProgress: (fraction: number) => void): PickedUpload | null {
+  const total = picked.reduce((n, p) => n + p.file.size, 0);
+  if (!authState().driveReady || !navigator.onLine || !picked.length) return null;
+  if (total > SMALL && getPrefs().wifiOnlyUpload && onCellular()) return null;
+  let card: string | null = null;
+  let done = 0;
+  let state: "running" | "ok" | "failed" = "running";
+  let folderId: string | undefined;
+  const report = () => (card ? setTransfer(card, { label: "드라이브에 올리는 중", done, total }) : onProgress(total ? done / total : 1));
+  const work = (async () => {
+    const { games } = await driveFolders();
+    folderId = (await createFolder(games, folderName(title), { adding: "1" })).id;
+    for (const { name, file } of picked) {
+      const base = done;
+      if (file.size <= SMALL) await createFile(folderId, name, file, { source: "1" });
+      else await createLargeFile(folderId, name, file, { source: "1" }, (sent) => ((done = base + sent), report()), `${folderId}/${name}/${file.size}`);
+      done = base + file.size;
+      report();
+    }
+    return folderId;
+  })();
+  work.then(
+    () => (state = "ok"),
+    () => (state = "failed"),
+  );
+  const release = () => {
+    if (!card) return;
+    uploading.delete(card);
+    setTransfer(card, null);
+  };
+  return {
+    state: () => state,
+    setCard(gameId) {
+      card = gameId;
+      uploading.add(gameId);
+      report();
+    },
+    async finish(game) {
+      try {
+        const id = await work;
+        const key = await syncKey(game);
+        if (!key) throw new Error("게임 키를 만들지 못했습니다");
+        const same = (await gameFolders()).find((f) => f.id !== id && folderKey(f) === key);
+        if (same) return void (await trash(id)); // 같은 게임이 이미 드라이브에 있다 (다른 기기에서 추가함)
+        await updateMeta(id, { name: folderName(game.title), appProperties: { key, adding: null } });
+        await writeManifest(id, { key, game: remoteInfo(game), source: game.source, thumb: await thumbDataUrl(game.id) });
+        setIssue(game.id, null);
+      } finally {
+        release();
+      }
+    },
+    discard() {
+      release();
+      void work.then((id) => trash(id), () => (folderId ? trash(folderId) : undefined)).catch(() => undefined);
+    },
+  };
+}
+
+/** 이름이나 설정을 바꿨을 때 드라이브의 게임 정보도 고친다 (폴더 이름도 게임 이름으로) */
 export async function updateRemoteGame(game: Game) {
   if (!authState().signedIn || !game.syncKey) return;
-  const { games } = await driveFolders();
-  const folder = await findChild(games, game.syncKey);
+  const folder = await findGameFolder(game.syncKey);
   if (!folder) return;
-  const manifest = await findChild(folder.id, "manifest.json");
+  const manifest = await findChild(folder.id, MANIFEST);
   if (!manifest) return; // 아직 올리는 중이면 끝날 때 새 정보로 쓴다
   const old = (await (await download(manifest.id)).json()) as RemoteGame;
-  await writeManifest(folder.id, await manifestOf(game, game.syncKey, old.files));
+  await writeManifest(folder.id, { ...old, game: remoteInfo(game), thumb: (await thumbDataUrl(game.id)) ?? old.thumb });
+  if (folder.appProperties?.key && folder.name !== folderName(game.title)) await renameFile(folder.id, folderName(game.title)).catch(() => undefined);
 }
 
 /** 드라이브에만 있는 게임 목록 */
 const REMOTE_CACHE = "remote-games.json";
+
+/** 다 올라간(manifest.json이 있는) 게임 폴더와 그 manifest 파일. 목록 두 번으로 끝나서 게임이 많아도 가볍다 */
+async function manifests(): Promise<{ folder: DriveFile; manifestId: string }[]> {
+  const byId = new Map((await gameFolders()).map((f) => [f.id, f]));
+  const params = new URLSearchParams({ q: `name = '${MANIFEST}' and trashed = false`, fields: "nextPageToken,files(id,parents)", pageSize: "1000" });
+  const out: { folder: DriveFile; manifestId: string }[] = [];
+  for (const m of await listAll(params)) for (const p of m.parents ?? []) if (byId.has(p)) out.push({ folder: byId.get(p)!, manifestId: m.id });
+  return out;
+}
 
 /**
  * 드라이브의 게임 목록. 받을 때마다 기기에도 적어 둬서, 오프라인이거나 드라이브 연결이 끊겨도
  * 라이브러리에 드라이브 게임을 계속 보여 준다 (cachedRemoteGames)
  */
 export async function listRemoteGames(): Promise<RemoteGame[]> {
-  const { games } = await driveFolders();
-  const out: RemoteGame[] = [];
-  for (const folder of await listChildren(games, "mimeType = 'application/vnd.google-apps.folder'")) {
-    const manifest = await findChild(folder.id, "manifest.json");
-    if (!manifest) continue; // 올리다 만 게임
-    const m = (await (await download(manifest.id)).json()) as Omit<RemoteGame, "folderId">;
-    out.push({ ...m, folderId: folder.id });
-  }
+  const out = await pool(await manifests(), 6, async ({ folder, manifestId }) => {
+    const m = (await (await download(manifestId)).json()) as Omit<RemoteGame, "folderId">;
+    return { ...m, key: m.key ?? folderKey(folder), folderId: folder.id };
+  });
   await writeJson(REMOTE_CACHE, out).catch(() => undefined);
   return out;
 }
@@ -206,23 +378,18 @@ export async function listRemoteGames(): Promise<RemoteGame[]> {
 /** 마지막으로 받아 둔 드라이브 게임 목록 (없으면 빈 목록) */
 export const cachedRemoteGames = () => readJson<RemoteGame[]>(REMOTE_CACHE, []).catch(() => [] as RemoteGame[]);
 
-/** 드라이브에 다 올라간(manifest.json이 있는) 게임 키. 파일 내용은 받지 않아서 자주 불러도 가볍다 */
+/** 드라이브에 다 올라간 게임 키. 파일 내용은 받지 않아서 자주 불러도 가볍다 */
 async function remoteKeys(): Promise<Set<string>> {
-  const { games } = await driveFolders();
-  const folders = new Map((await listChildren(games, "mimeType = 'application/vnd.google-apps.folder'")).map((f) => [f.id, f.name]));
-  const params = new URLSearchParams({ q: "name = 'manifest.json' and trashed = false", fields: "nextPageToken,files(parents)", pageSize: "1000" });
-  const keys = new Set<string>();
-  for (const f of await listAll(params)) for (const p of f.parents ?? []) if (folders.has(p)) keys.add(folders.get(p)!);
-  return keys;
+  return new Set((await manifests()).map(({ folder }) => folderKey(folder)));
 }
 
 // --- 받기 ---
-// 큰 파일은 8MB씩 잘라 4개를 동시에 받고, 받은 순서대로 이어 쓴다 (한 줄로 받으면 휴대폰에서 아주 느렸다).
+// 큰 파일은 16MB씩 잘라 4개를 동시에 받고, 받은 순서대로 이어 쓴다 (한 줄로 받으면 휴대폰에서 아주 느렸다).
 // 조각이 오래 안 오면(화면이 꺼지거나 다른 앱으로 가서 연결이 멈춤) 끊고 그 조각만 다시 받는다.
 // 실패해도 다 받은 파일은 남겨 두고, 다시 누르면 남은 파일부터 이어 받는다.
-const DL_CHUNK = 8 * 1024 * 1024;
+const DL_CHUNK = 16 * 1024 * 1024;
 const DL_AHEAD = 4;
-const DL_TIMEOUT_MS = 60 * 1000;
+const DL_TIMEOUT_MS = 90 * 1000;
 const DL_TRIES = 6;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const pendingKey = (key: string) => `download:${key}`;
@@ -279,33 +446,95 @@ async function downloadFile(fileId: string, size: number, path: string, onBytes:
   }
 }
 
-/** 드라이브의 게임을 이 기기로 받는다. 받다 멈춘 적이 있으면 다 받은 파일은 건너뛰고 이어 받는다 */
-export async function downloadGame(remote: RemoteGame): Promise<Game> {
-  let id: string;
-  try {
-    id = localStorage.getItem(pendingKey(remote.key)) ?? newGameId(remote.game.title);
-    localStorage.setItem(pendingKey(remote.key), id);
-  } catch {
-    id = newGameId(remote.game.title);
+type Want = { file: DriveFile; size: number; local: string };
+
+/** 여러 파일 받기: 지난번에 다 받은 파일은 건너뛰고, 작은 파일은 여럿을 동시에, 큰 파일은 하나씩(파일 안에서 조각을 동시에) */
+async function downloadAll(wants: Want[], onBytes: (n: number) => void) {
+  const todo: Want[] = [];
+  for (const w of wants) {
+    if ((await getFile(w.local))?.size === w.size) onBytes(w.size);
+    else todo.push(w);
   }
-  const total = remote.files.reduce((n, f) => n + f.size, 0);
-  let done = 0;
-  setTransfer(remote.key, { label: "받는 중", done, total });
-  try {
-    // 게임 정보(manifest)에 적힌 파일만, 크기가 맞는 것으로 받는다 (올리다 만 파일이 섞여 있어도)
-    const children = await listChildren(remote.folderId);
-    for (const want of remote.files) {
-      if (want.path.includes("..")) continue;
-      const f = children.find((c) => c.appProperties?.path === want.path && Number(c.size ?? 0) === want.size);
-      if (!f) throw new Error(`드라이브에 ${want.path} 파일이 없습니다`);
-      const local = `${gameDir(id)}/${want.path}`;
-      if ((await getFile(local))?.size === want.size) {
-        done += want.size; // 지난번에 다 받은 파일
-        continue;
-      }
-      await downloadFile(f.id, want.size, local, (n) => setTransfer(remote.key, { label: "받는 중", done: (done += n), total }));
+  await pool(
+    todo.filter((w) => w.size <= DL_CHUNK),
+    6,
+    (w) => downloadFile(w.file.id, w.size, w.local, onBytes),
+  );
+  for (const w of todo.filter((w) => w.size > DL_CHUNK)) await downloadFile(w.file.id, w.size, w.local, onBytes);
+}
+
+const downloads = new Map<string, Promise<Game>>();
+
+/**
+ * 드라이브의 게임을 이 기기로 받는다. 받다 멈춘 적이 있으면 다 받은 파일은 건너뛰고 이어 받는다.
+ * into: 이 기기에 있던 게임의 파일이 사라져서 같은 자리(id)에 다시 받는다 (세이브·상태는 그대로 둔다)
+ */
+export function downloadGame(remote: RemoteGame, into?: Game): Promise<Game> {
+  // 카드를 연달아 눌러도 한 번만 받는다
+  const running = downloads.get(remote.key);
+  if (running) return running;
+  const p = doDownload(remote, into).finally(() => downloads.delete(remote.key));
+  downloads.set(remote.key, p);
+  return p;
+}
+
+async function doDownload(remote: RemoteGame, into?: Game): Promise<Game> {
+  let id = into?.id;
+  if (!id) {
+    try {
+      id = localStorage.getItem(pendingKey(remote.key)) ?? newGameId(remote.game.title);
+      localStorage.setItem(pendingKey(remote.key), id);
+    } catch {
+      id = newGameId(remote.game.title);
     }
-    const game: Game = { ...remote.game, id, syncKey: remote.key, addedAt: Date.now() };
+  }
+  const card = into ? into.id : remote.key; // 진행률을 보여 줄 카드
+  const total = (remote.source?.files ?? remote.files ?? []).reduce((n, f) => n + f.size, 0);
+  let done = 0;
+  const onBytes = (n: number) => setTransfer(card, { label: "받는 중", done: (done += n), total });
+  setTransfer(card, { label: "받는 중", done, total });
+  try {
+    const children = await listChildren(remote.folderId);
+    let unpacked: Partial<Game> = {};
+    if (remote.source) {
+      // 원본(zip, 롬)을 받아서 처음 추가할 때와 같은 방식으로 푼다. 다 풀면 원본은 지운다 (드라이브에 있다)
+      const dir = sourceDir(id);
+      const wants = remote.source.files.map((s) => {
+        const file = children.find((c) => c.name === s.name && Number(c.size ?? 0) === s.size);
+        if (!file) throw new Error(`드라이브에 ${s.name} 파일이 없습니다`);
+        return { file, size: s.size, local: `${dir}/${s.name}` };
+      });
+      await downloadAll(wants, onBytes);
+      const entries: Entry[] = [];
+      for (const s of remote.source.files) entries.push({ path: s.name, file: (await getFile(`${dir}/${s.name}`))! });
+      setTransfer(card, { label: "설치 중", done: 0, total: 100 });
+      unpacked = await reimportFiles(
+        entries,
+        { progress: (msg) => setTransfer(card, { label: "설치 중", done: percentOf(msg), total: 100 }), chooseExe: async (c) => c[0] ?? null },
+        { id, pick: remote.source.pick },
+      );
+      await removeDir(dir);
+    } else {
+      // 예전 방식: 게임 정보(manifest)에 적힌 파일만, 크기가 맞는 것으로 받는다 (올리다 만 파일이 섞여 있어도)
+      const wants: Want[] = [];
+      for (const want of remote.files ?? []) {
+        if (want.path.includes("..") || notGameFile(want.path)) continue;
+        const file = children.find((c) => c.appProperties?.path === want.path && Number(c.size ?? 0) === want.size);
+        if (!file) throw new Error(`드라이브에 ${want.path} 파일이 없습니다`);
+        wants.push({ file, size: want.size, local: `${gameDir(id)}/${want.path}` });
+      }
+      await downloadAll(wants, onBytes);
+    }
+    if (remote.thumb) await writeFile(`${gameDir(id)}/thumb.png`, await (await fetch(remote.thumb)).blob());
+    const game: Game = {
+      ...unpacked,
+      ...remote.game,
+      id,
+      syncKey: remote.key,
+      addedAt: into?.addedAt ?? Date.now(),
+      lastPlayedAt: into?.lastPlayedAt,
+      source: remote.source,
+    };
     await putGame(game);
     try {
       localStorage.removeItem(pendingKey(remote.key));
@@ -316,13 +545,20 @@ export async function downloadGame(remote: RemoteGame): Promise<Game> {
   } catch (e) {
     throw new Error(`${(e as Error).message} (다시 누르면 받은 데까지 이어서 받습니다)`);
   } finally {
-    setTransfer(remote.key, null);
+    setTransfer(card, null);
   }
 }
 
+/** 설치 진행 메시지("압축 푸는 중 45%", "게임 파일 복사 중 3/10")를 0~100으로. 압축 풀기가 대부분이라 그 단계를 90%까지로 본다 */
+function percentOf(msg: string): number {
+  const pct = msg.match(/(\d+)%/);
+  if (pct) return Math.min(90, (+pct[1] * 9) / 10);
+  const part = msg.match(/(\d+)\/(\d+)/);
+  return part ? 90 + (+part[1] / +part[2]) * 10 : 90;
+}
+
 export async function deleteRemoteGame(key: string) {
-  const { games } = await driveFolders();
-  const folder = await findChild(games, key);
+  const folder = await findGameFolder(key);
   if (folder) await trash(folder.id);
 }
 

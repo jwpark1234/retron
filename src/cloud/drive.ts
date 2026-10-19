@@ -74,19 +74,43 @@ export async function ensureFolder(parentId: string, name: string): Promise<stri
   return ((await res.json()) as { id: string }).id;
 }
 
+/** 하위 폴더 만들기 (같은 이름이 있어도 새로). appProperties로 찾는다 */
+export async function createFolder(parentId: string, name: string, appProperties?: Record<string, string>): Promise<DriveFile> {
+  const res = await call(`${API}/files?fields=${FIELDS}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, mimeType: FOLDER, parents: [parentId], ...(appProperties ? { appProperties } : {}) }),
+  });
+  return (await res.json()) as DriveFile;
+}
+
+/** 이름 바꾸기 */
+export async function renameFile(fileId: string, name: string) {
+  await updateMeta(fileId, { name });
+}
+
+/** 이름·appProperties 고치기 (appProperties 값을 null로 주면 그 항목을 지운다) */
+export async function updateMeta(fileId: string, meta: { name?: string; appProperties?: Record<string, string | null> }) {
+  await call(`${API}/files/${fileId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meta) });
+}
+
+// 보낼 내용을 메모리로 읽어 둔다. 아이폰 사파리는 기기 저장소(OPFS) 파일을 그대로 fetch 본문에 넣으면
+// "Load failed"로 올리기가 실패할 때가 있다 (휴대폰에서 롬 올리기 실패 보고). 조각 크기(최대 32MB)만큼만 읽는다
+const inMemory = async (data: Blob) => new Blob([await data.arrayBuffer()], { type: data.type });
+
 /** 작은 파일 만들기 (5MB 이하 권장) */
 export async function createFile(parentId: string, name: string, data: Blob, appProperties?: Record<string, string>): Promise<DriveFile> {
   const meta = { name, parents: [parentId], ...(appProperties ? { appProperties } : {}) };
   const body = new FormData();
   body.append("metadata", new Blob([JSON.stringify(meta)], { type: "application/json" }));
-  body.append("file", data);
+  body.append("file", await inMemory(data));
   const res = await call(`${UPLOAD}/files?uploadType=multipart&fields=${FIELDS}`, { method: "POST", body });
   return (await res.json()) as DriveFile;
 }
 
 /** 파일 내용 바꾸기 */
 export async function updateFile(fileId: string, data: Blob): Promise<DriveFile> {
-  const res = await call(`${UPLOAD}/files/${fileId}?uploadType=media&fields=${FIELDS}`, { method: "PATCH", body: data });
+  const res = await call(`${UPLOAD}/files/${fileId}?uploadType=media&fields=${FIELDS}`, { method: "PATCH", body: await inMemory(data) });
   return (await res.json()) as DriveFile;
 }
 
@@ -163,7 +187,7 @@ export async function createLargeFile(
     const res = await call(session, {
       method: "PUT",
       headers: { "Content-Range": `bytes ${offset}-${end - 1}/${data.size}`, "X-GUploader-No-308": "yes" },
-      body: data.slice(offset, end),
+      body: await inMemory(data.slice(offset, end)),
     });
     const status = Number(res.headers.get("X-HTTP-Status-Code-Override") ?? res.status);
     if (status !== 308) {

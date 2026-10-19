@@ -219,6 +219,7 @@ const KEYS: Record<string, number> = {
   Space: 32, Minus: 45, Equal: 61, Comma: 44, Period: 46, Slash: 47, Semicolon: 59, Quote: 39,
   BracketLeft: 91, Backslash: 92, BracketRight: 93, Backquote: 96,
   ShiftLeft: 340, ControlLeft: 341, AltLeft: 342, ShiftRight: 344, ControlRight: 345, AltRight: 346,
+  NumLock: 282, NumpadDecimal: 330, NumpadDivide: 331, NumpadMultiply: 332, NumpadSubtract: 333, NumpadAdd: 334,
 };
 
 /** 키 설정 화면에서 고를 수 있는 DOS 키 */
@@ -229,6 +230,9 @@ export const DOS_KEY_LIST: { label: string; key: number }[] = [
   ...Array.from({ length: 26 }, (_, i) => ({ label: String.fromCharCode(65 + i), key: 65 + i })),
   ...Array.from({ length: 10 }, (_, i) => ({ label: String(i), key: 48 + i })),
   ...Array.from({ length: 12 }, (_, i) => ({ label: `F${i + 1}`, key: 290 + i })),
+  // 숫자 키패드 (js-dos 키 번호는 GLFW와 같다: KP_0=320 … KP_ENTER=335, NUM_LOCK=282)
+  ...Array.from({ length: 10 }, (_, i) => ({ label: `Num ${i}`, key: 320 + i })),
+  ...[["Num .", 330], ["Num /", 331], ["Num *", 332], ["Num -", 333], ["Num +", 334], ["Num Enter", 335], ["NumLock", 282]].map(([label, key]) => ({ label: label as string, key: key as number })),
 ];
 
 export const dosKeyLabel = (key: number) => DOS_KEY_LIST.find((k) => k.key === key)?.label ?? KEYBOARD.find((k) => k.key === key)?.label ?? String(key);
@@ -239,5 +243,6 @@ export function toDosKey(code: string): number | undefined {
   if ((m = code.match(/^Key([A-Z])$/))) return m[1].charCodeAt(0);
   if ((m = code.match(/^Digit(\d)$/))) return 48 + +m[1];
   if ((m = code.match(/^F(\d+)$/)) && +m[1] <= 12) return 289 + +m[1];
+  if ((m = code.match(/^Numpad(\d)$/))) return 320 + +m[1];
   return undefined;
 }

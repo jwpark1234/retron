@@ -117,7 +117,7 @@ function SortMenu({ count }: { count: number }) {
   );
 }
 
-export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void; onPlayRemote: (r: RemoteGame) => void }) {
+export function Library({ onPlay, onDownload }: { onPlay: (game: Game) => void; onDownload: (r: RemoteGame) => void }) {
   const { games, thumbs, remote, onDrive, transfers, refresh } = useGames();
   useThumbLuma();
   // 드라이브 목록을 못 읽었으면 null (모름)
@@ -171,13 +171,11 @@ export function Library({ onPlay, onPlayRemote }: { onPlay: (game: Game) => void
               game={i.game}
               thumb={thumbs[i.game.id]}
               transfer={transfers[i.game.id]}
-              deviceOnly={driveState(i.game) === false}
-              uploadIssue={notUploaded(i.game)}
               onPlay={() => onPlay(i.game)}
               onSettings={() => setEditing(i.game)}
             />
           ) : (
-            <RemoteGameCard key={i.remote.key} remote={i.remote} transfer={transfers[i.remote.key]} onDownload={() => onPlayRemote(i.remote)} />
+            <RemoteGameCard key={i.remote.key} remote={i.remote} transfer={transfers[i.remote.key]} onDownload={() => onDownload(i.remote)} />
           ),
         )}
       </ul>

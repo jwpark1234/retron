@@ -119,12 +119,13 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   );
   const menu = useMenuState(bridge);
 
-  // 화면 위 버튼 글자색을 화면 밝기에 맞춘다. WebGL 화면은 바로 읽을 수 없어서 스크린샷으로 (멈춘 동안엔 찍지 않는다)
+  // 화면 위 버튼 글자색을 화면 밝기에 맞춘다. WebGL 화면은 바로 읽을 수 없어서 스크린샷으로 (멈춘 동안엔 찍지 않는다).
+  // 스크린샷은 PNG로 만들어서 비싸다. 1.5초마다 찍으니 휴대폰 배터리가 빨리 닳아서 4초로 늘렸다
   const rotation = useRef(0);
   rotation.current = orientation.rotation;
   const quiet = useRef(false);
   quiet.current = menu.open || !!menu.slots || !!status;
-  useCanvasLuma(canvas, rotation, async () => (emu.current && !quiet.current ? createImageBitmap(await emu.current.screenshot()) : null), 1500);
+  useCanvasLuma(canvas, rotation, async () => (emu.current && !quiet.current ? createImageBitmap(await emu.current.screenshot()) : null), 4000);
 
   const changeSpeed = async (speed: number) => {
     setPrefs({ fastSpeed: speed });

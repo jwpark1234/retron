@@ -1,5 +1,5 @@
 // 기기 사이에서 같은 게임을 알아보는 키: ROM이나 실행 파일 내용의 해시
-import { gameDir, putGame, type Game } from "../library/library";
+import { gameDir, patchGame, type Game } from "../library/library";
 import { getFile } from "../library/store";
 import { HDD_DIR } from "../platforms/dos/profiles";
 
@@ -15,6 +15,6 @@ export async function syncKey(game: Game): Promise<string | null> {
   if (!file) return null;
   const hash = (await sha256Hex(new Uint8Array(await file.arrayBuffer()))).slice(0, 40);
   const key = `${game.platform}-${hash}`;
-  await putGame({ ...game, syncKey: key });
+  await patchGame(game.id, { syncKey: key }); // 다른 칸은 그 사이 바뀌었을 수 있어서 키만 적는다
   return key;
 }
