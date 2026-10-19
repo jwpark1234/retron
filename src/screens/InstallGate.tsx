@@ -11,11 +11,6 @@ export function InstallGate() {
   return (
     <div class="landing install-gate" style={BG}>
       <Logo />
-      <p class="gate-text">
-        휴대폰에서는 <strong>앱으로 설치</strong>해서 씁니다.
-        <br />
-        전체 화면으로 열리고, 받은 게임을 기기에 안전하게 보관합니다.
-      </p>
       {install.kind === "prompt" && (
         <button class="primary" onClick={() => void install.install().catch(() => undefined)}>
           앱 설치
@@ -45,7 +40,6 @@ export function InstallGate() {
           </li>
         </ol>
       )}
-      {ios && <p class="fineprint">아이폰은 설치한 앱이 사파리와 저장 공간을 따로 씁니다. 사파리에서 하던 게임은 드라이브에서 다시 받습니다.</p>}
       <a class="fineprint privacy-link" href="./privacy.html">
         개인정보처리방침
       </a>
