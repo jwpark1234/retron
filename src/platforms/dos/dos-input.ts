@@ -11,14 +11,19 @@ const isUi = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest(".v
 
 export type Cursor = { x: number; y: number }; // 0~1 화면 비율. 마우스·트랙패드·게임패드가 같이 쓴다
 
-/** 커서를 (dx, dy)만큼 옮긴다 (화면 비율). 트랙패드·게임패드가 쓰므로 마우스 감도를 여기서 곱한다 */
+/**
+ * 커서를 (dx, dy)만큼 옮긴다 (화면 비율). 트랙패드·게임패드가 쓰므로 마우스 감도를 여기서 곱한다.
+ * 절대 좌표(sendMouseMotion)가 아니라 이동량(sendMouseRelativeMotion)으로 보낸다: 창세기전2처럼 마우스 드라이버의
+ * 이동량(mickey)만 읽는 게임은 절대 좌표로 옮기면 클릭은 되는데 커서가 움직이지 않았다. 이동량은 모든 게임이 받는다.
+ * 대신 게임 안 커서와 cursor(0~1)가 어긋날 수 있다 (cursor는 실제 마우스가 다시 덮어쓴다)
+ */
 export function nudgeCursor(cursor: Cursor, ci: CommandInterface | null, dx: number, dy: number) {
   const k = getPrefs().mouseSpeed;
   dx *= k;
   dy *= k;
   cursor.x = Math.min(1, Math.max(0, cursor.x + dx));
   cursor.y = Math.min(1, Math.max(0, cursor.y + dy));
-  ci?.sendMouseMotion(cursor.x, cursor.y);
+  if (ci) ci.sendMouseRelativeMotion(dx * ci.width(), dy * ci.height());
 }
 
 export function useDosMouseKeyboard({

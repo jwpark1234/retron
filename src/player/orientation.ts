@@ -78,7 +78,17 @@ export function toLocal(e: { clientX: number; clientY: number }, r: DOMRect, rot
   if (rotation === -90) return { x: clamp(1 - fy), y: clamp(fx) };
   return { x: clamp(fx), y: clamp(fy) };
 }
-/** 기기 방향과 원하는 방향이 다를 때 게임 화면 전체(메뉴 포함)를 90도 돌린다 */
+// 돌린 화면의 위·오른쪽·아래·왼쪽이 기기의 어느 변인지. env(safe-area-inset-*)는 늘 기기 기준이라
+// 그대로 쓰면 가로로 돌린 화면에서 노치·홈 막대(기기의 위아래)를 피하지 못하고 엉뚱한 변에 여백이 생겼다
+const SIDES = ["top", "right", "bottom", "left"] as const;
+const safeVars = (rotation: number) =>
+  Object.fromEntries(SIDES.map((side, i) => [`--safe-${side}`, `env(safe-area-inset-${SIDES[(i + (rotation === 90 ? 1 : 3)) % 4]})`]));
+
+/**
+ * 기기 방향과 원하는 방향이 다를 때 게임 화면 전체(메뉴 포함)를 90도 돌린다.
+ * 돌리지 않을 때도 빈 style이 아니라 undefined를 돌려주지만, 한 번 돌렸다 풀면 Preact가 style=""를 남기므로
+ * CSS에서 [style]로 회전 여부를 가리면 안 된다 (세로로 돌아왔을 때 위 노치 여백이 사라졌다)
+ */
 export function rotatedStyle(rotation: number): Record<string, string> | undefined {
   if (!rotation) return undefined;
   return {
@@ -88,5 +98,8 @@ export function rotatedStyle(rotation: number): Record<string, string> | undefin
     width: "100vh",
     height: "100vw",
     transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+    // 90: 세로로 든 기기에서 가로 화면 → 게임은 가운데. -90: 가로로 든 기기에서 세로 화면 → 게임은 위
+    justifyContent: rotation === 90 ? "center" : "flex-start",
+    ...safeVars(rotation),
   };
 }

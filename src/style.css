@@ -89,7 +89,12 @@ ul.grid .thumb { aspect-ratio: 1; }
 .dialog .cancel { text-align: center; background: transparent; border: 0; box-shadow: none; color: var(--muted); }
 
 /* 플레이 화면 */
-.game { position: fixed; inset: 0; container-type: size; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+.game {
+  position: fixed; inset: 0; box-sizing: border-box; container-type: size; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none;
+  /* 노치·홈 막대 여백. 화면을 CSS로 돌리면 orientation.ts의 rotatedStyle이 돌린 방향에 맞춰 바꿔 넣는다. 게임 안에서는 env() 대신 이것을 쓴다 */
+  --safe-top: env(safe-area-inset-top); --safe-right: env(safe-area-inset-right); --safe-bottom: env(safe-area-inset-bottom); --safe-left: env(safe-area-inset-left);
+  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+}
 .screen { --aspect: 4 / 3; position: relative; width: min(100cqw, calc(100cqh * var(--aspect))); aspect-ratio: var(--aspect); }
 .screen canvas { display: block; width: 100%; height: 100%; }
 /* PC DOS: 게임 화면 위에서는 OS 마우스 포인터를 숨긴다 (게임이 자기 포인터를 그린다). 메뉴·버튼 위에서는 보인다 */
@@ -113,13 +118,13 @@ ul.grid .thumb { aspect-ratio: 1; }
 .quick .vpad-btn:disabled { opacity: 0.4; }
 .vpad-btn.held { background: rgba(255, 179, 64, 0.45); border-color: var(--tint); }
 
-/* SFC·GBA 가상패드. 세로 화면: 게임 아래에 윗줄 / L·R / 방향·버튼 / SELECT·START.
+/* SFC·GBA 가상패드. 세로 화면: 윗줄 / L·R / 방향·버튼 / SELECT·START를 그 순서 그대로 화면 아래에 붙인다 (남는 자리는 게임과 윗줄 사이로).
    가로 화면: 게임 위에 띄우고 L·R은 위 양끝, 윗줄 버튼과 방향·버튼·SELECT·START는 화면 아래에 바짝 붙인다 */
 .vpad {
   width: 100%; box-sizing: border-box; flex: 1; min-height: 0; display: grid; gap: 10px;
-  grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto auto auto; align-content: space-evenly;
+  grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto auto auto; align-content: end;
   grid-template-areas: "top top top" "sh sh sh" "dpad . face" "sys sys sys";
-  padding: 12px 16px max(14px, env(safe-area-inset-bottom)); touch-action: none;
+  padding: 12px 16px max(14px, var(--safe-bottom)); touch-action: none;
 }
 .vpad-shoulders { grid-area: sh; display: flex; justify-content: space-between; }
 .vpad-sys { grid-area: sys; display: flex; justify-content: center; align-items: center; gap: 16px; }
@@ -166,7 +171,7 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad {
     position: absolute; inset: 0; pointer-events: none; gap: 8px; align-content: stretch;
     grid-template-columns: auto 1fr auto; grid-template-rows: auto 1fr auto auto; grid-template-areas: "sh sh sh" ". . ." "top top top" "dpad sys face";
-    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(6px, calc(env(safe-area-inset-bottom) - 12px)) max(16px, env(safe-area-inset-left));
+    padding: max(10px, var(--safe-top)) max(16px, var(--safe-right)) max(6px, calc(var(--safe-bottom) - 12px)) max(16px, var(--safe-left));
   }
   .vpad > *, .vpad .quick { pointer-events: none; }
   .vpad button, .vpad > .vpad-stick, .vpad > .vpad-dpad { pointer-events: auto; }
@@ -175,12 +180,13 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad-sys { padding-bottom: 4px; }
 }
 /* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad) + 키 버튼(keys), 맨 위에 Save·Load와 빨리가기·메뉴 줄(top).
-   세로 화면: 게임 아래에 윗줄, 방향 패드·트랙패드(트랙패드 위치는 메뉴에서 왼쪽·오른쪽), 키 버튼.
+   세로 화면: 윗줄, 방향 패드·트랙패드(트랙패드 위치는 메뉴에서 왼쪽·오른쪽), 키 버튼을 그 순서 그대로 화면 아래에 붙인다.
    가로 화면(land): 게임 위에 띄우고 아래 줄 세 자리(s0 s1 s2)에 놓는다. 순서는 메뉴에서 바꾸고, 자리는 DosTouch.tsx가 정한다 */
 .vbar {
   width: 100%; box-sizing: border-box; display: grid; gap: 12px; flex: 1; min-height: 0;
-  grid-template-columns: auto 1fr; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "top top" "dpad pad" "keys keys";
-  padding: 12px 14px max(14px, env(safe-area-inset-bottom));
+  /* 키 버튼 줄은 남는 높이까지만 커지고(넘치면 스크롤 막대), 남는 자리는 맨 위(게임과 윗줄 사이)로 간다 */
+  grid-template-columns: auto 1fr; grid-template-rows: auto auto minmax(0, max-content); align-content: end; grid-template-areas: "top top" "dpad pad" "keys keys";
+  padding: 12px 14px max(14px, var(--safe-bottom));
 }
 .vbar.pad-left { grid-template-columns: 1fr auto; grid-template-areas: "top top" "pad dpad" "keys keys"; }
 .vbar.no-dpad:not(.land) { grid-template-columns: 1fr; grid-template-areas: "top" "pad" "keys"; }
@@ -191,7 +197,7 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vbar.land {
   position: absolute; inset: 0; pointer-events: none; align-items: end; gap: 8px 12px;
   grid-template-columns: auto 1fr auto; grid-template-rows: 1fr auto auto; grid-template-areas: ". . ." "top top top" "s0 s1 s2";
-  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(6px, calc(env(safe-area-inset-bottom) - 12px)) max(12px, env(safe-area-inset-left));
+  padding: max(10px, var(--safe-top)) max(12px, var(--safe-right)) max(6px, calc(var(--safe-bottom) - 12px)) max(12px, var(--safe-left));
 }
 .vbar.land > *, .vbar.land .quick { pointer-events: none; }
 .vbar.land button, .vbar.land .vpad-stick, .vbar.land .vpad-dpad, .vbar.land > .trackpad, .vbar.land .vkeys-rail { pointer-events: auto; }
@@ -233,9 +239,9 @@ ul.grid .thumb { aspect-ratio: 1; }
 .trackpad .pad .icon { width: 30px; height: 30px; color: rgba(255, 255, 255, 0.18); pointer-events: none; }
 .trackpad .pad:active { background: rgba(255, 255, 255, 0.03); }
 .overlay { position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--muted); font-size: 15px; }
-.toast { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
-/* 세로 화면: 게임은 위에, 컨트롤은 그 아래에 */
-@media (orientation: portrait) { .game:not([style]) { justify-content: flex-start; padding-top: env(safe-area-inset-top); } }
+.toast { position: absolute; bottom: max(24px, var(--safe-bottom, env(safe-area-inset-bottom))); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
+/* 세로 화면: 게임은 위에, 컨트롤은 그 아래에 (CSS로 돌린 화면은 rotatedStyle이 정한다) */
+@media (orientation: portrait) { .game { justify-content: flex-start; } }
 
 /* 게임 메뉴 */
 /* 화면 컨트롤이 없을 때(PC, 게임패드): Save·Load와 빨리가기·메뉴를 화면 오른쪽 아래에 두 묶음으로 흐리게 띄우고, 마우스를 올리면 진하게 */
@@ -251,7 +257,8 @@ ul.grid .thumb { aspect-ratio: 1; }
 .menu-backdrop {
   position: absolute; inset: 0; z-index: 20; display: flex; justify-content: center; align-items: center;
   background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  /* 게임 밖(라이브러리의 설정 창)에서 열리면 --safe-*가 없으므로 env()로 */
+  padding: max(12px, var(--safe-top, env(safe-area-inset-top))) max(12px, var(--safe-right, env(safe-area-inset-right))) max(12px, var(--safe-bottom, env(safe-area-inset-bottom))) max(12px, var(--safe-left, env(safe-area-inset-left)));
 }
 .menu-sheet {
   width: min(420px, 100%); box-sizing: border-box; max-height: 100%; overflow: auto; border-radius: 28px; padding: 14px 16px 16px;
