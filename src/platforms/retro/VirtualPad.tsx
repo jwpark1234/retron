@@ -22,7 +22,7 @@ function Button({ button, label, press, class: cls }: { button: RetroButton; lab
 }
 
 /**
- * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 세로 화면은 조작 영역 맨 위, 가로 화면은 방향 패드·버튼 바로 위에 온다.
+ * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 세로 화면은 조작 영역 맨 위, 가로 화면은 화면 맨 위(L·R 위)에 온다.
  * rotation: 화면을 CSS로 돌렸을 때 각도
  */
 export function VirtualPad({ system, press, rotation, style, top }: { system: RetroSystem; press: Press; rotation: number; style: StickStyle; top: ComponentChildren }) {

@@ -118,12 +118,13 @@ ul.grid .thumb { aspect-ratio: 1; }
 .quick .vpad-btn:disabled { opacity: 0.4; }
 .vpad-btn.held { background: rgba(255, 179, 64, 0.45); border-color: var(--tint); }
 
-/* SFC·GBA 가상패드. 세로 화면: 윗줄 / L·R / 방향·버튼 / SELECT·START를 그 순서 그대로 화면 아래에 붙인다 (남는 자리는 게임과 윗줄 사이로).
-   가로 화면: 게임 위에 띄우고 L·R은 위 양끝, 윗줄 버튼과 방향·버튼·SELECT·START는 화면 아래에 바짝 붙인다 */
+/* SFC·GBA 가상패드. 세로 화면: 윗줄(Save·Load / 빨리가기·메뉴)은 조작 영역 맨 위(게임 바로 아래) 양끝에 두고,
+   L·R / 방향·버튼 / SELECT·START는 화면 아래에 붙인다 (남는 자리는 윗줄과 L·R 사이로).
+   가로 화면: 게임 위에 띄우고 윗줄은 화면 위 양끝, 그 아래 L·R, 방향·버튼·SELECT·START는 화면 아래에 바짝 붙인다 */
 .vpad {
   width: 100%; box-sizing: border-box; flex: 1; min-height: 0; display: grid; gap: 10px;
-  grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto auto auto; align-content: end;
-  grid-template-areas: "top top top" "sh sh sh" "dpad . face" "sys sys sys";
+  grid-template-columns: 1fr auto 1fr; grid-template-rows: auto 1fr auto auto auto;
+  grid-template-areas: "top top top" ". . ." "sh sh sh" "dpad . face" "sys sys sys";
   padding: 12px 16px max(14px, var(--safe-bottom)); touch-action: none;
 }
 .vpad-shoulders { grid-area: sh; display: flex; justify-content: space-between; }
@@ -170,8 +171,9 @@ ul.grid .thumb { aspect-ratio: 1; }
 @container (orientation: landscape) {
   .vpad {
     position: absolute; inset: 0; pointer-events: none; gap: 8px; align-content: stretch;
-    grid-template-columns: auto 1fr auto; grid-template-rows: auto 1fr auto auto; grid-template-areas: "sh sh sh" ". . ." "top top top" "dpad sys face";
-    padding: max(10px, var(--safe-top)) max(16px, var(--safe-right)) max(6px, calc(var(--safe-bottom) - 12px)) max(16px, var(--safe-left));
+    grid-template-columns: auto 1fr auto; grid-template-rows: auto auto 1fr auto; grid-template-areas: "top top top" "sh sh sh" ". . ." "dpad sys face";
+    /* 노치 쪽은 안전 여백에 더 띄운다. max(여백, 16px)로는 노치 가장자리에 버튼이 살짝 겹쳤다 */
+    padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 16px) max(6px, calc(var(--safe-bottom) - 12px)) calc(var(--safe-left) + 16px);
   }
   .vpad > *, .vpad .quick { pointer-events: none; }
   .vpad button, .vpad > .vpad-stick, .vpad > .vpad-dpad { pointer-events: auto; }
@@ -179,37 +181,39 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad-stick, .vpad-dpad, .vpad-face, .vpad-sys { align-self: end; }
   .vpad-sys { padding-bottom: 4px; }
 }
-/* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad) + 키 버튼(keys), 맨 위에 Save·Load와 빨리가기·메뉴 줄(top).
-   세로 화면: 윗줄, 방향 패드·트랙패드(트랙패드 위치는 메뉴에서 왼쪽·오른쪽), 키 버튼을 그 순서 그대로 화면 아래에 붙인다.
-   가로 화면(land): 게임 위에 띄우고 아래 줄 세 자리(s0 s1 s2)에 놓는다. 순서는 메뉴에서 바꾸고, 자리는 DosTouch.tsx가 정한다 */
+/* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad, 게임마다 끌 수 있다: no-pad) + 키 버튼(keys), Save·Load와 빨리가기·메뉴 줄(top).
+   세로 화면: 윗줄은 조작 영역 맨 위(게임 바로 아래) 양끝, 방향 패드·트랙패드 줄과 키 버튼 줄은 화면 아래에 붙인다.
+   트랙패드를 끄면 방향 패드 오른쪽에 키 버튼을 놓는다.
+   가로 화면(land): 게임 위에 띄우고 윗줄은 화면 위 양끝, 아래 줄은 왼쪽에 방향 패드, 오른쪽에 키 버튼·트랙패드 */
 .vbar {
   width: 100%; box-sizing: border-box; display: grid; gap: 12px; flex: 1; min-height: 0;
-  /* 키 버튼 줄은 남는 높이까지만 커지고(넘치면 스크롤 막대), 남는 자리는 맨 위(게임과 윗줄 사이)로 간다 */
-  grid-template-columns: auto 1fr; grid-template-rows: auto auto minmax(0, max-content); align-content: end; grid-template-areas: "top top" "dpad pad" "keys keys";
+  /* 키 버튼 줄은 남는 높이까지만 커지고(넘치면 스크롤 막대), 남는 자리는 윗줄과 방향 패드 줄 사이(1fr)로 간다 */
+  grid-template-columns: auto 1fr; grid-template-rows: auto 1fr auto minmax(0, max-content); grid-template-areas: "top top" ". ." "dpad pad" "keys keys";
   padding: 12px 14px max(14px, var(--safe-bottom));
 }
-.vbar.pad-left { grid-template-columns: 1fr auto; grid-template-areas: "top top" "pad dpad" "keys keys"; }
-.vbar.no-dpad:not(.land) { grid-template-columns: 1fr; grid-template-areas: "top" "pad" "keys"; }
+.vbar.no-dpad:not(.land) { grid-template-columns: 1fr; grid-template-areas: "top" "." "pad" "keys"; }
+.vbar.no-pad:not(.land) { grid-template-rows: auto 1fr minmax(0, max-content); grid-template-areas: "top top" ". ." "dpad keys"; }
+.vbar.no-pad.no-dpad:not(.land) { grid-template-columns: 1fr; grid-template-areas: "top" "." "keys"; }
+/* 키가 많아 줄이 길어지면 방향 패드는 엄지가 닿는 아래쪽에 */
+.vbar.no-pad:not(.land) > .vbar-dpad { align-self: end; }
+.vbar.no-pad:not(.land) > .vkeys .vkeys-grid { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
 .vbar > .vkeys { grid-area: keys; }
 .vbar-dpad { grid-area: dpad; align-self: center; justify-self: center; }
 /* 트랙패드는 화면 방향과 상관없이 방향 패드와 같은 높이. 남는 높이는 키 버튼 자리로 (넘치면 스크롤 막대) */
 .vbar > .trackpad { grid-area: pad; height: calc(150px * var(--ctl-scale, 1)); min-height: 0; max-height: none; align-self: center; }
 .vbar.land {
   position: absolute; inset: 0; pointer-events: none; align-items: end; gap: 8px 12px;
-  grid-template-columns: auto 1fr auto; grid-template-rows: 1fr auto auto; grid-template-areas: ". . ." "top top top" "s0 s1 s2";
-  padding: max(10px, var(--safe-top)) max(12px, var(--safe-right)) max(6px, calc(var(--safe-bottom) - 12px)) max(12px, var(--safe-left));
+  grid-template-columns: auto 1fr auto auto; grid-template-rows: auto 1fr auto; grid-template-areas: "top top top top" ". . . ." "dpad . keys pad";
+  /* 노치 쪽은 안전 여백에 더 띄운다 (.vpad 가로 화면과 같은 까닭) */
+  padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px) max(6px, calc(var(--safe-bottom) - 12px)) calc(var(--safe-left) + 12px);
 }
+.vbar.land.no-pad { grid-template-columns: auto 1fr auto; grid-template-areas: "top top top" ". . ." "dpad . keys"; }
 .vbar.land > *, .vbar.land .quick { pointer-events: none; }
 .vbar.land button, .vbar.land .vpad-stick, .vbar.land .vpad-dpad, .vbar.land > .trackpad, .vbar.land .vkeys-rail { pointer-events: auto; }
 .vbar.land .vpad-btn, .vbar.land .vbar-dpad { opacity: 0.85; }
-.vbar.land > .mid { justify-self: center; }
 .vbar.land > .vkeys { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px); max-height: 60cqh; }
 .vbar.land > .vkeys.scrolls { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px + 24px); }
 .vbar.land > .vkeys .vkeys-grid { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; }
-.vbar.land > .vkeys.mid { width: auto; max-width: 100%; }
-.vbar.land > .vkeys.mid .vkeys-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: start; }
-.vbar.land > .vkeys.mid button { width: calc(50px * var(--ctl-scale, 1)); }
-.vbar.land > .vkeys.mid button.wide { width: calc(106px * var(--ctl-scale, 1)); }
 .vbar.land .vkeys button { opacity: 0.8; padding: calc(8px * var(--ctl-scale, 1)) 2px; font-size: calc(13px * var(--ctl-scale, 1)); }
 .vbar.land > .trackpad { width: calc(170px * var(--ctl-scale, 1)); height: calc(150px * var(--ctl-scale, 1)); flex: none; min-height: 0; opacity: 0.9; }
 /* 키 버튼: 키보드 순서대로 격자에 놓는다. 세로 화면은 한 줄에 여섯, 가로 화면 양옆은 cols(2~3)칸 */
@@ -348,9 +352,6 @@ button.primary { background: var(--tint); border-color: var(--tint); color: #1a1
 .menu-row .seg button { font-size: 13px; padding: 5px 12px; }
 .menu-row > small { font-size: 13px; color: var(--muted); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .menu-row button.small { align-self: center; }
-/* 설정 줄 아래 작은 설명, DOS 가로 배치(누른 두 자리를 바꾼다) */
-.row-hint { margin: -2px 4px 2px; font-size: 12px; color: var(--muted); line-height: 1.4; }
-.seg.order button.on { background: rgba(255, 179, 64, 0.32); }
 
 /* 게임 설정 */
 .settings { width: min(520px, 100%); gap: 10px; }

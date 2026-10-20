@@ -147,8 +147,8 @@ export function GameMenu({
   const [fullscreen, toggleFullscreen] = useFullscreen();
   const [busy, setBusy] = useState("");
   const [toast, showToast] = useToast(1800);
-  const autoSave = useAutoSave(gameId, bridge);
   const paused = open || !!menu.slots;
+  const autoSave = useAutoSave(gameId, bridge, paused);
   useEffect(() => bridge?.setPaused(paused), [paused, bridge]);
   usePauseWhenHidden(bridge, () => menu.setOpen(true));
 

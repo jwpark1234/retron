@@ -22,6 +22,7 @@ export interface DosInfo {
   input?: DosInput;
   vkeys?: number[]; // (예전) 휴대폰 키 버튼. touchKeys가 없을 때만 읽는다
   touchKeys?: number[]; // 휴대폰 화면에 보여 줄 키 (DOS 키 번호). 방향키가 있으면 방향 패드로 나온다. 없으면 기본 키
+  trackpad?: boolean; // 휴대폰 트랙패드. false일 때만 숨긴다 (없으면 켜짐)
   conf?: string; // 예전 형식 (normalize에서 위 필드로 옮긴다)
 }
 

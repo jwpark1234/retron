@@ -19,7 +19,7 @@ import { markDirty } from "../../sync/sync";
 import { usePrefs } from "../../ui/prefs";
 import { attachAudio, attachVideo, createDos, dosFastForward, gameExited, loadDosState, saveDosState } from "./create-dos";
 import { nudgeCursor, useDosMouseKeyboard, type Cursor } from "./dos-input";
-import { DosTouchControls, DosTouchSettings, MouseSpeedSetting, useVirtualKeys } from "./DosTouch";
+import { DosTouchControls, DosTouchSettings, MouseSpeedSetting, useTouchLayout } from "./DosTouch";
 import { watchGamepad } from "./gamepad";
 import { CD_DIR, HDD_DIR, buildConf, withCycles } from "./profiles";
 import { watchSaves } from "./save-watch";
@@ -49,7 +49,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   rotation.current = orientation.rotation;
   const prefs = usePrefs();
   const menu = useMenuState(bridge);
-  const vkeys = useVirtualKeys(game);
+  const touch = useTouchLayout(game);
   const dir = gameDir(game.id);
   const info = game.dos!;
 
@@ -147,7 +147,13 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
         controls={() =>
           touchDevice && (
             <>
-              <DosTouchSettings keys={vkeys.keys} landscape={orientation.mode === "landscape"} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />
+              <DosTouchSettings
+                keys={touch.keys}
+                trackpad={touch.trackpad}
+                onChange={(k) => void touch.set(k)}
+                onReset={() => void touch.reset()}
+                onTrackpad={(on) => void touch.setTrackpad(on)}
+              />
               <MouseSpeedSetting />
             </>
           )
@@ -155,7 +161,8 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       />
       {touchDevice && (
         <DosTouchControls
-          keys={vkeys.keys}
+          keys={touch.keys}
+          trackpad={touch.trackpad}
           rotation={orientation.rotation}
           landscape={orientation.mode === "landscape"}
           onKey={(k, p) => ci.current?.sendKeyEvent(k, p)}
