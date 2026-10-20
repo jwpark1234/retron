@@ -148,7 +148,13 @@ export function GameMenu({
   const [busy, setBusy] = useState("");
   const [toast, showToast] = useToast(1800);
   const paused = open || !!menu.slots;
-  const autoSave = useAutoSave(gameId, bridge, paused);
+  const autoSave = useAutoSave(gameId, bridge);
+  // 메뉴를 열면 자동 저장. 멈추기(아래 효과) 전에 시작해야 저장이 끝난 뒤 한 번만 멈춘다
+  // (멈춘 뒤 저장하면 저장하려고 잠깐 풀었다 다시 멈춰서 게임이 툭 움직였다).
+  // 앱이 뒤로 가서 열린 메뉴는 useAutoSave가 이미 저장하므로 건너뛴다
+  useEffect(() => {
+    if (open && document.visibilityState === "visible") void autoSave();
+  }, [open]);
   useEffect(() => bridge?.setPaused(paused), [paused, bridge]);
   usePauseWhenHidden(bridge, () => menu.setOpen(true));
 

@@ -1,7 +1,7 @@
 // DOS 휴대폰 조작: 방향 패드(방향키) + 트랙패드(마우스, 게임마다 끌 수 있다) + 키 버튼, Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽).
 // 세로 화면: 조작 영역 맨 위에 Save·Load / 빨리가기·메뉴 줄, 화면 아래에 방향 패드·트랙패드 줄과 키 버튼 줄.
 //   트랙패드를 끄면 방향 패드 옆(오른쪽)에 키 버튼을 놓는다.
-// 가로 화면: 화면 위 양끝에 Save·Load / 빨리가기·메뉴, 화면 아래 왼쪽에 방향 패드, 오른쪽에 키 버튼·트랙패드.
+// 가로 화면: 화면 위 양끝에 Save·Load / 빨리가기·메뉴, 화면 아래 왼쪽에 방향 패드, 오른쪽에 트랙패드와 그 위에 키 버튼.
 // 예전에는 세로 화면 트랙패드 위치·가로 화면 순서를 고를 수 있었는데, 왼손 방향·오른손 버튼으로 하나만 남겼다 (2026-10-20 사용자 요청)
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
@@ -78,8 +78,9 @@ export function DosTouchControls({
   const { stickStyle } = usePrefs();
   const buttons = orderKeys(keys.filter((k) => !isArrow(k)));
   const dpad = keys.some(isArrow);
+  // 가로 화면 트랙패드 위는 높이가 모자라서 키를 3칸씩 눕혀 줄 수를 줄인다.
   // 세로 화면에서 트랙패드를 끄면 키 버튼이 방향 패드 옆 좁은 자리로 온다
-  const cols = landscape ? (buttons.length <= 4 ? 2 : 3) : !trackpad && dpad ? 3 : 6;
+  const cols = landscape ? (trackpad || buttons.length > 4 ? 3 : 2) : !trackpad && dpad ? 3 : 6;
   return (
     <div class={`vbar ${landscape ? "land" : ""} ${dpad ? "" : "no-dpad"} ${trackpad ? "" : "no-pad"}`}>
       {top}

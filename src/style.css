@@ -184,7 +184,8 @@ ul.grid .thumb { aspect-ratio: 1; }
 /* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad, 게임마다 끌 수 있다: no-pad) + 키 버튼(keys), Save·Load와 빨리가기·메뉴 줄(top).
    세로 화면: 윗줄은 조작 영역 맨 위(게임 바로 아래) 양끝, 방향 패드·트랙패드 줄과 키 버튼 줄은 화면 아래에 붙인다.
    트랙패드를 끄면 방향 패드 오른쪽에 키 버튼을 놓는다.
-   가로 화면(land): 게임 위에 띄우고 윗줄은 화면 위 양끝, 아래 줄은 왼쪽에 방향 패드, 오른쪽에 키 버튼·트랙패드 */
+   가로 화면(land): 게임 위에 띄우고 윗줄은 화면 위 양끝, 아래는 왼쪽에 방향 패드, 오른쪽에 트랙패드와 그 위에 키 버튼
+   (트랙패드를 끄면 키 버튼이 그 자리로) */
 .vbar {
   width: 100%; box-sizing: border-box; display: grid; gap: 12px; flex: 1; min-height: 0;
   /* 키 버튼 줄은 남는 높이까지만 커지고(넘치면 스크롤 막대), 남는 자리는 윗줄과 방향 패드 줄 사이(1fr)로 간다 */
@@ -203,17 +204,21 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vbar > .trackpad { grid-area: pad; height: calc(150px * var(--ctl-scale, 1)); min-height: 0; max-height: none; align-self: center; }
 .vbar.land {
   position: absolute; inset: 0; pointer-events: none; align-items: end; gap: 8px 12px;
-  grid-template-columns: auto 1fr auto auto; grid-template-rows: auto 1fr auto; grid-template-areas: "top top top top" ". . . ." "dpad . keys pad";
+  /* 키 버튼 줄은 남는 높이까지만 커진다(넘치면 스크롤 막대). 남는 자리는 윗줄 아래(1fr)로 */
+  grid-template-columns: auto 1fr auto; grid-template-rows: auto 1fr minmax(0, max-content) auto; grid-template-areas: "top top top" ". . ." ". . keys" "dpad . pad";
   /* 노치 쪽은 안전 여백에 더 띄운다 (.vpad 가로 화면과 같은 까닭) */
   padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px) max(6px, calc(var(--safe-bottom) - 12px)) calc(var(--safe-left) + 12px);
 }
-.vbar.land.no-pad { grid-template-columns: auto 1fr auto; grid-template-areas: "top top top" ". . ." "dpad . keys"; }
+.vbar.land.no-pad { grid-template-rows: auto 1fr auto; grid-template-areas: "top top top" ". . ." "dpad . keys"; }
 .vbar.land > *, .vbar.land .quick { pointer-events: none; }
 .vbar.land button, .vbar.land .vpad-stick, .vbar.land .vpad-dpad, .vbar.land > .trackpad, .vbar.land .vkeys-rail { pointer-events: auto; }
 .vbar.land .vpad-btn, .vbar.land .vbar-dpad { opacity: 0.85; }
 .vbar.land > .vkeys { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px); max-height: 60cqh; }
 .vbar.land > .vkeys.scrolls { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px + 24px); }
 .vbar.land > .vkeys .vkeys-grid { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; }
+/* 트랙패드 위 키 버튼: 트랙패드 폭에 맞추고, 줄 높이에 맞춰 늘린다 (끝 정렬이면 키가 많을 때 줄을 넘어 위로 삐져나간다).
+   위의 폭 규칙(.scrolls 포함)보다 뒤에 두어야 이긴다 */
+.vbar.land:not(.no-pad) > .vkeys { width: auto; max-height: none; justify-self: stretch; align-self: stretch; }
 .vbar.land .vkeys button { opacity: 0.8; padding: calc(8px * var(--ctl-scale, 1)) 2px; font-size: calc(13px * var(--ctl-scale, 1)); }
 .vbar.land > .trackpad { width: calc(170px * var(--ctl-scale, 1)); height: calc(150px * var(--ctl-scale, 1)); flex: none; min-height: 0; opacity: 0.9; }
 /* 키 버튼: 키보드 순서대로 격자에 놓는다. 세로 화면은 한 줄에 여섯, 가로 화면 양옆은 cols(2~3)칸 */
