@@ -32,6 +32,21 @@ export const IconFullscreen = ({ on }: { on: boolean }) => (
   </Svg>
 );
 
+/** 화면 방향: 휴대폰 모양 + 돌리는 화살표 */
+export const IconRotate = () => (
+  <Svg>
+    <rect x="7" y="2" width="10" height="16" rx="2" />
+    <path d="M11 15h2" />
+    <path d="M3 13a9 9 0 0 0 7 8.5M3 13l-1.5 2.5M3 13l2.5 1.5" />
+  </Svg>
+);
+
+export const IconBack = () => (
+  <Svg>
+    <path d="m15 18-6-6 6-6" />
+  </Svg>
+);
+
 export const IconMonitor = () => (
   <Svg>
     <rect x="2" y="3" width="20" height="14" rx="2" />

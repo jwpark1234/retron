@@ -136,16 +136,23 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   return (
     <div class={`game${touchDevice ? "" : " hide-cursor"}`} ref={stage} style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} />
-      <GameMenu menu={menu} floating={!touchDevice} gameId={game.id} title={game.title} bridge={bridge} onExit={onExit} orientation={orientation}>
-        {() => (
-          <>
-            {touchDevice && (
+      <GameMenu
+        menu={menu}
+        floating={!touchDevice}
+        gameId={game.id}
+        title={game.title}
+        bridge={bridge}
+        onExit={onExit}
+        orientation={orientation}
+        controls={() =>
+          touchDevice && (
+            <>
               <DosTouchSettings keys={vkeys.keys} landscape={orientation.mode === "landscape"} onChange={(k) => void vkeys.set(k)} onReset={() => void vkeys.reset()} />
-            )}
-            {touchDevice && <MouseSpeedSetting />}
-          </>
-        )}
-      </GameMenu>
+              <MouseSpeedSetting />
+            </>
+          )
+        }
+      />
       {touchDevice && (
         <DosTouchControls
           keys={vkeys.keys}

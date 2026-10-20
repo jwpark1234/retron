@@ -47,11 +47,14 @@ export function useImport(onAdded: () => Promise<void>) {
       base(picked[0].path).replace(/\.[^.]+$/, ""),
       (f) => setUploadPct(Math.floor(f * 100)),
     );
+    const warnings: string[] = [];
     try {
       const added = await importFiles(picked, {
         progress: setProgress,
         chooseExe: (candidates) => new Promise((resolve) => setChoice({ candidates, resolve })),
+        warn: (msg) => warnings.push(msg),
       });
+      if (warnings.length) setError(warnings.join(" "));
       await onAdded();
       if (upload && added.length === 1) void settle(upload, added[0], picked);
       else {

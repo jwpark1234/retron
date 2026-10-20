@@ -160,7 +160,7 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vpad-face.pair .b { bottom: 15%; left: 2.5%; top: auto; }
 .vpad-btn.shoulder { width: calc(88px * var(--ctl-scale, 1)); height: calc(36px * var(--ctl-scale, 1)); border-radius: 12px; font-size: calc(16px * var(--ctl-scale, 1)); }
 .vpad-btn.pill { width: calc(76px * var(--ctl-scale, 1)); height: calc(30px * var(--ctl-scale, 1)); border-radius: 999px; font-size: calc(11px * var(--ctl-scale, 1)); letter-spacing: 0.08em; }
-/* 계정 메뉴의 조작 버튼 투명도 */
+/* 게임 중 메뉴 → 조작의 버튼 투명도 */
 .vpad, .vbar { opacity: var(--ctl-opacity, 1); }
 @container (orientation: landscape) {
   .vpad {
@@ -179,31 +179,40 @@ ul.grid .thumb { aspect-ratio: 1; }
    가로 화면(land): 게임 위에 띄우고 아래 줄 세 자리(s0 s1 s2)에 놓는다. 순서는 메뉴에서 바꾸고, 자리는 DosTouch.tsx가 정한다 */
 .vbar {
   width: 100%; box-sizing: border-box; display: grid; gap: 12px; flex: 1; min-height: 0;
-  grid-template-columns: auto 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "top top" "dpad pad" "keys keys";
+  grid-template-columns: auto 1fr; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "top top" "dpad pad" "keys keys";
   padding: 12px 14px max(14px, env(safe-area-inset-bottom));
 }
 .vbar.pad-left { grid-template-columns: 1fr auto; grid-template-areas: "top top" "pad dpad" "keys keys"; }
 .vbar.no-dpad:not(.land) { grid-template-columns: 1fr; grid-template-areas: "top" "pad" "keys"; }
 .vbar > .vkeys { grid-area: keys; }
 .vbar-dpad { grid-area: dpad; align-self: center; justify-self: center; }
-.vbar > .trackpad { grid-area: pad; max-height: none; } /* 세로 화면은 남는 높이를 트랙패드가 다 쓴다 */
+/* 트랙패드는 화면 방향과 상관없이 방향 패드와 같은 높이. 남는 높이는 키 버튼 자리로 (넘치면 스크롤 막대) */
+.vbar > .trackpad { grid-area: pad; height: calc(150px * var(--ctl-scale, 1)); min-height: 0; max-height: none; align-self: center; }
 .vbar.land {
   position: absolute; inset: 0; pointer-events: none; align-items: end; gap: 8px 12px;
   grid-template-columns: auto 1fr auto; grid-template-rows: 1fr auto auto; grid-template-areas: ". . ." "top top top" "s0 s1 s2";
   padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(6px, calc(env(safe-area-inset-bottom) - 12px)) max(12px, env(safe-area-inset-left));
 }
 .vbar.land > *, .vbar.land .quick { pointer-events: none; }
-.vbar.land button, .vbar.land .vpad-stick, .vbar.land .vpad-dpad, .vbar.land > .trackpad { pointer-events: auto; }
+.vbar.land button, .vbar.land .vpad-stick, .vbar.land .vpad-dpad, .vbar.land > .trackpad, .vbar.land .vkeys-rail { pointer-events: auto; }
 .vbar.land .vpad-btn, .vbar.land .vbar-dpad { opacity: 0.85; }
 .vbar.land > .mid { justify-self: center; }
-.vbar.land > .vkeys { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px); grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; max-height: 60cqh; overflow: auto; scrollbar-width: none; }
-.vbar.land > .vkeys.mid { width: auto; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: center; }
+.vbar.land > .vkeys { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px); max-height: 60cqh; }
+.vbar.land > .vkeys.scrolls { width: calc(var(--cols) * 46px * var(--ctl-scale, 1) + (var(--cols) - 1) * 6px + 24px); }
+.vbar.land > .vkeys .vkeys-grid { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; }
+.vbar.land > .vkeys.mid { width: auto; max-width: 100%; }
+.vbar.land > .vkeys.mid .vkeys-grid { display: flex; flex-wrap: wrap; justify-content: center; align-content: start; }
 .vbar.land > .vkeys.mid button { width: calc(50px * var(--ctl-scale, 1)); }
 .vbar.land > .vkeys.mid button.wide { width: calc(106px * var(--ctl-scale, 1)); }
 .vbar.land .vkeys button { opacity: 0.8; padding: calc(8px * var(--ctl-scale, 1)) 2px; font-size: calc(13px * var(--ctl-scale, 1)); }
 .vbar.land > .trackpad { width: calc(170px * var(--ctl-scale, 1)); height: calc(150px * var(--ctl-scale, 1)); flex: none; min-height: 0; opacity: 0.9; }
 /* 키 버튼: 키보드 순서대로 격자에 놓는다. 세로 화면은 한 줄에 여섯, 가로 화면 양옆은 cols(2~3)칸 */
-.vkeys { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 8px; align-content: start; }
+.vkeys { display: flex; gap: 6px; min-height: 0; }
+/* 줄 높이는 버튼 높이 그대로(max-content): 자리가 모자라면 버튼이 납작해지지 않고 넘쳐서 스크롤 막대가 생긴다 */
+.vkeys-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: max-content; grid-auto-flow: row dense; gap: 8px; align-content: start; overflow: hidden; }
+/* 키가 넘칠 때만 생기는 스크롤 막대: 끌거나 누른 자리로 키 목록을 옮긴다 (VirtualKeys.tsx) */
+.vkeys-rail { flex: none; width: 18px; position: relative; border-radius: 9px; background: rgba(255, 255, 255, 0.08); touch-action: none; }
+.vkeys-rail .thumb { position: absolute; left: 4px; right: 4px; border-radius: 6px; background: rgba(255, 255, 255, 0.45); pointer-events: none; }
 .vkeys button {
   min-width: 0; padding: calc(10px * var(--ctl-scale, 1)) 4px; font-size: calc(14px * var(--ctl-scale, 1)); font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 12px;
@@ -267,8 +276,6 @@ ul.grid .thumb { aspect-ratio: 1; }
 .menu-icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .icon-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 11px 4px 9px; }
 .icon-tile span { font-size: 12px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-.icon-tile.on { background: rgba(255, 179, 64, 0.22); border-color: rgba(255, 179, 64, 0.55); }
-.icon-tile.on span { color: var(--text); }
 .icon-tile.danger, .icon-tile.danger span { color: #ff8a80; }
 /* 설정 줄 묶음 */
 .menu-group { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
@@ -308,11 +315,10 @@ ul.grid .thumb { aspect-ratio: 1; }
 .kb-foot span { flex: 1; font-size: 13px; color: var(--muted); }
 .kb-foot button.small { align-self: center; }
 button.primary { background: var(--tint); border-color: var(--tint); color: #1a1205; font-weight: 700; box-shadow: none; }
-/* 가로로 낮은 화면(휴대폰 가로): 왼쪽 아이콘 타일, 오른쪽 설정 줄. 슬롯은 세 칸 */
+/* 가로로 낮은 화면(휴대폰 가로): 아이콘 타일을 낮게(아이콘 옆에 글자) 세 칸 두 줄, 그 아래 설정 줄. 조작 화면은 설정 줄이 폭을 다 쓴다. 슬롯은 세 칸 */
 @media (orientation: landscape) and (max-height: 560px) {
   .menu-sheet { width: min(700px, 100%); padding: 12px 14px 14px; gap: 10px; }
-  .menu-main { display: grid; grid-template-columns: 180px 1fr; align-items: start; gap: 12px; }
-  .menu-icons { grid-template-columns: 1fr; gap: 8px; }
+  .menu-icons { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .icon-tile { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 12px 14px; }
   .icon-tile span { font-size: 14px; }
   .slots { grid-template-columns: repeat(3, 1fr); gap: 8px; }

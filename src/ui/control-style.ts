@@ -1,4 +1,4 @@
-// 휴대폰 조작 버튼 크기·투명도(계정 메뉴)를 CSS 변수로 넘긴다. 가상패드·DOS 조작 CSS가 --ctl-scale, --ctl-opacity를 쓴다.
+// 휴대폰 조작 버튼 크기·투명도(게임 중 메뉴 → 조작)를 CSS 변수로 넘긴다. 가상패드·DOS 조작 CSS가 --ctl-scale, --ctl-opacity를 쓴다.
 // 버튼 자리 계산(방향 패드 각도, 트랙패드)은 실제 그려진 크기를 읽으므로 따로 맞출 것이 없다.
 import { getPrefs, onPrefsChange, type Prefs } from "./prefs";
 

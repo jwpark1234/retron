@@ -25,17 +25,19 @@ export interface RawBridge {
 
 /**
  * 일시정지를 붙인다. 두 에뮬레이터 모두 멈춘 동안에는 상태 저장 명령을 처리하지 않아서
- * (메뉴에서 나가기 → 자동 저장이 끝나지 않는다) 저장·불러오기 동안만 잠깐 풀었다가 다시 멈춘다
+ * (메뉴에서 나가기 → 자동 저장이 끝나지 않는다) 저장·불러오기 동안만 잠깐 풀었다가 다시 멈춘다.
+ * 저장 중에 멈추라고 하면(앱이 뒤로 가서 자동 저장과 메뉴 열기가 같이 일어남) 저장이 끝난 뒤에 멈춘다
  */
 export function pausable(raw: RawBridge): StateBridge {
   let paused = false;
+  let inflight = 0;
   const running = async <T,>(fn: () => Promise<T>): Promise<T> => {
-    if (!paused) return fn();
-    raw.resume();
+    if (paused && !inflight) raw.resume();
+    inflight++;
     try {
       return await fn();
     } finally {
-      if (paused) raw.pause();
+      if (--inflight === 0 && paused) raw.pause();
     }
   };
   return {
@@ -47,6 +49,7 @@ export function pausable(raw: RawBridge): StateBridge {
     setPaused(on) {
       if (on === paused) return;
       paused = on;
+      if (inflight) return; // 저장·불러오기가 끝나면 running이 맞춰 준다
       if (on) raw.pause();
       else raw.resume();
     },

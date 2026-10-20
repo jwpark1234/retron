@@ -41,19 +41,22 @@ export interface Game {
   sfc?: RomInfo; // 예전 형식 (normalize에서 rom으로 옮긴다)
   thumbVersion?: number; // 2 = 1:1 썸네일
   syncKey?: string; // 기기 사이에서 같은 게임을 알아보는 키 (ROM/실행 파일 해시)
-  source?: GameSource; // 없으면 예전에 추가한 게임 (드라이브에 풀린 파일을 하나씩 올린다)
+  source?: GameSource; // 없으면 예전에 추가한 게임 (드라이브에 올릴 때 기기의 게임 파일로 원본을 만든다)
 }
 
 /**
  * 추가할 때 고른 원본. 드라이브에는 이 파일들을 이름 그대로 올린다 (기기에서는 풀어서 쓴다).
  * files: 고른 파일 이름·크기. pick: 원본 안에서 고른 실행 파일·롬 경로 (다시 풀 때 같은 것을 고른다).
  * romFile: 원본이 롬 파일 하나라서 따로 보관하지 않고 games/{id}/{rom.rom}을 원래 이름으로 올린다.
+ * layout "game": 원본이 기기에 없어서(원본을 보관하지 않던 때 추가한 DOS 게임 등) 기기의 게임 폴더(HDD/, CD/)를 zip 하나로 묶어 올렸다.
+ * 받는 기기는 다시 고르지 않고 게임 폴더에 그대로 푼다 (library/pack.ts)
  * 그 밖의 원본은 올리기 전까지 games/{id}/source/에 보관하고, 다 올리면 지운다
  */
 export interface GameSource {
   files: { name: string; size: number }[];
   pick?: string;
   romFile?: boolean;
+  layout?: "game";
 }
 
 const LIBRARY = "library.json";

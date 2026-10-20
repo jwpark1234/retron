@@ -157,14 +157,18 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   return (
     <div class="game" style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
-      <GameMenu menu={menu} floating={!showPad} gameId={game.id} title={game.title} bridge={bridge} onExit={exit} orientation={orientation} onClose={() => setCapturing(null)}>
-        {() => (
-          <>
-            <FastSpeedSetting onChange={(v) => void changeSpeed(v)} />
-            {touchDevice ? <VirtualPadSetting gamepad={!!pad} /> : <KeySettings system={system} capturing={capturing} onCapture={setCapturing} />}
-          </>
-        )}
-      </GameMenu>
+      <GameMenu
+        menu={menu}
+        floating={!showPad}
+        gameId={game.id}
+        title={game.title}
+        bridge={bridge}
+        onExit={exit}
+        orientation={orientation}
+        onClose={() => setCapturing(null)}
+        controls={() => (touchDevice ? <VirtualPadSetting gamepad={!!pad} /> : <KeySettings system={system} capturing={capturing} onCapture={setCapturing} />)}
+        settings={() => <FastSpeedSetting onChange={(v) => void changeSpeed(v)} />}
+      />
       {showPad && (
         <VirtualPad
           system={system}

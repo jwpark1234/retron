@@ -15,6 +15,8 @@ export interface ImportUi {
   progress(msg: string): void;
   /** 실행 파일 후보가 여럿이면 사용자에게 고르게 한다. null이면 취소 */
   chooseExe(candidates: string[]): Promise<string | null>;
+  /** 등록은 했지만 알려야 할 것 (게임에 꼭 필요한 파일이 빠짐 등) */
+  warn?(msg: string): void;
 }
 
 export interface Entry {
@@ -118,6 +120,10 @@ async function importDos(entries: Entry[], ui: ImportUi, sourceName: string | un
   let exePath: string | null;
   if (profile) {
     exePath = paths.find((p) => base(p).toUpperCase() === profile.entry)!;
+    const names = new Set(paths.map((p) => base(p).toUpperCase()));
+    const missing = profile.requires?.files.filter((f) => !names.has(f)) ?? [];
+    if (missing.length)
+      ui.warn?.(`${profile.title}: ${missing.join(", ")} 파일이 없어 ${profile.requires!.breaks} 되지 않습니다 (${profile.requires!.what}). 원래 게임 폴더에 있는 이 파일을 zip에 넣어 다시 추가해 주세요.`);
   } else {
     const candidates = exeCandidates(paths);
     if (!candidates.length) throw new Error("실행할 수 있는 DOS 프로그램(.exe/.com/.bat)이나 SFC ROM을 찾지 못했습니다");

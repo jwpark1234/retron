@@ -26,8 +26,9 @@ export function Trackpad({
   // 한 손가락만 쓴다. 다른 손가락은 무시한다
   const touch = useRef<{ id: number; x: number; y: number; start: number; moved: number; longPressed: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null);
 
+  // 닿는 순간의 진동은 ui/haptics.ts가 낸다. 길게 눌러 오른쪽 클릭이 될 때 한 번 더 떤다
   const click = (b: 0 | 1) => {
-    haptic();
+    if (b === 1) haptic();
     onButton(b, true);
     setTimeout(() => onButton(b, false), 80);
   };

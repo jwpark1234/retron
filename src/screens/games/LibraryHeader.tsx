@@ -1,13 +1,11 @@
-// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정 창(동기화 상태, 기기 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 로그아웃).
+// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정 창(동기화 상태, 기기 저장 공간, 업로드 설정, 로그아웃).
+// 휴대폰 조작 설정은 게임 중 메뉴의 "조작"으로 옮겼다 (게임을 하면서 바로 바꿔 보게).
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { reconnectDrive, signOut, useAuth } from "../../cloud/google-auth";
 import type { Entry } from "../../library/import";
 import { fromInput } from "../../library/pick";
-import { StickStyleRow } from "../../player/DirectionPad";
-import { touchDevice } from "../../player/orientation";
 import { useSync } from "../../sync/sync";
-import { CONTROL_OPACITIES, CONTROL_SIZES } from "../../ui/control-style";
 import { ON_OFF, Row, Segmented } from "../../ui/controls";
 import { IconClose } from "../../ui/icons";
 import { useInstall } from "../../ui/install";
@@ -71,11 +69,11 @@ function PersistLine() {
   return <p class="muted account-note">이 브라우저는 저장 공간이 모자라면 게임 파일을 지울 수 있습니다. 앱으로 설치하면 지우지 않고 보관합니다 (지워져도 드라이브에서 다시 받습니다).</p>;
 }
 
-/** 계정 창: 동기화 상태, 드라이브 다시 연결, 저장 공간, 업로드 설정, 휴대폰 조작 공통 설정, 앱 설치, 로그아웃 */
+/** 계정 창: 동기화 상태, 드라이브 다시 연결, 저장 공간, 업로드 설정, 앱 설치, 로그아웃 */
 function AccountDialog({ onClose }: { onClose: () => void }) {
   const auth = useAuth();
   const sync = useSync();
-  const { wifiOnlyUpload, haptics, controlScale, controlOpacity } = usePrefs();
+  const { wifiOnlyUpload } = usePrefs();
   const state = sync.conflict ? "warn" : sync.pending || !auth.driveReady ? "pending" : "ok";
   const label = sync.conflict
     ? `세이브 충돌: ${sync.conflictTitles.join(", ")} · 게임을 열면 이 기기 것과 드라이브 것 중 고릅니다`
@@ -113,23 +111,6 @@ function AccountDialog({ onClose }: { onClose: () => void }) {
               <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="모바일 데이터로 게임 안 올리기" />
             </Row>
           </section>
-          {touchDevice && (
-            <>
-              <h3>조작 (모든 게임)</h3>
-              <section class="menu-group">
-                <StickStyleRow />
-                <Row label="버튼 크기">
-                  <Segmented value={String(controlScale)} options={CONTROL_SIZES} onChange={(v) => setPrefs({ controlScale: +v })} label="버튼 크기" />
-                </Row>
-                <Row label="버튼 투명도">
-                  <Segmented value={String(controlOpacity)} options={CONTROL_OPACITIES} onChange={(v) => setPrefs({ controlOpacity: +v })} label="버튼 투명도" />
-                </Row>
-                <Row label="버튼 햅틱">
-                  <Segmented value={haptics ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ haptics: v === "on" })} label="버튼 햅틱" />
-                </Row>
-              </section>
-            </>
-          )}
           <InstallRow />
         </div>
         <div class="row end">

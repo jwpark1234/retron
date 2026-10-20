@@ -93,7 +93,7 @@ const STICK_STYLES: { value: StickStyle; label: string }[] = [
   { value: "dpad", label: "십자 패드" },
 ];
 
-/** 계정 메뉴의 "방향 조작" 줄 (모든 게임에 같이 쓴다) */
+/** 게임 중 메뉴 → 조작의 "방향 조작" 줄 (모든 게임에 같이 쓴다) */
 export function StickStyleRow() {
   const { stickStyle } = usePrefs();
   return (

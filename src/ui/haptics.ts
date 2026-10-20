@@ -1,10 +1,16 @@
-// 버튼을 누를 때 짧은 진동 (휴대폰, 계정 메뉴에서 켜고 끈다).
+// 버튼을 누를 때 짧은 진동 (휴대폰, 게임 메뉴의 조작에서 켜고 끈다).
 // 안드로이드는 navigator.vibrate를 쓴다. 아이폰 사파리에는 vibrate가 없어서, iOS 18부터 스위치 모양 체크박스(<input switch>)를
 // 누르면 나는 시스템 햅틱을 빌려 쓴다 (보이지 않는 스위치의 label을 대신 누른다). 그보다 옛 iOS에서는 아무 일도 없다.
 import { touchDevice } from "../player/orientation";
 import { getPrefs } from "./prefs";
 
-const TICK_MS = 12;
+// 12ms는 진동 모터가 다 돌기 전에 끝나 많은 안드로이드 폰에서 느껴지지 않았다
+const TICK_MS = 25;
+// 한 번 누름에 pointerdown·touchstart가 둘 다 와도 한 번만 떨리게
+const DEDUPE_MS = 40;
+
+// 손가락이 닿는 순간 떨어야 하는 게임 조작 (포인터 이벤트로만 움직여서 no-zoom.ts가 touchstart 기본 동작을 끈다)
+const CONTROLS = ".trackpad, .vpad-dpad, .vpad-stick, .vkeys button, .vpad-btn";
 
 function iosTick() {
   const label = document.createElement("label");
@@ -19,9 +25,14 @@ function iosTick() {
   label.remove();
 }
 
-/** 지금 한 번 진동 (설정이 꺼져 있으면 아무것도 안 한다) */
-export function haptic() {
-  if (!touchDevice || !getPrefs().haptics) return;
+let last = 0;
+
+/** 지금 한 번 진동. force: 설정이 꺼져 있어도 (설정을 켜는 순간 시험으로) */
+export function haptic(force = false) {
+  if (!touchDevice || (!force && !getPrefs().haptics)) return;
+  const now = performance.now();
+  if (now - last < DEDUPE_MS) return;
+  last = now;
   try {
     if (typeof navigator.vibrate === "function") navigator.vibrate(TICK_MS);
     else iosTick();
@@ -31,19 +42,18 @@ export function haptic() {
 }
 
 /**
- * 모든 버튼: 손가락이 닿는 순간 진동한다 (떼는 순간보다 실제 버튼 느낌에 가깝다).
- * 방향 패드와 트랙패드는 버튼이 아니라서 스스로 부른다 (방향이 바뀔 때, 클릭할 때)
+ * 모든 버튼과 게임 조작: 손가락이 닿는 순간 진동한다 (떼는 순간보다 실제 버튼 느낌에 가깝다).
+ * pointerdown과 touchstart 둘 다에서 부른다. 게임 조작 위에서는 touchstart 기본 동작을 꺼 두는데(확대 막기),
+ * 브라우저에 따라 어느 쪽을 사용자 조작으로 쳐 주는지 달라서 게임 안에서만 진동이 안 났다. 겹치면 한 번만 떤다.
+ * 방향 패드는 방향이 바뀔 때도 스스로 부른다
  */
 export function installHaptics() {
   if (!touchDevice) return;
-  document.addEventListener(
-    "pointerdown",
-    (e) => {
-      if (e.pointerType === "mouse") return;
-      const target = e.target as Element | null;
-      const button = target?.closest?.("button, label.pick");
-      if (button && !(button as HTMLButtonElement).disabled) haptic();
-    },
-    { capture: true, passive: true },
-  );
+  const onDown = (e: Event) => {
+    if ((e as PointerEvent).pointerType === "mouse") return;
+    const target = (e.target as Element | null)?.closest?.(`button, label.pick, ${CONTROLS}`);
+    if (target && !(target as HTMLButtonElement).disabled) haptic();
+  };
+  document.addEventListener("pointerdown", onDown, { capture: true, passive: true });
+  document.addEventListener("touchstart", onDown, { capture: true, passive: true });
 }

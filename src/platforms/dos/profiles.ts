@@ -8,6 +8,8 @@ export interface DosProfile {
   settings: string; // [autoexec] 앞부분
   savePattern?: string; // 세이브 파일 정규식 (없으면 자동 추적)
   icon?: string; // 썸네일로 쓸 아이콘 파일
+  /** 없으면 게임이 도중에 멈추는 파일과 그때 안 되는 것. 추가할 때 없으면 알린다 (사용자가 가진 zip에서 빠져 있던 적이 있다) */
+  requires?: { files: string[]; what: string; breaks: string }; // what: 무슨 파일인지, breaks는 조사까지 ("'처음부터 시작'이")
 }
 
 const DEFAULT_SETTINGS = `[sdl]
@@ -42,6 +44,9 @@ export const PROFILES: DosProfile[] = [
     entry: "GENE2.COM",
     icon: "GENESIS2.ICO",
     savePattern: "^(BLACKBOX\\.SV\\d|GENESIS\\.QSV)$",
+    // 타이틀(TTL.EXE)의 "처음부터 시작"이 BLACKBOX.DEF(새 게임 초기 데이터)를 읽는다. 없으면 "blackbox.def read error!"로 끝난다.
+    // 세이브(BLACKBOX.SV1~5)·진행 데이터(BLACKBOX.DAT)와 이름이 비슷해서 세이브를 지우면서 같이 지운 일이 있었다
+    requires: { files: ["BLACKBOX.DEF"], what: "세이브가 아니라 새 게임 초기 데이터입니다. 세이브(BLACKBOX.SV1~SV5, BLACKBOX.DAT)는 지워도 됩니다", breaks: "'처음부터 시작'이" },
     settings: `[sdl]
 autolock=false
 

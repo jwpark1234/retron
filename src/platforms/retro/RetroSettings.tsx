@@ -209,7 +209,7 @@ export function RetroKeysEditor({ system }: { system: RetroSystem }) {
   return <KeySettings system={system} capturing={capturing} onCapture={setCapturing} />;
 }
 
-/** 휴대폰: 가상패드 켜고 끄기 (방향 조작 모양은 계정 메뉴에서 고른다). 게임패드가 연결돼 있으면 가상패드는 저절로 숨는다 */
+/** 휴대폰: 가상패드 켜고 끄기 (방향 조작 모양은 같은 조작 화면의 공통 설정에서 고른다). 게임패드가 연결돼 있으면 가상패드는 저절로 숨는다 */
 export function VirtualPadSetting({ gamepad }: { gamepad: boolean }) {
   const { virtualPad } = usePrefs();
   return (
