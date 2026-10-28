@@ -86,11 +86,52 @@ export async function getGame(id: string): Promise<Game | undefined> {
 
 // library.json은 읽고-고치고-쓰기를 한 번에 하나씩 한다. 두 곳에서 동시에 고치면(플레이 시각 적기와 받기 끝 등)
 // 늦게 쓴 쪽이 먼저 쓴 쪽의 게임을 목록에서 빼 버리고, 다음 시작 때 그 게임 폴더가 "목록에 없는 폴더"로 지워졌다
+// 같은 기기에서 창 여러 개(설치한 앱과 브라우저 탭)가 같이 고칠 수도 있어서, 창 사이에서도 잠금(Web Locks)으로 하나씩 한다
 let queue: Promise<unknown> = Promise.resolve();
 function editLibrary(fn: (games: Game[]) => Game[]): Promise<void> {
-  const run = queue.then(async () => writeJson(LIBRARY, fn(await listGames())));
+  const edit = async () => {
+    const games = fn(await listGames());
+    await writeJson(LIBRARY, games);
+    rememberCount(games.length);
+  };
+  const run = queue.then(() => (navigator.locks ? navigator.locks.request(LIBRARY, edit) : edit()));
   queue = run.catch(() => undefined);
   return run;
+}
+
+// 게임 수를 localStorage에도 적어 둔다. 다음 시작 때 library.json은 없는데 게임이 있었다고 적혀 있으면,
+// 브라우저가 OPFS(게임 파일)만 지운 것이다 (로그인 정보가 있는 localStorage는 남겨 둔다)
+const COUNT_KEY = "library-count";
+function rememberCount(n: number) {
+  try {
+    localStorage.setItem(COUNT_KEY, String(n));
+  } catch {
+    // 못 적으면 지워졌는지 알려 주지 못할 뿐이다
+  }
+}
+
+/** 지난번에는 게임이 있었는데 브라우저가 기기 저장 공간을 지웠다. 앱 시작 때 한 번 부른다 */
+export async function storageWiped(): Promise<boolean> {
+  if (await getFile(LIBRARY)) {
+    rememberCount((await listGames()).length);
+    return false;
+  }
+  try {
+    const had = Number(localStorage.getItem(COUNT_KEY) ?? 0);
+    localStorage.setItem(COUNT_KEY, "0");
+    return had > 0;
+  } catch {
+    return false;
+  }
+}
+
+// 창마다 이 잠금을 나눠 잡고 닫힐 때까지 놓지 않는다. 그래서 다른 창이 열려 있는지 알 수 있다
+const WINDOW_LOCK = "retron-window";
+async function joinWindows(): Promise<{ alone: boolean }> {
+  if (!navigator.locks) return { alone: true };
+  const { held = [] } = await navigator.locks.query();
+  void navigator.locks.request(WINDOW_LOCK, { mode: "shared" }, () => new Promise(() => undefined));
+  return { alone: !held.some((l) => l.name === WINDOW_LOCK) };
 }
 
 export function putGame(game: Game) {
@@ -109,9 +150,11 @@ export async function removeGame(id: string) {
 
 /**
  * 라이브러리에 없는 게임 폴더(등록 중 멈춘 게임)와 임시 폴더를 지운다. 앱 시작 때 부른다. keep: 이어 받을 폴더.
- * library.json을 못 읽었거나 비어 있으면 아무것도 지우지 않는다 (목록을 잘못 읽은 탓에 멀쩡한 게임을 지우지 않게)
+ * library.json을 못 읽었거나 비어 있으면 아무것도 지우지 않는다 (목록을 잘못 읽은 탓에 멀쩡한 게임을 지우지 않게).
+ * 다른 창이 열려 있으면 지우지 않는다: 그 창이 추가하거나 받는 중인 게임은 아직 목록에 없어서 같이 지워졌다
  */
 export async function removeOrphans(keep: Set<string> = new Set()) {
+  if (!(await joinWindows()).alone) return;
   if (!(await getFile(LIBRARY))) return;
   const games = await listGames();
   if (!games.length) return;

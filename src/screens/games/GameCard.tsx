@@ -7,14 +7,21 @@ import { IconDownload } from "../../ui/icons";
 
 export const PLATFORM_LABEL: Record<Platform, string> = { dos: "DOS", sfc: "SFC", gba: "GBA" };
 
+const clock = (ms: number) => {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+
 function Progress({ t }: { t?: Transfer }) {
   if (!t) return null;
   const pct = t.total ? Math.floor((t.done / t.total) * 100) : 0;
+  // 올리기·받기는 평균 속도, 설치는 걸린 시간
+  const extra = t.rate !== undefined ? `${(t.rate / 1048576).toFixed(1)}MB/s` : t.elapsed !== undefined && t.elapsed >= 2000 ? clock(t.elapsed) : "";
   return (
     <div class="transfer">
       <div class="bar" style={{ width: `${pct}%` }} />
       <span>
-        {t.label} {pct}%
+        {t.label} {pct}%{extra && ` · ${extra}`}
       </span>
     </div>
   );

@@ -3,8 +3,9 @@ import { cachedRemoteGames, downloadGame, pendingDownloadIds, uploadMissingGames
 import { restoreSession, useAuth } from "./cloud/google-auth";
 import { onCellular, onNetworkChange } from "./cloud/network";
 import { initSettingsSync, retrySettings, syncSettings } from "./cloud/settings";
-import { missingGameFile, removeOrphans, touchGame, type Game } from "./library/library";
+import { missingGameFile, removeOrphans, storageWiped, touchGame, type Game } from "./library/library";
 import { migrateLegacy, migrateThumbnails } from "./library/migrate";
+import { keepStorage } from "./library/store";
 import { PLAYERS } from "./platforms/players";
 import { ConflictDialog } from "./screens/ConflictDialog";
 import { Library } from "./screens/games/Library";
@@ -38,7 +39,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    migrateLegacy()
+    void keepStorage();
+    storageWiped()
+      .then((wiped) => {
+        if (wiped) alert("브라우저가 이 앱의 저장 공간을 지워서 기기에 받아 둔 게임이 없어졌습니다. 드라이브에 올라간 게임은 다시 받을 수 있습니다.");
+      })
+      .catch(() => undefined)
+      .then(migrateLegacy)
       .then(migrateThumbnails)
       .then(() => removeOrphans(pendingDownloadIds()).catch(() => undefined))
       .then(restoreSession)

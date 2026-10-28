@@ -55,6 +55,10 @@ export interface Transfer {
   label: string; // "드라이브에 올리는 중" / "받는 중" / "설치 중"
   done: number;
   total: number;
+  /** 이 단계(label)를 시작한 뒤 걸린 시간 (ms) */
+  elapsed?: number;
+  /** 이 단계를 시작한 뒤 평균 속도 (바이트/초). 올리기·받기만 */
+  rate?: number;
 }
 
 // --- 진행 상황 (라이브러리 카드에 표시) ---
@@ -67,11 +71,24 @@ const notify = () => {
   notifyTimer = null;
   listeners.forEach((l) => l(transfers));
 };
+// 단계(받는 중 → 설치 중)마다 시작 시각과 그때까지 한 양을 적어 두고, 걸린 시간과 평균 속도를 카드에 보여 준다 (어느 단계가 느린지 보려고)
+const phases: Record<string, { label: string; at: number; done: number }> = {};
+function withSpeed(id: string, t: Transfer): Transfer {
+  const now = Date.now();
+  let p = phases[id];
+  if (!p || p.label !== t.label) p = phases[id] = { label: t.label, at: now, done: t.done };
+  const elapsed = now - p.at;
+  const bytes = t.label !== "설치 중";
+  return { ...t, elapsed, rate: bytes && elapsed >= 2000 ? ((t.done - p.done) * 1000) / elapsed : undefined };
+}
 function setTransfer(id: string, t: Transfer | null) {
   const started = t && !transfers[id];
   transfers = { ...transfers };
-  if (t) transfers[id] = t;
-  else delete transfers[id];
+  if (t) transfers[id] = withSpeed(id, t);
+  else {
+    delete transfers[id];
+    delete phases[id];
+  }
   keepAwake(Object.keys(transfers).length > 0); // 올리거나 받는 동안 화면이 꺼지지 않게
   // 시작과 끝은 바로, 중간 진행률은 모아서
   if (started || !t) {

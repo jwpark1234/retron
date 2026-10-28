@@ -3,6 +3,20 @@ export type FileMap = Map<string, Uint8Array>;
 
 const root = () => navigator.storage.getDirectory();
 
+/**
+ * 브라우저에 이 앱의 저장 공간을 지우지 말아 달라고 한다. 요청하지 않으면 디스크가 모자랄 때나
+ * 사파리에서 한동안 열지 않았을 때 브라우저가 받아 둔 게임을 통째로 지운다 (다시 받아야 했다).
+ * 크롬·엣지·사파리는 묻지 않고 정한다 (설치한 앱이면 대개 들어준다). 파이어폭스는 사용자에게 묻는다
+ */
+export async function keepStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist());
+  } catch {
+    return false;
+  }
+}
+
 async function dir(parts: string[], create: boolean): Promise<FileSystemDirectoryHandle | null> {
   let d = await root();
   for (const p of parts.filter(Boolean)) {
