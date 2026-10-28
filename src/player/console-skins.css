@@ -38,10 +38,10 @@
 .game[data-platform="n64"] {
   --body: linear-gradient(180deg, #3e3e43, #222226);
   --body-hi: rgba(255, 255, 255, 0.14);
-  --btn-bg: #9a9aa1; --btn-ink: #1e1e22; --btn-edge: #5c5c62;
+  --btn-bg: #6b6b72; --btn-ink: #ececf0; --btn-edge: #3c3c41; /* 어깨 L·Z·R: 몸체에 맞춘 짙은 회색 */
   --pill-bg: #5a5a61; --pill-ink: #f0f0f3; --pill-edge: #333338;
-  --well: radial-gradient(circle, #121214, #26262a 75%);
-  --cap: #a3a3aa; --cap-ridge: #85858c;
+  --well: radial-gradient(circle, #141416, #232327 75%);
+  --cap: #8b8b92; --cap-ridge: #7a7a81;
   --print: rgba(255, 255, 255, 0.42); --cart: #8a8a92;
   --plate: linear-gradient(180deg, #232327, #1a1a1d);
   --plate-edge: inset 0 3px 6px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.07), 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -160,21 +160,23 @@
   /* C 버튼은 style.css의 .vpad-face.n64 .c(유리 노랑)가 더 세서 바탕을 다시 적는다 */
   .game[data-platform="n64"] .vpad-face .c { --btn-bg: #f2c22c; --btn-edge: #9c790a; --btn-ink: #4a3a00; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4); background: var(--grain), var(--btn-shine), var(--btn-bg); }
   .game[data-platform="n64"] .vpad-sys .vpad-btn { --btn-bg: #d63a3a; --btn-ink: #fff; --btn-edge: #862020; }
-  /* 세로 화면은 자리가 넉넉해서 버튼 상자를 키운다 (190×210 기준 자리). C 버튼 넷은 서로 11px 넘게 띄운다.
-     style.css의 기본 배치(160×160)에서는 C 버튼이 오른쪽 위에 겹치듯 몰렸다 */
+  /* 세로 화면은 자리가 넉넉해서 버튼 상자를 키운다 (190×210 기준 자리). C 버튼은 A·B보다 작게, 서로 13px 넘게 띄운다.
+     style.css의 기본 배치(160×160)에서는 C 버튼이 오른쪽 위에 겹치듯 몰렸다. 같은 세기면 style.css가 이겨서 .vpad를 붙인다 */
   .vpad-face.n64 { width: calc(190px * var(--ctl-scale, 1)); height: calc(210px * var(--ctl-scale, 1)); }
-  .vpad-face.n64 .vpad-btn { right: auto; bottom: auto; }
-  .vpad-face.n64 .c { width: 21%; height: 19%; font-size: calc(13px * var(--ctl-scale, 1)); }
-  .vpad-face.n64 .cup { left: 57.9%; top: 1.4%; }
-  .vpad-face.n64 .cdown { left: 57.9%; top: 34.8%; }
-  .vpad-face.n64 .cleft { left: 38.4%; top: 18.1%; }
-  .vpad-face.n64 .cright { left: 77.4%; top: 18.1%; }
-  .vpad-face.n64 .b { left: 4.7%; top: 42.4%; width: 32.6%; height: 29.5%; }
-  .vpad-face.n64 .a { left: 34.2%; top: 65.2%; width: 36.8%; height: 33.3%; }
+  .vpad .vpad-face.n64 .vpad-btn { right: auto; bottom: auto; }
+  .vpad .vpad-face.n64 .c { width: 16.8%; height: 15.2%; font-size: calc(11px * var(--ctl-scale, 1)); }
+  .vpad .vpad-face.n64 .cup { left: 60%; top: 4.8%; }
+  .vpad .vpad-face.n64 .cdown { left: 60%; top: 35.2%; }
+  .vpad .vpad-face.n64 .cleft { left: 43.2%; top: 20%; }
+  .vpad .vpad-face.n64 .cright { left: 76.8%; top: 20%; }
+  .vpad .vpad-face.n64 .b { left: 4.7%; top: 42.4%; width: 32.6%; height: 29.5%; }
+  .vpad .vpad-face.n64 .a { left: 34.2%; top: 65.2%; width: 36.8%; height: 33.3%; }
   .game[data-platform="n64"] .vpad-stick .knob {
     background:
-      radial-gradient(circle at 45% 35%, rgba(255, 255, 255, 0.4), transparent 40%),
-      repeating-radial-gradient(circle, #aeaeb5 0 3px, #8c8c93 3px 5px);
+      radial-gradient(circle at 45% 32%, rgba(255, 255, 255, 0.22), transparent 42%),
+      radial-gradient(circle, rgba(0, 0, 0, 0.22) 0 22%, transparent 48%),
+      repeating-radial-gradient(circle, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 2.5px),
+      var(--cap);
   }
 
   /* GBA: START·SELECT는 회색 작은 버튼, 어깨는 몸체보다 밝게 */
@@ -232,9 +234,9 @@
 @container (max-height: 34px) { .deck > * { display: none !important; } }
 
 /* 몸체에 인쇄한 로고: 그 시절 굵은 기울임 글씨 + 아래 줄 + 사양 문구 */
-.deck-logo { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: none; }
+.deck-logo { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: 0 1 auto; min-width: 0; }
 .deck-logo b {
-  font: italic 900 17px/1 "Arial Black", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.02em; transform: skewX(-6deg);
+  font: italic 900 clamp(12px, 4.8cqw, 17px)/1 "Arial Black", "Helvetica Neue", Arial, sans-serif; letter-spacing: 0.02em; transform: skewX(-6deg); white-space: nowrap;
   color: var(--logo, #4a4955); padding-bottom: 3px; border-bottom: 3px solid var(--logo-line, currentColor);
 }
 .deck-logo small { font: 800 7px/1.1 Arial, sans-serif; letter-spacing: 0.14em; color: var(--print); text-align: right; max-width: 92px; }
@@ -244,7 +246,7 @@
 .deck-n64 .deck-logo b { text-shadow: 1px 1px 0 #77777e, 2px 2px 0 #55555b, 3px 3px 0 #333338; }
 .deck-gba .deck-logo, .deck-gbc .deck-logo { align-items: flex-start; --logo: #f0eeff; --logo-line: rgba(255, 255, 255, 0.5); }
 .deck-gbc .deck-logo { --logo: #ecfffc; }
-.deck-gba .deck-logo b, .deck-gbc .deck-logo b { font-size: 22px; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+.deck-gba .deck-logo b, .deck-gbc .deck-logo b { font-size: clamp(14px, 6cqw, 22px); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
 .deck-gba .deck-logo small, .deck-gbc .deck-logo small { text-align: left; }
 /* PC 스티커: 종이에 인쇄해 붙인 사양 스티커 */
 .pc-stickers { display: flex; gap: 6px; align-items: flex-end; }
@@ -319,6 +321,7 @@
 .deck-sfc > .deck-print, .deck-n64 > .deck-print { width: 68px; padding-bottom: 4px; }
 .deck-sfc > .deck-logo, .deck-n64 > .deck-logo { padding-bottom: 2px; }
 @container (max-width: 290px) { .deck-logo small { display: none; } }
+@container (max-height: 78px) { .deck-logo small { display: none; } }
 .cart-bay { position: relative; flex: 1; max-width: 210px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
 /* 슬롯: 깊게 파였고 입구 위아래 모서리가 빛을 받는다 */
 .cart-bay .deck-slot {
