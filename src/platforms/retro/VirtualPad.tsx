@@ -34,8 +34,10 @@ export function VirtualPad({
   rotation,
   style,
   top,
+  title,
 }: {
   system: RetroSystem;
+  title: string;
   press: Press;
   axis: (source: string, x: number, y: number) => void;
   rotation: number;
@@ -46,7 +48,7 @@ export function VirtualPad({
   return (
     <div class="vpad">
       {top}
-      <ConsoleDeck model={system.label} />
+      <ConsoleDeck platform={system.platform} title={title} />
       <div class="vpad-shoulders">
         {n64 ? (
           <span class="vpad-pair">

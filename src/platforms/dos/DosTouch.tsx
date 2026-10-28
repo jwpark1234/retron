@@ -58,6 +58,7 @@ export function useTouchLayout(game: Game) {
 }
 
 export function DosTouchControls({
+  title,
   keys,
   trackpad,
   rotation,
@@ -67,6 +68,7 @@ export function DosTouchControls({
   onButton,
   top,
 }: {
+  title: string; // 몸체 장식의 디스켓 라벨
   keys: number[];
   trackpad: boolean;
   rotation: number;
@@ -85,7 +87,7 @@ export function DosTouchControls({
   return (
     <div class={`vbar ${landscape ? "land" : ""} ${dpad ? "" : "no-dpad"} ${trackpad ? "" : "no-pad"}`}>
       {top}
-      {!landscape && <ConsoleDeck model="DOS" />}
+      {!landscape && <ConsoleDeck platform="dos" title={title} />}
       {buttons.length > 0 && <VirtualKeys keys={buttons.map((key) => ({ key, label: dosKeyLabel(key), wide: isWide(key) }))} cols={cols} onKey={onKey} />}
       {dpad && (
         <div class="vbar-dpad">

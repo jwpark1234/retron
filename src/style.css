@@ -178,35 +178,7 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vpad-btn.pill { width: calc(76px * var(--ctl-scale, 1)); height: calc(30px * var(--ctl-scale, 1)); border-radius: 999px; font-size: calc(11px * var(--ctl-scale, 1)); letter-spacing: 0.08em; }
 /* 게임 중 메뉴 → 조작의 버튼 투명도 */
 .vpad, .vbar { opacity: var(--ctl-opacity, 1); }
-/* 세로 화면: 조작 영역을 게임기 몸체로 칠한다 (화면 바로 아래부터 둥근 판). 투명도는 몸체가 아니라 버튼에만 준다 */
-.game { --body-hi: #34343c; --body-lo: #1c1c22; --body-ink: #c9c9d3; --body-led: #5dff8a; }
-.game[data-platform="sfc"] { --body-hi: #3b3946; --body-lo: #22212a; --body-ink: #bdb5ec; }
-.game[data-platform="gba"] { --body-hi: #34316b; --body-lo: #1c1a3f; --body-ink: #a9b0ff; }
-.game[data-platform="n64"] { --body-hi: #303034; --body-lo: #18181b; --body-ink: #f0c43c; --body-led: #ff4d4d; }
-.game[data-platform="dos"] { --body-hi: #3d3830; --body-lo: #24211b; --body-ink: #e8c98a; --body-led: #ffb340; }
-@container (orientation: portrait) {
-  .vpad, .vbar:not(.land) {
-    opacity: 1; margin-top: 6px; border-radius: 26px 26px 0 0;
-    background:
-      radial-gradient(130% 70% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
-      linear-gradient(180deg, var(--body-hi), var(--body-lo));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 -8px 20px rgba(0, 0, 0, 0.55);
-  }
-  .vpad > :not(.deck), .vbar:not(.land) > :not(.deck) { opacity: var(--ctl-opacity, 1); }
-}
-/* 몸체 장식 (player/ConsoleDeck.tsx): 왼쪽에 전원 램프·이름, 오른쪽에 스피커 구멍. 자리가 좁으면 스피커부터 숨긴다 */
-.deck { grid-area: deck; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; pointer-events: none; }
-.deck-name { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 8px; row-gap: 3px; }
-.deck-led { width: 7px; height: 7px; border-radius: 50%; background: var(--body-led); box-shadow: 0 0 6px var(--body-led), 0 0 12px var(--body-led); }
-.deck-name strong { font-size: 17px; font-weight: 800; font-style: italic; letter-spacing: 0.3em; color: rgba(0, 0, 0, 0.55); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2); }
-.deck-name small { grid-column: 2; font-size: 10px; font-weight: 700; letter-spacing: 0.32em; color: var(--body-ink); opacity: 0.75; }
-.deck-grille {
-  width: 76px; height: 46px; transform: rotate(-12deg);
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.6) 0 2.3px, rgba(255, 255, 255, 0.07) 2.6px 3px, transparent 3.3px) 0 0 / 10px 10px;
-  -webkit-mask-image: radial-gradient(ellipse at center, #000 62%, transparent 66%); mask-image: radial-gradient(ellipse at center, #000 62%, transparent 66%);
-}
-@container (max-height: 52px) { .deck-grille { display: none; } }
-@container (max-height: 26px) { .deck-name { display: none; } }
+/* 세로 화면 게임기 몸체(기종별 색·버튼·장식)는 player/console-skins.css */
 @container (orientation: landscape) {
   .vpad {
     position: absolute; inset: 0; pointer-events: none; gap: 8px; align-content: stretch;
