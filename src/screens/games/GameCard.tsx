@@ -5,7 +5,7 @@ import type { ComponentChildren } from "preact";
 import type { Game, Platform } from "../../library/library";
 import { IconDownload } from "../../ui/icons";
 
-export const PLATFORM_LABEL: Record<Platform, string> = { dos: "DOS", sfc: "SFC", gba: "GBA", nds: "NDS" };
+export const PLATFORM_LABEL: Record<Platform, string> = { dos: "DOS", sfc: "SFC", gba: "GBA", n64: "N64" };
 
 const clock = (ms: number) => {
   const s = Math.floor(ms / 1000);

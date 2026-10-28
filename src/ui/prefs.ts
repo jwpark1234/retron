@@ -8,7 +8,7 @@ export type StickStyle = "stick" | "dpad"; // 가상패드 방향 조작: 원형
 export type LibrarySort = "recent" | "name" | "added" | "platform"; // 라이브러리 정렬: 최근 플레이 / 이름 / 추가한 순 / 기종
 export interface Prefs {
   filter: ScreenFilter;
-  virtualPad: boolean; // SFC·GBA 가상패드 (터치 기기). 게임패드가 연결되면 저절로 숨긴다
+  virtualPad: boolean; // SFC·GBA·N64 가상패드 (터치 기기). 게임패드가 연결되면 저절로 숨긴다
   stickStyle: StickStyle;
   mouseSpeed: number; // DOS 트랙패드·게임패드 커서 감도 (배수)
   retroKeys: Partial<Record<Platform, RetroKeys>>; // 기종별 키보드 설정 (바꾼 버튼만). 그 기종 게임 모두에 같이 쓴다
@@ -16,7 +16,7 @@ export interface Prefs {
   haptics: boolean; // 휴대폰: 버튼을 누를 때 짧은 진동
   controlScale: number; // 휴대폰 조작 버튼 크기 (배수)
   controlOpacity: number; // 휴대폰 조작 버튼 불투명도 (1 = 그대로)
-  fastSpeed: number; // SFC·GBA 빨리가기 배속 (DOS Turbo는 배속을 정할 수 없어 최대 속도)
+  fastSpeed: number; // SFC·GBA·N64 빨리가기 배속 (DOS Turbo는 배속을 정할 수 없어 최대 속도)
   librarySort: LibrarySort;
 }
 

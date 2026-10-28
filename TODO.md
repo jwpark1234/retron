@@ -1,14 +1,11 @@
 # 앞으로 할 일
 
-## N64 지원 (보류)
+## N64 실제 기기 확인
 
-- 보류한 이유: 실제 롬으로 시험하다 개발 PC가 버티지 못하고 멈췄다.
-- 지금까지 한 것: 로컬 브랜치 `n64-wip` (커밋 6ba9857, push 안 함). main에는 들어가 있지 않다.
-  - 에뮬레이터: N64Wasm (MIT, github.com/nbarkhina/N64Wasm, 커밋 고정). `scripts/copy-emulators.mjs`가 빌드 때 `public/n64/`로 받는다
-  - `src/platforms/n64/` (실행, 가상패드), 아날로그 방향 패드, SFC·GBA와 같이 쓰는 키보드 설정·입력
-  - RetroArch 웹 빌드(1.17~1.22.2)에는 N64 코어가 없어서 N64Wasm을 골랐다
-- 남은 일: 가벼운 환경(휴대폰, 다른 PC)에서 실제 롬 실행 확인 → 저장·불러오기, 가상패드 확인 → main에 합치기
-- 시험용 롬: `D:\zz\legend of zelda korean.n64`
+- 2026-10-28에 EmulatorJS parallel_n64로 main에 넣었다 (예전 `n64-wip` 브랜치의 N64Wasm 방식은 버렸다. 브랜치도 이미 없다)
+- 확인한 것 (개발 PC 헤드리스 크롬, 창·소리 없이): 시간의 오카리나 한국어판 실행, 키보드·가상패드(스틱, START, A)·상태 저장·불러오기·썸네일·나가기
+- 남은 일: 실제 휴대폰에서 속도·소리, 게임패드(오른쪽 스틱 = C 버튼), 게임 안 세이브가 다시 켤 때 이어지는지
+- 시험용 롬: `C:UsersjwparDesktoplegend of zelda korean.n64`. 개발 PC에서 창을 띄워 돌리면 PC가 멈춘 적이 있어서 헤드리스·음소거·낮은 우선순위로만 돌린다
 
 ## 윈도우 98 지원
 
@@ -22,5 +19,4 @@
 
 - `game-data/`(git 밖 테스트 자료)와 `dist/`는 2026-10-20에 모두 지웠다. 브라우저 시험 스크립트(playwright), 시험 롬(KeyColor.gba 등), zip·인증 시험도 같이 없어졌으니 다시 시험하려면 새로 만든다
 - Cloudflare R2 버킷 `retron` (예전 방식에서 쓰던 것, 비어 있지 않음, 지금은 안 씀)
-- 브랜치 `n64-wip` (N64를 main에 합친 뒤)
 - 저장소 밖 `D:\zz`의 게임 zip들(`DARK.zip`, `Ed3.zip`, `ed4.zip`, `Genesis2.zip`, `water2.zip`)은 사용자 게임이라 손대지 않는다

@@ -2,7 +2,7 @@
 import { HDD_DIR, splitConf } from "../platforms/dos/profiles";
 import { getFile, listDirs, readJson, removeDir, writeFile, writeJson } from "./store";
 
-export type Platform = "dos" | "sfc" | "gba" | "nds";
+export type Platform = "dos" | "sfc" | "gba" | "n64";
 
 /** 게임패드 버튼에 연결할 동작: DOS 키 코드 또는 마우스 버튼 */
 export type PadAction = number | "mouse-left" | "mouse-right";

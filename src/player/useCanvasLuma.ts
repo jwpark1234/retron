@@ -9,7 +9,7 @@ const H = 24;
 
 /**
  * grab: 지금 화면 그림. 없으면 캔버스를 그대로 쓴다 (DOS: 2D 캔버스).
- * WebGL 캔버스(SFC·GBA)는 그린 직후가 아니면 비어 있어서 에뮬레이터 스크린샷을 넘긴다.
+ * WebGL 캔버스(SFC·GBA·N64)는 그린 직후가 아니면 비어 있어서 에뮬레이터 스크린샷을 넘긴다.
  * everyMs: 찍는 간격 (스크린샷은 비싸니 길게)
  */
 export function useCanvasLuma(

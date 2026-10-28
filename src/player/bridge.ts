@@ -1,4 +1,4 @@
-// 플랫폼(DOS, SFC·GBA)이 메뉴와 화면 버튼에 내주는 기능: 상태 저장·불러오기, 빨리가기, 일시정지, 재시작, 스크린샷.
+// 플랫폼(DOS, SFC·GBA·N64)이 메뉴와 화면 버튼에 내주는 기능: 상태 저장·불러오기, 빨리가기, 일시정지, 재시작, 스크린샷.
 
 export interface StateBridge {
   save(): Promise<{ state: Uint8Array; thumb: Blob | null }>;

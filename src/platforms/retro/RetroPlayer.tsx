@@ -1,4 +1,4 @@
-// SFC·GBA 플레이 화면: Nostalgist로 띄운 게임 + 메뉴 + 입력(키보드, 게임패드, 가상패드). 기종 차이는 systems.ts가 맡는다.
+// SFC·GBA·N64 플레이 화면: Nostalgist(SFC·GBA)·EmulatorJS 코어(N64)로 띄운 게임 + 메뉴 + 입력(키보드, 게임패드, 가상패드). 기종 차이는 systems.ts가 맡는다.
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { uploadGame } from "../../cloud/games";
 import { gameDir, type Game } from "../../library/library";
@@ -37,7 +37,14 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const orientation = useOrientation();
   const prefs = usePrefs();
   const pad = useGamepad();
-  const input = useMemo(() => createInput((b, p) => emu.current?.press(b, p)), []);
+  const input = useMemo(
+    () =>
+      createInput(
+        (b, p) => emu.current?.press(b, p),
+        (x, y) => emu.current?.axis?.(x, y),
+      ),
+    [],
+  );
   const { capturing, setCapturing } = useRetroKeyboard(system, input);
   const dir = gameDir(game.id);
   const sramPath = `${dir}/sram.srm`;
@@ -156,7 +163,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const showPad = touchDevice && prefs.virtualPad && !pad;
 
   return (
-    <div class={showPad ? "game with-vpad" : "game"} style={rotatedStyle(orientation.rotation)}>
+    <div class="game" style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
       <GameMenu
         menu={menu}
@@ -174,6 +181,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
         <VirtualPad
           system={system}
           press={input.set}
+          axis={input.axis}
           rotation={orientation.rotation}
           style={prefs.stickStyle}
           top={<ControlTop menu={menu} bridge={bridge} />}

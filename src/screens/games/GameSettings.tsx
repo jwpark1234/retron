@@ -1,4 +1,4 @@
-// 게임 설정 (라이브러리 카드의 ⋯): 이름, 썸네일, 플랫폼별 설정(DOS 실행·조작, SFC·GBA 키보드), 세이브 백업, 정보(드라이브, 용량, 날짜), 삭제(이 기기 / 드라이브까지)
+// 게임 설정 (라이브러리 카드의 ⋯): 이름, 썸네일, 플랫폼별 설정(DOS 실행·조작, SFC·GBA·N64 키보드), 세이브 백업, 정보(드라이브, 용량, 날짜), 삭제(이 기기 / 드라이브까지)
 import { useEffect, useState } from "preact/hooks";
 import { deleteRemoteGame, updateRemoteGame, uploadGame } from "../../cloud/games";
 import { authState } from "../../cloud/google-auth";

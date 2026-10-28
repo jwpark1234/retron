@@ -1,4 +1,4 @@
-// SFC·GBA 설정: 키보드 설정(PC. 패드 그림 팝업에서 버튼마다 바꾼다. 기본 배치가 있고 기종마다 그 기종 게임 모두에 공통)과 가상패드 켜고 끄기(휴대폰). 키 입력도 여기서 받는다.
+// SFC·GBA·N64 설정: 키보드 설정(PC. 패드 그림 팝업에서 버튼마다 바꾼다. 기본 배치가 있고 기종마다 그 기종 게임 모두에 공통)과 가상패드 켜고 끄기(휴대폰). 키 입력도 여기서 받는다.
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ON_OFF, Row, Segmented } from "../../ui/controls";
@@ -67,7 +67,7 @@ export function useRetroKeyboard(system: RetroSystem, input: Input) {
 
 // --- 패드 모양 키 설정 ---
 // 버튼마다 패드 위 자리(가로·세로 %, 버튼 가운데)와 모양. 실제 컨트롤러처럼 놓아서 어느 버튼인지 바로 알아보게 한다
-type Shape = "dir" | "face" | "shoulder" | "pill";
+type Shape = "dir" | "face" | "c" | "shoulder" | "pill";
 type Spot = { button: RetroButton; x: number; y: number; shape: Shape };
 const COMMON: Spot[] = [
   { button: "l", x: 15, y: 9, shape: "shoulder" },
@@ -95,6 +95,18 @@ const SPOTS: Record<RetroSystem["face"], Spot[]> = {
     { button: "start", x: 57.5, y: 84, shape: "pill" },
     { button: "b", x: 74, y: 63, shape: "face" },
     { button: "a", x: 86, y: 47, shape: "face" },
+  ],
+  // N64: 왼쪽 스틱(방향), 어깨에 L·Z / R, 가운데 START, 오른쪽 위 C 버튼 넷, 그 아래 B(왼쪽)·A
+  n64: [
+    ...COMMON,
+    { button: "z", x: 36, y: 9, shape: "shoulder" },
+    { button: "start", x: 50, y: 56, shape: "pill" },
+    { button: "cup", x: 82, y: 27, shape: "c" },
+    { button: "cleft", x: 74, y: 41, shape: "c" },
+    { button: "cright", x: 90, y: 41, shape: "c" },
+    { button: "cdown", x: 82, y: 55, shape: "c" },
+    { button: "b", x: 66, y: 70, shape: "face" },
+    { button: "a", x: 79, y: 80, shape: "face" },
   ],
 };
 

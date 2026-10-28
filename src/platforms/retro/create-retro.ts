@@ -10,6 +10,8 @@ const SRAM_INTERVAL_S = 5; // RetroArch가 세이브(SRAM)를 파일에 쓰는 �
 
 export interface RetroEmulator {
   press(button: RetroButton, pressed: boolean): void;
+  /** 아날로그 스틱 (N64). x·y는 -1~1, 아래가 + */
+  axis?(x: number, y: number): void;
   saveState(): Promise<Uint8Array>;
   loadState(state: Uint8Array): Promise<void>;
   screenshot(): Promise<Blob>;

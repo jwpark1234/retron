@@ -128,11 +128,8 @@ ul.grid .thumb { aspect-ratio: 1; }
   padding: 12px 16px max(14px, var(--safe-bottom)); touch-action: none;
 }
 .vpad-shoulders { grid-area: sh; display: flex; justify-content: space-between; }
-/* 세로 화면: 세로로 긴 게임 화면(NDS 2:3)이 가로를 꽉 채우면 가상패드가 화면 밖으로 밀려나서, 가상패드 자리(윗줄·L·R·방향·버튼·SELECT·START + 간격)를 남기고 줄인다.
-   4:3·3:2 화면은 휴대폰에서 이만큼 남으므로 그대로다 */
-@container (orientation: portrait) {
-  .game.with-vpad .screen { width: min(100cqw, calc((100cqh - 258px * var(--ctl-scale, 1) - 66px - var(--safe-bottom)) * var(--aspect))); }
-}
+/* N64 어깨: 왼쪽에 L·Z를 나란히 */
+.vpad-pair { display: flex; gap: 8px; }
 .vpad-sys { grid-area: sys; display: flex; justify-content: center; align-items: center; gap: 16px; }
 /* 360도 스틱: 둥근 바탕 + 손가락을 따라가는 노브 */
 .vpad-stick {
@@ -165,6 +162,14 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vpad-face .y { top: 32.5%; left: 0; }
 .vpad-face .a { top: 32.5%; right: 0; }
 .vpad-face .b { bottom: 0; left: 32.5%; }
+/* N64: 오른쪽 위에 작은 C 버튼 넷(마름모), 그 아래 왼쪽 B·오른쪽 큰 A */
+.vpad-face.n64 .c { width: 24%; height: 24%; font-size: calc(12px * var(--ctl-scale, 1)); background: rgba(255, 205, 70, 0.16); border-color: rgba(255, 205, 70, 0.45); }
+.vpad-face.n64 .cup { top: 0; left: 58%; }
+.vpad-face.n64 .cleft { top: 15%; left: 40%; }
+.vpad-face.n64 .cright { top: 15%; left: 76%; }
+.vpad-face.n64 .cdown { top: 30%; left: 58%; }
+.vpad-face.n64 .b { top: 46%; left: 0; bottom: auto; width: 34%; height: 34%; }
+.vpad-face.n64 .a { top: 62%; left: 36%; right: auto; width: 38%; height: 38%; }
 /* GBA: B(왼쪽 아래)와 A(오른쪽 위) 두 개를 대각선으로 */
 .vpad-face.pair .vpad-btn { width: 41.25%; height: 41.25%; font-size: calc(22px * var(--ctl-scale, 1)); }
 .vpad-face.pair .a { top: 15%; right: 0; left: auto; }
@@ -185,9 +190,6 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad .vpad-btn, .vpad > .vpad-stick, .vpad > .vpad-dpad { opacity: 0.85; }
   .vpad-stick, .vpad-dpad, .vpad-face, .vpad-sys { align-self: end; }
   .vpad-sys { padding-bottom: 4px; }
-  /* 터치스크린(NDS): 아래 가운데는 게임 아래 화면이라 SELECT·START를 오른쪽 버튼 위로 */
-  .vpad.touch-screen { grid-template-rows: auto auto 1fr auto auto; grid-template-areas: "top top top" "sh sh sh" ". . ." ". . sys" "dpad . face"; }
-  .vpad.touch-screen .vpad-sys { justify-self: end; padding-bottom: 0; }
 }
 /* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad, 게임마다 끌 수 있다: no-pad) + 키 버튼(keys), Save·Load와 빨리가기·메뉴 줄(top).
    세로 화면: 윗줄은 조작 영역 맨 위(게임 바로 아래) 양끝, 방향 패드·트랙패드 줄과 키 버튼 줄은 화면 아래에 붙인다.
@@ -607,6 +609,7 @@ button.add.busy.spin::before { background: conic-gradient(from var(--ring-a), #f
 .pk:active { transform: translate(-50%, -50%) scale(0.95); }
 .pk:hover { background: rgba(255, 255, 255, 0.16); }
 .pk.face { width: 11%; border-radius: 50%; }
+.pk.c { width: 8.5%; border-radius: 50%; }
 .pk.shoulder { width: 20%; aspect-ratio: auto; height: 15%; border-radius: 14px 14px 8px 8px; flex-direction: row; gap: 8px; }
 .pk.pill { width: 12%; aspect-ratio: auto; height: 12%; border-radius: 999px; flex-direction: row; gap: 6px; }
 .pk-name { font-size: 11px; font-weight: 700; color: var(--muted); line-height: 1; }

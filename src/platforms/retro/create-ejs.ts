@@ -1,4 +1,4 @@
-// EmulatorJS가 빌드한 RetroArch 코어(지금은 NDS melonDS)를 우리 캔버스에 띄운다.
+// EmulatorJS가 빌드한 RetroArch 코어(지금은 N64 parallel_n64)를 우리 캔버스에 띄운다.
 // RetroArch 웹 빌드(Nostalgist)에 없는 기종용. 코어가 RetroArch 명령 대신 자체 함수(simulate_input, save_state_info…)를 내보내서 직접 부른다.
 // 자체 UI(EmulatorJS emulator.js)는 쓰지 않는다. 입력·세이브·메뉴는 retron이 맡는다.
 import type { RetroEmulator } from "./create-retro";
@@ -8,14 +8,15 @@ const CORE_DIR = `${import.meta.env.BASE_URL}ejs/v4.2.3/`; // scripts/copy-emula
 const SAVE_DIR = "/data/saves";
 const SRAM_INTERVAL_S = 5; // RetroArch가 세이브를 파일에 쓰는 주기
 
-/** RetroPad 버튼 번호 (libretro RETRO_DEVICE_ID_JOYPAD_*) */
-const PAD_ID: Record<RetroButton, number> = { b: 0, y: 1, select: 2, start: 3, up: 4, down: 5, left: 6, right: 7, a: 8, x: 9, l: 10, r: 11 };
+/** RetroPad 버튼 번호 (libretro RETRO_DEVICE_ID_JOYPAD_*). 기종이 따로 정하지 않으면 이름 그대로 */
+const PAD_ID: Partial<Record<RetroButton, number>> = { b: 0, y: 1, select: 2, start: 3, up: 4, down: 5, left: 6, right: 7, a: 8, x: 9, l: 10, r: 11 };
+/** simulate_input의 왼쪽 아날로그 스틱 번호: X+, X-, Y+(아래), Y-(위). 값은 0~0x7fff */
+const STICK = { right: 16, left: 17, down: 18, up: 19 } as const;
+const STICK_MAX = 0x7fff;
 
-// 실제 키는 retron이 받아서 simulate_input으로 넘긴다. RetroArch 기본 키(조작, F1 메뉴, ESC 종료, 스페이스 빨리가기…)는 모두 끈다
-const NO_KEYS = [
-  ...["up", "down", "left", "right", "a", "b", "x", "y", "l", "r", "l2", "r2", "l3", "r3", "select", "start"].map((b) => `input_player1_${b}`),
-  ..."menu_toggle exit_emulator toggle_fast_forward hold_fast_forward toggle_slowmotion hold_slowmotion rewind pause_toggle frame_advance reset save_state load_state state_slot_increase state_slot_decrease screenshot toggle_fullscreen audio_mute volume_up volume_down shader_next shader_prev cheat_toggle cheat_index_plus cheat_index_minus fps_toggle netplay_game_watch grab_mouse_toggle game_focus_toggle ai_service".split(" ").map((h) => `input_${h}`),
-];
+// 실제 키는 retron이 받아서 simulate_input으로 넘긴다. 코어의 키보드 입력은 EmulatorJS 빌드에서 기본으로 꺼져 있어서
+// (ejs_set_keyboard_enabled) RetroArch 기본 키(F1 메뉴, ESC 종료…)도 듣지 않는다. 조작 키 바인딩은 지우면 안 된다:
+// 버튼을 하나씩 묻는 코어(parallel_n64)에는 바인딩이 있는 버튼만 simulate_input 눌림이 들어간다
 
 interface EjsModule {
   FS: {
@@ -108,86 +109,13 @@ function fitCanvas(canvas: HTMLCanvasElement, width: number, height: number) {
       height: `${height}px`,
       transformOrigin: "0 0",
       transform: `scale(${box.clientWidth / width})`,
-      touchAction: "none",
     });
   fit();
   const ro = new ResizeObserver(fit);
   ro.observe(box);
   return () => {
     ro.disconnect();
-    for (const p of ["position", "left", "top", "width", "height", "transform-origin", "transform", "touch-action"]) canvas.style.removeProperty(p);
-  };
-}
-
-const MIN_TOUCH_MS = 50;
-const POINTER_EVENTS = ["mousedown", "mousemove", "mouseup", "wheel", "touchstart", "touchmove", "touchend", "touchcancel"];
-
-/**
- * 터치스크린(NDS 아래 화면). 코어는 이벤트 좌표를 캔버스의 getBoundingClientRect 기준으로 재서, 게임 화면을 CSS로 돌리거나(아이폰 가로)
- * 키우면(fitCanvas) 어긋난다. 실제 마우스·터치 이벤트는 코어에 닿지 않게 막고, 캔버스 안 좌표(offsetX: 회전·확대를 푼 좌표)로 바꾼
- * 마우스 이벤트를 다시 보낸다. 손가락은 하나만 쓴다 (DS 터치스크린은 한 점)
- */
-function bridgePointer(canvas: HTMLCanvasElement) {
-  const box = canvas.parentElement!;
-  const block = (e: Event) => e.isTrusted && e.target === canvas && e.stopPropagation();
-  for (const t of POINTER_EVENTS) box.addEventListener(t, block, true);
-
-  let active: number | null = null;
-  let downAt = 0;
-  let pendingUp = 0;
-  /** 마우스는 마우스 이벤트로, 손가락은 터치 이벤트로 보낸다 (터치 기기에서 코어는 터치만 읽는다) */
-  const send = (phase: "down" | "move" | "up", e: PointerEvent) => {
-    // 코어는 받은 좌표에 devicePixelRatio를 곱해 캔버스 픽셀로 본다. 캔버스는 CSS 크기 = 픽셀 크기(fitCanvas)라서 미리 나눠 둔다
-    const x = Math.min(Math.max(e.offsetX, 0), canvas.offsetWidth - 1) / devicePixelRatio;
-    const y = Math.min(Math.max(e.offsetY, 0), canvas.offsetHeight - 1) / devicePixelRatio;
-    let ev: Event;
-    if (e.pointerType === "mouse") {
-      ev = new MouseEvent(phase === "down" ? "mousedown" : phase === "up" ? "mouseup" : "mousemove", { clientX: x, clientY: y, button: 0, buttons: phase === "up" ? 0 : 1 });
-    } else {
-      // Touch 생성자는 사파리에 없어서, 코어가 읽는 필드(touches 등)만 붙인 이벤트를 만든다
-      ev = new Event(phase === "down" ? "touchstart" : phase === "up" ? "touchend" : "touchmove", { cancelable: true });
-      const t = { identifier: 0, clientX: x, clientY: y, screenX: x, screenY: y, pageX: x, pageY: y, target: canvas };
-      const now = phase === "up" ? [] : [t];
-      Object.defineProperties(ev, { touches: { value: now }, targetTouches: { value: now }, changedTouches: { value: [t] } });
-    }
-    // 코어가 재는 캔버스 위치를 (0, 0)으로 두고 캔버스 안 좌표를 그대로 넘긴다
-    canvas.getBoundingClientRect = () => ({ left: 0, top: 0 }) as DOMRect;
-    try {
-      canvas.dispatchEvent(ev);
-    } finally {
-      delete (canvas as Partial<HTMLCanvasElement>).getBoundingClientRect;
-    }
-  };
-  const down = (e: PointerEvent) => {
-    if (active !== null || e.button !== 0) return;
-    e.preventDefault();
-    clearTimeout(pendingUp);
-    active = e.pointerId;
-    downAt = performance.now();
-    canvas.setPointerCapture(e.pointerId);
-    if (e.pointerType === "mouse") send("move", e);
-    send("down", e);
-  };
-  const move = (e: PointerEvent) => e.pointerId === active && send("move", e);
-  const up = (e: PointerEvent) => {
-    if (e.pointerId !== active) return;
-    active = null;
-    // 코어는 프레임마다 눌림을 읽어서, 한 프레임 안에 눌렀다 떼면 터치를 놓친다. 짧게 톡 쳐도 몇 프레임은 누른 채로 둔다
-    const wait = MIN_TOUCH_MS - (performance.now() - downAt);
-    if (wait <= 0) send("up", e);
-    else pendingUp = window.setTimeout(() => send("up", e), wait);
-  };
-  canvas.addEventListener("pointerdown", down);
-  canvas.addEventListener("pointermove", move);
-  canvas.addEventListener("pointerup", up);
-  canvas.addEventListener("pointercancel", up);
-  return () => {
-    clearTimeout(pendingUp);
-    for (const t of POINTER_EVENTS) box.removeEventListener(t, block, true);
-    canvas.removeEventListener("pointerdown", down);
-    canvas.removeEventListener("pointermove", move);
-    canvas.removeEventListener("pointerup", up);
-    canvas.removeEventListener("pointercancel", up);
+    for (const p of ["position", "left", "top", "width", "height", "transform-origin", "transform"]) canvas.style.removeProperty(p);
   };
 }
 
@@ -248,7 +176,6 @@ export async function createEjs(system: RetroSystem, canvas: HTMLCanvasElement, 
         video_font_enable: false, // 화면 위 RetroArch 알림 글자를 끈다
         suspend_screensaver_enable: false, // 코어가 화면 켜짐 유지(Wake Lock)를 잡으면 나간 뒤에도 풀 수 없다
         input_joypad_driver: "null", // 게임패드도 retron이 읽는다 (두 번 눌리지 않게)
-        ...Object.fromEntries(NO_KEYS.map((k) => [k, "nul"])),
       }),
     );
     const romPath = `/${rom.name}`;
@@ -264,8 +191,6 @@ export async function createEjs(system: RetroSystem, canvas: HTMLCanvasElement, 
   } finally {
     listeners.stop();
   }
-  const unbridge = system.touch ? bridgePointer(canvas) : () => undefined;
-
   const { FS } = M;
   const fn = <T>(name: string, ret: string | null = null, args: string[] = []) => M.cwrap(name, ret, args) as (...a: unknown[]) => T;
   const f = {
@@ -281,6 +206,23 @@ export async function createEjs(system: RetroSystem, canvas: HTMLCanvasElement, 
     setFastRatio: fn<void>("set_ff_ratio", null, ["number"]),
   };
 
+  const padId = { ...PAD_ID, ...system.retropad };
+  // 아날로그 스틱 기종: 방향 버튼(키보드 방향키 등)은 스틱을 끝까지 민 것으로, axis(가상패드 스틱·게임패드)는 그 값대로. 둘을 더해서 넘긴다
+  const dirs = new Set<RetroButton>();
+  let axis = { x: 0, y: 0 };
+  const sendStick = () => {
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    let dx = +dirs.has("right") - +dirs.has("left");
+    let dy = +dirs.has("down") - +dirs.has("up");
+    if (dx && dy) [dx, dy] = [dx * Math.SQRT1_2, dy * Math.SQRT1_2]; // 대각선도 원 안에서 끝까지
+    const x = clamp(dx + axis.x);
+    const y = clamp(dy + axis.y);
+    f.simulateInput(0, STICK.right, x > 0 ? Math.round(x * STICK_MAX) : 0);
+    f.simulateInput(0, STICK.left, x < 0 ? Math.round(-x * STICK_MAX) : 0);
+    f.simulateInput(0, STICK.down, y > 0 ? Math.round(y * STICK_MAX) : 0);
+    f.simulateInput(0, STICK.up, y < 0 ? Math.round(-y * STICK_MAX) : 0);
+  };
+
   let fast = false;
   let running = true;
   const run = (on: boolean) => {
@@ -289,7 +231,19 @@ export async function createEjs(system: RetroSystem, canvas: HTMLCanvasElement, 
   };
 
   return {
-    press: (button, pressed) => f.simulateInput(0, PAD_ID[button], pressed ? 1 : 0),
+    press(button, pressed) {
+      if (system.analog && button in STICK) {
+        if (pressed) dirs.add(button);
+        else dirs.delete(button);
+        return sendStick();
+      }
+      const id = padId[button];
+      if (id !== undefined) f.simulateInput(0, id, pressed ? 1 : 0);
+    },
+    axis(x, y) {
+      axis = { x, y };
+      sendStick();
+    },
     async saveState() {
       const [size, start, ok] = f.saveStateInfo().split("|");
       if (ok !== "1") throw new Error(size);
@@ -324,7 +278,6 @@ export async function createEjs(system: RetroSystem, canvas: HTMLCanvasElement, 
     reset: () => f.restart(),
     exit() {
       run(false);
-      unbridge();
       listeners.removeAll();
       unfit();
       for (const c of Object.values(M.AL?.contexts ?? {})) {

@@ -31,10 +31,10 @@ for (const core of RA_CORES) {
   console.log("RetroArch", core, RA_VERSION);
 }
 
-// NDS: RetroArch 웹 빌드에는 NDS 코어가 없어서 EmulatorJS가 빌드한 melonDS를 쓴다 (7z로 묶인 .data를 풀어 둔다).
+// N64: RetroArch 웹 빌드에는 N64 코어가 없어서 EmulatorJS가 빌드한 parallel_n64를 쓴다 (7z로 묶인 .data를 풀어 둔다).
 // EmulatorJS 코어는 RetroArch 명령 대신 자체 함수(simulate_input, save_state_info…)를 내보내서 Nostalgist로는 못 띄운다 → create-ejs.ts
 const EJS_VERSION = "4.2.3";
-const EJS_CORES = ["melonds"]; // src/platforms/retro/systems.ts의 core (backend: "ejs")
+const EJS_CORES = ["parallel_n64"]; // src/platforms/retro/systems.ts의 core (backend: "ejs")
 const ejsOut = new URL(`../public/ejs/v${EJS_VERSION}/`, import.meta.url);
 mkdirSync(ejsOut, { recursive: true });
 for (const core of EJS_CORES) {
