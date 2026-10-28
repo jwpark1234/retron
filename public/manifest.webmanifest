@@ -2,7 +2,7 @@
   "id": "./",
   "name": "RETRON",
   "short_name": "RETRON",
-  "description": "DOS·SFC·GBA 고전 게임을 브라우저에서. 게임과 세이브는 내 구글 드라이브에",
+  "description": "DOS·SFC·GBA·N64 고전 게임을 브라우저에서. 게임과 세이브는 내 구글 드라이브에",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",

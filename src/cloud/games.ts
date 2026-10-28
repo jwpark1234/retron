@@ -8,7 +8,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { gameDir, getGame, listGames, newGameId, patchGame, putGame, sourceDir, type Game, type GameSource } from "../library/library";
 import { reimportFiles, type Entry } from "../library/import";
-import { packGame, packedPath } from "../library/pack";
+import { packGame, packedPath, packedSize } from "../library/pack";
 import { getFile, openWritable, readJson, removeDir, writeFile, writeJson } from "../library/store";
 import { unzipTo } from "../library/zip";
 import { keepAwake } from "../ui/wake-lock";
@@ -73,12 +73,13 @@ const notify = () => {
 };
 // 단계(받는 중 → 설치 중)마다 시작 시각과 그때까지 한 양을 적어 두고, 걸린 시간과 평균 속도를 카드에 보여 준다 (어느 단계가 느린지 보려고)
 const phases: Record<string, { label: string; at: number; done: number }> = {};
+const PREPARE = "올릴 준비 중";
 function withSpeed(id: string, t: Transfer): Transfer {
   const now = Date.now();
   let p = phases[id];
   if (!p || p.label !== t.label) p = phases[id] = { label: t.label, at: now, done: t.done };
   const elapsed = now - p.at;
-  const bytes = t.label !== "설치 중";
+  const bytes = t.label !== "설치 중" && t.label !== PREPARE; // 이 둘은 바이트가 아니라 0~100
   return { ...t, elapsed, rate: bytes && elapsed >= 2000 ? ((t.done - p.done) * 1000) / elapsed : undefined };
 }
 function setTransfer(id: string, t: Transfer | null) {
@@ -228,12 +229,13 @@ interface UploadItem {
 type SourceFile = { name: string; file: Blob };
 
 /** 추가할 때 고른 원본이 기기에 다 남아 있으면 그 파일들 (없으면 null) */
-async function sourceFiles(game: Game): Promise<SourceFile[] | null> {
+async function sourceFiles(game: Game, onPack: (fraction: number) => void): Promise<SourceFile[] | null> {
   const src = game.source;
   if (!src) return null;
   if (src.layout === "game") {
-    const zip = await packGame(game);
-    return zip.size === src.files[0]?.size ? [{ name: src.files[0].name, file: zip }] : null;
+    // 크기부터 맞춰 본다. 예전에는 묶어 본 뒤 크기가 다르면 또 묶어서, 게임 전체를 두 번 읽었다
+    if ((await packedSize(game)) !== src.files[0]?.size) return null;
+    return [{ name: src.files[0].name, file: await packGame(game, onPack) }];
   }
   const out: SourceFile[] = [];
   for (const s of src.files) {
@@ -248,8 +250,8 @@ async function sourceFiles(game: Game): Promise<SourceFile[] | null> {
  * 드라이브에 올릴 원본. 고른 원본이 기기에 없으면(원본을 보관하지 않던 때 추가했거나, 저장 공간이 모자라 보관하지 못했다)
  * 기기에 있는 게임으로 만든다: 롬은 롬 파일 그대로(게임 이름으로), DOS는 게임 폴더를 zip 하나로. 풀린 파일을 하나씩 올리지 않는다
  */
-async function gameSource(game: Game): Promise<{ source: GameSource; files: SourceFile[] }> {
-  const kept = await sourceFiles(game);
+async function gameSource(game: Game, onPack: (fraction: number) => void): Promise<{ source: GameSource; files: SourceFile[] }> {
+  const kept = await sourceFiles(game, onPack);
   if (kept) return { source: game.source!, files: kept };
   let source: GameSource;
   let file: Blob;
@@ -259,7 +261,7 @@ async function gameSource(game: Game): Promise<{ source: GameSource; files: Sour
     file = rom;
     source = { files: [{ name: `${folderName(game.title)}.${game.rom.rom.split(".").pop()}`, size: rom.size }], romFile: true };
   } else {
-    file = await packGame(game);
+    file = await packGame(game, onPack);
     source = { files: [{ name: `${folderName(game.title)}.zip`, size: file.size }], layout: "game" };
   }
   await patchGame(game.id, { source });
@@ -289,7 +291,8 @@ export async function uploadGame(gameId: string, { force = false } = {}) {
     // 원본을 만들기(zip으로 묶기) 전에 본다: 몇 분마다 다시 시도할 때마다 게임 전체를 읽으면 배터리를 쓴다
     const size = game.source?.files.reduce((n, f) => n + f.size, 0) ?? Infinity;
     if (size > SMALL && !force && cellular) return setIssue(gameId, WAIT_WIFI);
-    const { source, files } = await gameSource(game);
+    // DOS 게임을 zip으로 묶는 동안(파일마다 CRC를 계산한다) 0%에 멈춰 보이지 않게
+    const { source, files } = await gameSource(game, (f) => setTransfer(gameId, { label: PREPARE, done: Math.round(f * 100), total: 100 }));
     // 지금 방식으로 올리다 만 폴더가 있으면 거기에 이어서 올린다. 예전 방식으로 올리다 만 폴더(풀린 파일)에는 올리지 않는다
     const partial = found.find((f) => !f.complete && f.v2);
     const remote = partial?.children ?? [];

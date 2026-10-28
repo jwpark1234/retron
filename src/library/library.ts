@@ -158,8 +158,11 @@ export async function removeOrphans(keep: Set<string> = new Set()) {
   if (!(await getFile(LIBRARY))) return;
   const games = await listGames();
   if (!games.length) return;
-  const ids = new Set([...games.map((g) => g.id), ...keep]);
-  for (const name of await listDirs("games")) if (!ids.has(name)) await removeDir(gameDir(name));
+  // 아이폰 사파리는 폴더 이름을 한글 자모로 풀어서(NFD) 돌려준다. 그대로 비교하면 한글 제목 게임(id에 한글이 들어감)이
+  // 목록에 없는 폴더로 보여서 시작할 때마다 지워졌다 (목록에는 남아 있어 누르면 "파일이 지워졌습니다"가 떴다)
+  const nfc = (s: string) => s.normalize("NFC");
+  const ids = new Set([...games.map((g) => g.id), ...keep].map(nfc));
+  for (const name of await listDirs("games")) if (!ids.has(nfc(name))) await removeDir(gameDir(name));
   await removeDir("_incoming");
 }
 

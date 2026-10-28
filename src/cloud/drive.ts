@@ -1,11 +1,12 @@
 // 구글 드라이브 REST API (v3)를 브라우저에서 직접 부른다.
 import { accessToken } from "./google-auth";
+import { ios } from "../ui/install";
 
 const API = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const FOLDER = "application/vnd.google-apps.folder";
 const FIELDS = "id,name,size,mimeType,appProperties,modifiedTime,version";
-const CHUNK = 32 * 1024 * 1024; // 이어 올리기 조각 (256KB의 배수)
+const CHUNK = 32 * 1024 * 1024; // 아이폰에서 이어 올리기 조각 (256KB의 배수)
 
 export interface DriveFile {
   id: string;
@@ -18,19 +19,41 @@ export interface DriveFile {
   parents?: string[];
 }
 
-async function call(url: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${await accessToken()}` } });
-  if (!res.ok && res.status !== 308) {
-    let msg = `${res.status}`;
-    try {
-      msg = ((await res.json()) as { error: { message: string } }).error.message;
-    } catch {
-      // 본문이 JSON이 아니다
-    }
-    if (res.status === 403 && /quota|storage/i.test(msg)) throw new Error("구글 드라이브 저장 공간이 부족합니다");
-    throw new Error(`구글 드라이브 오류: ${msg}`);
+async function check(res: Response): Promise<Response> {
+  if (res.ok || res.status === 308) return res;
+  let msg = `${res.status}`;
+  try {
+    msg = ((await res.json()) as { error: { message: string } }).error.message;
+  } catch {
+    // 본문이 JSON이 아니다
   }
-  return res;
+  if (res.status === 403 && /quota|storage/i.test(msg)) throw new Error("구글 드라이브 저장 공간이 부족합니다");
+  throw new Error(`구글 드라이브 오류: ${msg}`);
+}
+
+async function call(url: string, init: RequestInit = {}): Promise<Response> {
+  return check(await fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${await accessToken()}` } }));
+}
+
+/** PUT을 XHR로 보낸다. fetch는 보낸 양을 알려 주지 않아서, 요청 하나로 크게 올릴 때 진행률을 보여 주려고 */
+async function putWithProgress(url: string, body: Blob, headers: Record<string, string>, onSent: (n: number) => void): Promise<Response> {
+  const token = await accessToken();
+  const xhr = new XMLHttpRequest();
+  await new Promise<void>((resolve, reject) => {
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+    xhr.upload.onprogress = (e) => onSent(e.loaded);
+    xhr.onload = () => resolve();
+    xhr.onerror = xhr.onabort = () => reject(new Error("구글 드라이브에 올리다 연결이 끊겼습니다"));
+    xhr.send(body);
+  });
+  const h = new Headers();
+  for (const line of xhr.getAllResponseHeaders().trim().split(/\r?\n/)) {
+    const i = line.indexOf(":");
+    if (i > 0) h.append(line.slice(0, i).trim(), line.slice(i + 1).trim());
+  }
+  return check(new Response(xhr.responseText, { status: xhr.status, headers: h }));
 }
 
 const q = (s: string) => s.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -182,13 +205,15 @@ export async function createLargeFile(
   }
   onProgress(offset);
   while (offset < data.size) {
-    const end = Math.min(offset + CHUNK, data.size);
+    // 아이폰이 아니면 남은 내용을 요청 하나로 보낸다. 조각마다 구글 응답을 기다리는 동안 회선이 놀아서 느렸다.
+    // 중간에 끊겨도 구글이 받은 데까지는 세션에 남아서, 다음에 sessionStatus로 그 지점부터 잇는다
+    const start = offset;
+    const end = ios ? Math.min(offset + CHUNK, data.size) : data.size;
     // 브라우저 fetch는 308(이어서 보내라)을 리다이렉트로 처리하므로, 구글이 200으로 바꿔 주게 한다
-    const res = await call(session, {
-      method: "PUT",
-      headers: { "Content-Range": `bytes ${offset}-${end - 1}/${data.size}`, "X-GUploader-No-308": "yes" },
-      body: await inMemory(data.slice(offset, end)),
-    });
+    const headers = { "Content-Range": `bytes ${start}-${end - 1}/${data.size}`, "X-GUploader-No-308": "yes" };
+    const res = ios
+      ? await call(session, { method: "PUT", headers, body: await inMemory(data.slice(start, end)) })
+      : await putWithProgress(session, data.slice(start, end), headers, (n) => onProgress(start + n));
     const status = Number(res.headers.get("X-HTTP-Status-Code-Override") ?? res.status);
     if (status !== 308) {
       saveSession(resumeKey, null);

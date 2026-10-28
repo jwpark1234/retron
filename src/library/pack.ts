@@ -9,24 +9,37 @@ import { CD_DIR, HDD_DIR } from "../platforms/dos/profiles";
 import { gameDir, type Game } from "./library";
 import { listFiles } from "./store";
 
+// CRC를 8바이트씩 계산한다 (slicing-by-8). 한 바이트씩 하던 때보다 몇 배 빨라서, 큰 DOS 게임을 올리기 전에 기다리는 시간이 준다.
+// T[k*256 + n]: 바이트 n 뒤에 0이 k개 이어질 때의 CRC
 const CRC_TABLE = (() => {
-  const t = new Int32Array(256);
+  const t = new Int32Array(256 * 8);
   for (let n = 0; n < 256; n++) {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
     t[n] = c;
   }
+  for (let n = 0; n < 256; n++) for (let k = 1; k < 8; k++) t[k * 256 + n] = t[t[(k - 1) * 256 + n] & 0xff] ^ (t[(k - 1) * 256 + n] >>> 8);
   return t;
 })();
 
 const READ_CHUNK = 4 * 1024 * 1024;
 
+function crc32Update(c: number, b: Uint8Array): number {
+  const T = CRC_TABLE;
+  let i = 0;
+  for (const end = b.length - 7; i < end; i += 8) {
+    const lo = c ^ (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24));
+    c =
+      T[1792 + (lo & 0xff)] ^ T[1536 + ((lo >>> 8) & 0xff)] ^ T[1280 + ((lo >>> 16) & 0xff)] ^ T[1024 + (lo >>> 24)] ^
+      T[768 + b[i + 4]] ^ T[512 + b[i + 5]] ^ T[256 + b[i + 6]] ^ T[b[i + 7]];
+  }
+  for (; i < b.length; i++) c = T[(c ^ b[i]) & 0xff] ^ (c >>> 8);
+  return c;
+}
+
 async function crc32(file: Blob): Promise<number> {
   let c = -1;
-  for (let at = 0; at < file.size; at += READ_CHUNK) {
-    const b = new Uint8Array(await file.slice(at, at + READ_CHUNK).arrayBuffer());
-    for (let i = 0; i < b.length; i++) c = CRC_TABLE[(c ^ b[i]) & 0xff] ^ (c >>> 8);
-  }
+  for (let at = 0; at < file.size; at += READ_CHUNK) c = crc32Update(c, new Uint8Array(await file.slice(at, at + READ_CHUNK).arrayBuffer()));
   return (c ^ -1) >>> 0;
 }
 
@@ -95,10 +108,21 @@ export async function packZip(files: Map<string, Blob>, onProgress?: (fraction: 
 
 /** DOS 게임 폴더(HDD/, CD/)를 zip으로. 세이브·상태·썸네일은 넣지 않는다 (따로 동기화한다) */
 export async function packGame(game: Game, onProgress?: (fraction: number) => void): Promise<Blob> {
+  return packZip(await gameFiles(game), onProgress);
+}
+
+async function gameFiles(game: Game): Promise<Map<string, Blob>> {
   const files = new Map<string, Blob>();
   for (const dir of [HDD_DIR, CD_DIR]) for (const [p, f] of await listFiles(`${gameDir(game.id)}/${dir}`)) files.set(`${dir}/${p}`, f);
   if (!files.size) throw new Error("게임 파일이 기기에 없습니다");
-  return packZip(files, onProgress);
+  return files;
+}
+
+/** packGame이 만들 zip의 크기. 파일 내용을 읽지 않아서(CRC 없이) 바로 나온다 */
+export async function packedSize(game: Game): Promise<number> {
+  let n = 22; // 끝 머리말
+  for (const [path, file] of await gameFiles(game)) n += 30 + 46 + 2 * new TextEncoder().encode(path).length + file.size;
+  return n;
 }
 
 /** packGame으로 만든 zip 안의 경로 중 게임 폴더에 풀어도 되는 것 */
