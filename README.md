@@ -66,6 +66,8 @@ npm run dev
 
 `npm run build`를 하면 `dist/`에 정적 파일이 만들어집니다.
 
+버전은 `package.json`의 `version`(n.n.n)이고 계정 창에 보입니다. 고친 것을 배포하기 전에 올립니다: 버그 수정은 `npm version patch --no-git-tag-version`, 기능 추가는 `minor`, 크게 바뀌면 `major`. 새 버전이 배포됐는지는 버전 문자열이 아니라 진입 파일 이름으로 알아챕니다 (`src/ui/update.ts`).
+
 ### 구글 로그인과 드라이브 저장
 
 Cloudflare Pages는 정적 파일 서빙과 드라이브 토큰 갱신(아래)만 합니다. 로그인하면 게임 파일, 세이브, 설정이 **각 사용자의 구글 드라이브** `retron` 폴더에 저장되고, 다른 기기에서 같은 계정으로 로그인하면 게임을 받아 이어서 할 수 있습니다. 앱은 `drive.file` 권한만 써서, 자기가 만든 파일 외의 드라이브 내용은 보지 못합니다.

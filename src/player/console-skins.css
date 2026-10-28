@@ -162,7 +162,8 @@
   .game[data-platform="n64"] .vpad-sys .vpad-btn { --btn-bg: #d63a3a; --btn-ink: #fff; --btn-edge: #862020; }
   /* 세로 화면은 자리가 넉넉해서 버튼 상자를 키운다 (190×210 기준 자리). C 버튼은 A·B보다 작게, 서로 13px 넘게 띄운다.
      style.css의 기본 배치(160×160)에서는 C 버튼이 오른쪽 위에 겹치듯 몰렸다. 같은 세기면 style.css가 이겨서 .vpad를 붙인다 */
-  .vpad-face.n64 { width: calc(190px * var(--ctl-scale, 1)); height: calc(210px * var(--ctl-scale, 1)); }
+  /* 좁은 폰(390px 미만)이나 버튼 크기를 키우면 스틱과 합쳐 화면 폭을 넘어 오른쪽 여백이 없어졌다: 화면 절반 안으로 묶고 비율대로 줄인다 */
+  .vpad-face.n64 { width: min(calc(190px * var(--ctl-scale, 1)), calc(50cqw - 26px)); height: auto; aspect-ratio: 190 / 210; }
   .vpad .vpad-face.n64 .vpad-btn { right: auto; bottom: auto; }
   .vpad .vpad-face.n64 .c { width: 16.8%; height: 15.2%; font-size: calc(11px * var(--ctl-scale, 1)); }
   .vpad .vpad-face.n64 .cup { left: 60%; top: 4.8%; }
