@@ -134,7 +134,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
   }, [run]);
 
   return (
-    <div class={`game${touchDevice ? "" : " hide-cursor"}`} ref={stage} style={rotatedStyle(orientation.rotation)}>
+    <div class={`game${touchDevice ? "" : " hide-cursor"}`} data-platform="dos" ref={stage} style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} />
       <GameMenu
         menu={menu}

@@ -7,6 +7,7 @@ import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
 import { updateRemoteGame } from "../../cloud/games";
 import { getGame, putGame, type DosInfo, type Game } from "../../library/library";
+import { ConsoleDeck } from "../../player/ConsoleDeck";
 import { DirectionPad, type Direction } from "../../player/DirectionPad";
 import { ON_OFF, Row, Segmented } from "../../ui/controls";
 import { setPrefs, usePrefs } from "../../ui/prefs";
@@ -84,6 +85,7 @@ export function DosTouchControls({
   return (
     <div class={`vbar ${landscape ? "land" : ""} ${dpad ? "" : "no-dpad"} ${trackpad ? "" : "no-pad"}`}>
       {top}
+      {!landscape && <ConsoleDeck model="DOS" />}
       {buttons.length > 0 && <VirtualKeys keys={buttons.map((key) => ({ key, label: dosKeyLabel(key), wide: isWide(key) }))} cols={cols} onKey={onKey} />}
       {dpad && (
         <div class="vbar-dpad">

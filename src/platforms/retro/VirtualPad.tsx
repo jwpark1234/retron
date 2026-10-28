@@ -5,6 +5,7 @@ import type { ComponentChildren } from "preact";
 import { DirectionPad } from "../../player/DirectionPad";
 import type { StickStyle } from "../../ui/prefs";
 import type { RetroButton, RetroSystem } from "./systems";
+import { ConsoleDeck } from "../../player/ConsoleDeck";
 
 type Press = (source: string, button: RetroButton, pressed: boolean) => void;
 
@@ -45,6 +46,7 @@ export function VirtualPad({
   return (
     <div class="vpad">
       {top}
+      <ConsoleDeck model={system.label} />
       <div class="vpad-shoulders">
         {n64 ? (
           <span class="vpad-pair">

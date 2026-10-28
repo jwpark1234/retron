@@ -163,7 +163,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const showPad = touchDevice && prefs.virtualPad && !pad;
 
   return (
-    <div class="game" style={rotatedStyle(orientation.rotation)}>
+    <div class="game" data-platform={system.platform} style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
       <GameMenu
         menu={menu}
