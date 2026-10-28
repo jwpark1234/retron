@@ -10,3 +10,4 @@ public/retroarch/
 public/ejs/
 
 .dev.vars
+public/precache.json

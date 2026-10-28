@@ -1,4 +1,4 @@
-// 라이브러리 위쪽 막대: 로고, 게임 추가, 계정 창(동기화 상태, 기기 저장 공간, 업로드 설정, 로그아웃).
+// 라이브러리 위쪽 막대: 로고(새 버전이 나오면 옆에 업데이트 버튼), 게임 추가, 계정 창(동기화 상태, 기기 저장 공간, 업로드 설정, 로그아웃).
 // 휴대폰 조작 설정은 게임 중 메뉴의 "조작"으로 옮겼다 (게임을 하면서 바로 바꿔 보게).
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -7,10 +7,11 @@ import type { Entry } from "../../library/import";
 import { fromInput } from "../../library/pick";
 import { useSync } from "../../sync/sync";
 import { ON_OFF, Row, Segmented } from "../../ui/controls";
-import { IconClose } from "../../ui/icons";
+import { IconClose, IconUpdate } from "../../ui/icons";
 import { useInstall } from "../../ui/install";
 import { Logo } from "../../ui/Logo";
 import { setPrefs, usePrefs } from "../../ui/prefs";
+import { applyUpdate, useUpdateAvailable } from "../../ui/update";
 
 /** "+ 게임 추가": 파일 선택창을 바로 연다 (zip, 롬 파일). 폴더째 넣고 싶으면 창에 끌어다 놓는다 */
 export function useAddPicker(onPick: (entries: Entry[]) => void) {
@@ -158,10 +159,18 @@ function fractionOf(msg: string): number | null {
  */
 export function LibraryHeader({ picker, progress }: { picker: ReturnType<typeof useAddPicker>; progress: string }) {
   const f = progress ? fractionOf(progress) : null;
+  const update = useUpdateAvailable();
   return (
     <div class="lib-top">
       <header class="glass">
-        <Logo size="small" />
+        <div class="brand">
+          <Logo size="small" />
+          {update && (
+            <button class="update-btn" aria-label="새 버전으로 업데이트" title="새 버전이 나왔습니다. 누르면 업데이트합니다" onClick={applyUpdate}>
+              <IconUpdate />
+            </button>
+          )}
+        </div>
         <div class="actions">
           <button
             class={`primary add${progress ? (f === null ? " busy spin" : " busy") : ""}`}

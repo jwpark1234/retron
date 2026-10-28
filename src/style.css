@@ -51,6 +51,16 @@ button:disabled { opacity: 0.4; cursor: default; transform: none; }
   padding: 8px 8px 8px 20px; border-radius: 999px;
 }
 .actions { display: flex; gap: 8px; align-items: center; }
+/* 로고 옆 업데이트 버튼 (새 버전이 나왔을 때만) */
+.brand { display: flex; gap: 10px; align-items: center; }
+.update-btn {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(255, 179, 64, 0.45); background: rgba(255, 154, 46, 0.14); color: var(--tint);
+  animation: update-glow 2.4s ease-in-out infinite;
+}
+.update-btn .icon { width: 18px; height: 18px; }
+@keyframes update-glow { 50% { box-shadow: 0 0 0 4px rgba(255, 154, 46, 0.14); } }
+@media (prefers-reduced-motion: reduce) { .update-btn { animation: none; } }
 .seg svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .seg button { color: var(--muted); }
 .seg button.on { color: var(--text); }

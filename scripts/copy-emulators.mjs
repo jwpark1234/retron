@@ -49,3 +49,11 @@ for (const core of EJS_CORES) {
   for (const f of [`${core}_libretro.js`, `${core}_libretro.wasm`]) writeFileSync(new URL(f, ejsOut), sz.FS.readFile(`/out/${f}`));
   console.log("EmulatorJS", core, EJS_VERSION);
 }
+
+// Wi-Fi일 때 미리 받아 둘 에뮬레이터 파일 목록 (src/ui/offline-emulators.ts). 받아 두면 오프라인에서도 모든 기종을 실행할 수 있다
+const precache = [
+  ...["emulators.js", "wdosbox-x.js", "wdosbox-x.wasm", "wlibzip.js", "wlibzip.wasm"].map((f) => `emulators/${f}`),
+  ...RA_CORES.flatMap((c) => [`retroarch/${RA_VERSION}/${c}_libretro.js`, `retroarch/${RA_VERSION}/${c}_libretro.wasm`]),
+  ...EJS_CORES.flatMap((c) => [`ejs/v${EJS_VERSION}/${c}_libretro.js`, `ejs/v${EJS_VERSION}/${c}_libretro.wasm`]),
+];
+writeFileSync(new URL("../public/precache.json", import.meta.url), JSON.stringify(precache, null, 2) + "\n");

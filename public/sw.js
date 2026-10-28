@@ -6,8 +6,10 @@
 // - emulators/(js-dos): 이름에 버전이 없다 → 기기에 둔 것을 바로 쓰고 뒤에서 새로 받아 둔다
 // 에뮬레이터는 처음 한 번 온라인에서 그 기종 게임을 실행해야 기기에 남는다 (모바일 데이터로 수십 MB를 미리 받지 않으려고).
 // 구글 로그인·드라이브 요청(다른 도메인)은 건드리지 않는다.
+// 다른 앱에서 "공유"로 보낸 롬(manifest의 share_target)도 여기서 받는다: 기기에 두고 앱을 열면 라이브러리가 가져가 추가한다 (src/library/share.ts).
 
 const CACHE = "retron-app-v3";
+const SHARE = "retron-share"; // 공유로 받은 파일 (앱 캐시와 따로 둬서, 앱 캐시 이름이 바뀌어도 지우지 않는다)
 const PAGE = "./index.html";
 
 self.addEventListener("install", (e) => {
@@ -18,7 +20,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     (async () => {
-      for (const key of await caches.keys()) if (key !== CACHE) await caches.delete(key);
+      for (const key of await caches.keys()) if (key !== CACHE && key !== SHARE) await caches.delete(key);
       await self.clients.claim();
     })(),
   );
@@ -75,9 +77,24 @@ async function networkFirst(req) {
   }
 }
 
+/** 공유로 받은 파일을 기기에 두고 앱 첫 화면으로 보낸다. 같이 온 파일만 남긴다 (먼저 받아 두고 아직 추가하지 않은 것은 버린다) */
+async function receiveShare(req) {
+  const files = (await req.formData()).getAll("files").filter((f) => f instanceof File);
+  await caches.delete(SHARE);
+  const cache = await caches.open(SHARE);
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    await cache.put(`./__share/${i}?name=${encodeURIComponent(f.name)}`, new Response(f, { headers: { "Content-Type": f.type || "application/octet-stream" } }));
+  }
+  return Response.redirect("./?shared", 303);
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   const url = new URL(req.url);
+  if (req.method === "POST" && url.origin === location.origin && url.pathname.endsWith("/share-target")) return e.respondWith(receiveShare(req));
+  // 새 버전 확인(src/ui/update.ts)은 늘 서버에 묻는다. 기기에 두면 오프라인일 때 옛 답이 나온다
+  if (url.search === "?version") return;
   // 로그인 왕복(/api/auth)은 서버로 그대로 보낸다 (페이지 이동이라 index.html로 저장되면 안 된다)
   if (req.method !== "GET" || url.origin !== location.origin || req.headers.has("range") || url.pathname.includes("/api/")) return;
   // 앱 페이지(/, index.html)만 앱으로 저장한다. 다른 페이지(개인정보처리방침 등)를 앱으로 저장하면 오프라인에서 그 페이지가 떴다

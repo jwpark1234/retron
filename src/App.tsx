@@ -13,11 +13,13 @@ import { InstallGate } from "./screens/InstallGate";
 import { Landing } from "./screens/Landing";
 import { touchDevice } from "./player/orientation";
 import { standalone } from "./ui/install";
+import { precacheEmulators } from "./ui/offline-emulators";
 import { initSync, prepareForPlay, resolveConflict, retryAll, setPlaying as setSyncPlaying } from "./sync/sync";
 import { BusyOverlay } from "./ui/Spinner";
 import { onPrefsChange } from "./ui/prefs";
 
 const RETRY_UPLOAD_MS = 5 * 60 * 1000;
+const PRECACHE_DELAY_MS = 15 * 1000;
 const MIN_SPLASH_MS = 900; // 로그인해 둔 기기도 첫 화면(로고 + 로딩)을 잠깐 보여 주고 라이브러리로 넘어간다
 // 휴대폰·태블릿 브라우저(설치한 앱이 아닌 탭)로 열면 설치 화면만 보여 준다. 개발 서버 자동 테스트(?e2e)는 건너뛴다
 const MUST_INSTALL = touchDevice && !standalone() && !(import.meta.env.DEV && new URLSearchParams(location.search).has("e2e"));
@@ -92,6 +94,17 @@ export function App() {
   useEffect(() => {
     if (!playing && auth.driveReady) void uploadMissingGames().catch(() => undefined);
   }, [playing]);
+
+  // 게임 중이 아닐 때 에뮬레이터를 미리 받아 둔다 (Wi-Fi·PC만, 오프라인에서도 모든 기종이 되게). 시작 직후는 피한다
+  useEffect(() => {
+    if (!ready || playing) return;
+    const t = setTimeout(() => void precacheEmulators(), PRECACHE_DELAY_MS);
+    const offNetwork = onNetworkChange(() => void precacheEmulators());
+    return () => {
+      clearTimeout(t);
+      offNetwork();
+    };
+  }, [ready, playing]);
 
   const start = (g: Game) => {
     void touchGame(g.id);

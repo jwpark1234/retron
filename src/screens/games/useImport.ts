@@ -1,9 +1,11 @@
 // 게임 추가: 고르거나 끌어다 놓은 파일을 내 구글 드라이브에 올리는 것과 이 기기에서 실행 준비(풀기)를 동시에 한다.
 // 드라이브에는 고른 파일을 그대로 올린다. 실행 파일이 여러 개면 사용자에게 고르게 한다.
+// 다른 앱에서 "공유"로 보낸 롬(library/share.ts)도 라이브러리가 열리면 같은 방식으로 추가한다.
 import { useEffect, useState } from "preact/hooks";
 import { startPickedUpload, uploadGame, type PickedUpload } from "../../cloud/games";
 import { importFiles, keepSource, type Entry } from "../../library/import";
 import { sourceDir, type Game } from "../../library/library";
+import { clearShared, sharedFiles } from "../../library/share";
 import { fromDrop } from "../../library/pick";
 import { removeDir } from "../../library/store";
 
@@ -74,6 +76,16 @@ export function useImport(onAdded: () => Promise<void>) {
     setProgress("");
     setUploadPct(null);
   };
+
+  useEffect(() => {
+    void sharedFiles()
+      .then(async (entries) => {
+        if (!entries.length) return;
+        await add(entries);
+        await clearShared();
+      })
+      .catch(() => undefined);
+  }, []);
 
   const choose = (v: string | null) => {
     choice?.resolve(v);

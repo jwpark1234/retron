@@ -15,6 +15,14 @@ export const IconClose = () => (
   </Svg>
 );
 
+// 새 버전 받기: 아래로 향한 화살표가 든 동그라미
+export const IconUpdate = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v9m-4-4 4 4 4-4" />
+  </Svg>
+);
+
 export const IconExit = () => (
   <Svg>
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
