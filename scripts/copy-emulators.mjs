@@ -30,3 +30,22 @@ for (const core of RA_CORES) {
   }
   console.log("RetroArch", core, RA_VERSION);
 }
+
+// NDS: RetroArch 웹 빌드에는 NDS 코어가 없어서 EmulatorJS가 빌드한 melonDS를 쓴다 (7z로 묶인 .data를 풀어 둔다).
+// EmulatorJS 코어는 RetroArch 명령 대신 자체 함수(simulate_input, save_state_info…)를 내보내서 Nostalgist로는 못 띄운다 → create-ejs.ts
+const EJS_VERSION = "4.2.3";
+const EJS_CORES = ["melonds"]; // src/platforms/retro/systems.ts의 core (backend: "ejs")
+const ejsOut = new URL(`../public/ejs/v${EJS_VERSION}/`, import.meta.url);
+mkdirSync(ejsOut, { recursive: true });
+for (const core of EJS_CORES) {
+  if (existsSync(new URL(`${core}_libretro.wasm`, ejsOut))) continue;
+  const res = await fetch(`https://cdn.jsdelivr.net/npm/@emulatorjs/core-${core}@${EJS_VERSION}/${core}-wasm.data`);
+  if (!res.ok) throw new Error(`${core} 코어 받기 실패: ${res.status}`);
+  const { default: SevenZip } = await import("7z-wasm");
+  const sz = await SevenZip({ print: () => undefined, printErr: () => undefined });
+  sz.FS.writeFile("/core.7z", new Uint8Array(await res.arrayBuffer()));
+  sz.FS.mkdir("/out");
+  sz.callMain(["x", "/core.7z", "-o/out", "-y"]);
+  for (const f of [`${core}_libretro.js`, `${core}_libretro.wasm`]) writeFileSync(new URL(f, ejsOut), sz.FS.readFile(`/out/${f}`));
+  console.log("EmulatorJS", core, EJS_VERSION);
+}

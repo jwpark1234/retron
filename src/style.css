@@ -128,6 +128,11 @@ ul.grid .thumb { aspect-ratio: 1; }
   padding: 12px 16px max(14px, var(--safe-bottom)); touch-action: none;
 }
 .vpad-shoulders { grid-area: sh; display: flex; justify-content: space-between; }
+/* 세로 화면: 세로로 긴 게임 화면(NDS 2:3)이 가로를 꽉 채우면 가상패드가 화면 밖으로 밀려나서, 가상패드 자리(윗줄·L·R·방향·버튼·SELECT·START + 간격)를 남기고 줄인다.
+   4:3·3:2 화면은 휴대폰에서 이만큼 남으므로 그대로다 */
+@container (orientation: portrait) {
+  .game.with-vpad .screen { width: min(100cqw, calc((100cqh - 258px * var(--ctl-scale, 1) - 66px - var(--safe-bottom)) * var(--aspect))); }
+}
 .vpad-sys { grid-area: sys; display: flex; justify-content: center; align-items: center; gap: 16px; }
 /* 360도 스틱: 둥근 바탕 + 손가락을 따라가는 노브 */
 .vpad-stick {
@@ -180,6 +185,9 @@ ul.grid .thumb { aspect-ratio: 1; }
   .vpad .vpad-btn, .vpad > .vpad-stick, .vpad > .vpad-dpad { opacity: 0.85; }
   .vpad-stick, .vpad-dpad, .vpad-face, .vpad-sys { align-self: end; }
   .vpad-sys { padding-bottom: 4px; }
+  /* 터치스크린(NDS): 아래 가운데는 게임 아래 화면이라 SELECT·START를 오른쪽 버튼 위로 */
+  .vpad.touch-screen { grid-template-rows: auto auto 1fr auto auto; grid-template-areas: "top top top" "sh sh sh" ". . ." ". . sys" "dpad . face"; }
+  .vpad.touch-screen .vpad-sys { justify-self: end; padding-bottom: 0; }
 }
 /* DOS 휴대폰 조작: 방향 패드(dpad) + 트랙패드(pad, 게임마다 끌 수 있다: no-pad) + 키 버튼(keys), Save·Load와 빨리가기·메뉴 줄(top).
    세로 화면: 윗줄은 조작 영역 맨 위(게임 바로 아래) 양끝, 방향 패드·트랙패드 줄과 키 버튼 줄은 화면 아래에 붙인다.

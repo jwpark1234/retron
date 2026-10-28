@@ -1,5 +1,7 @@
 # 에뮬레이터 파일은 한 번 받으면 다시 받지 않는다 (SFC 코어는 버전별 폴더)
 /retroarch/*
   Cache-Control: public, max-age=31536000, immutable
+/ejs/*
+  Cache-Control: public, max-age=31536000, immutable
 /emulators/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=2592000

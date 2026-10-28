@@ -7,5 +7,6 @@ public/emulators/
 .google-oauth
 client_secret*.json
 public/retroarch/
+public/ejs/
 
 .dev.vars

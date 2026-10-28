@@ -1,5 +1,5 @@
 // 가상패드 (터치 기기). 왼쪽은 원형 패드(360도 스틱) 또는 십자 패드(설정에서 고름, 둘 다 8방향으로 넘김), 오른쪽 버튼은 기종에 따라 X/Y/A/B(SFC) 또는 B/A(GBA).
-// 버튼은 여러 손가락을 동시에 받는다.
+// 버튼은 여러 손가락을 동시에 받는다. 터치스크린이 있는 기종(NDS)은 가로 화면에서 SELECT·START를 화면 위가 아니라 오른쪽 버튼 위에 둔다.
 import type { ComponentChildren } from "preact";
 import { DirectionPad } from "../../player/DirectionPad";
 import type { StickStyle } from "../../ui/prefs";
@@ -27,7 +27,7 @@ function Button({ button, label, press, class: cls }: { button: RetroButton; lab
  */
 export function VirtualPad({ system, press, rotation, style, top }: { system: RetroSystem; press: Press; rotation: number; style: StickStyle; top: ComponentChildren }) {
   return (
-    <div class="vpad">
+    <div class={system.touch ? "vpad touch-screen" : "vpad"}>
       {top}
       <div class="vpad-shoulders">
         <Button button="l" label="L" press={press} class="shoulder" />

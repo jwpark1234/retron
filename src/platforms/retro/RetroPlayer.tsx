@@ -130,6 +130,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const changeSpeed = async (speed: number) => {
     setPrefs({ fastSpeed: speed });
     if (!bridge) return;
+    if (emu.current?.setFastRatio) return emu.current.setFastRatio(speed); // 실행 중에 바꿀 수 있는 코어 (EmulatorJS)
     setStatus("배속 바꾸는 중…");
     try {
       const { state, thumb } = await bridge.save();
@@ -155,7 +156,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   const showPad = touchDevice && prefs.virtualPad && !pad;
 
   return (
-    <div class="game" style={rotatedStyle(orientation.rotation)}>
+    <div class={showPad ? "game with-vpad" : "game"} style={rotatedStyle(orientation.rotation)}>
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
       <GameMenu
         menu={menu}

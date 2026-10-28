@@ -1,6 +1,7 @@
 // RetroArch 기종 에뮬레이터: Nostalgist.js(RetroArch 웹 빌드 + 기종별 코어)를 우리 캔버스에 띄운다.
 // 자체 UI는 쓰지 않는다. 입력·세이브·메뉴는 retron이 맡는다.
 import { Nostalgist } from "nostalgist";
+import { createEjs } from "./create-ejs";
 import { RETROARCH_KEYS } from "./input";
 import type { RetroButton, RetroSystem } from "./systems";
 
@@ -15,6 +16,8 @@ export interface RetroEmulator {
   /** 게임 세이브(SRAM). 배터리 세이브가 없는 게임이면 null */
   readSram(flush?: boolean): Promise<Uint8Array | null>;
   setFastForward(on: boolean): void;
+  /** 빨리가기 배속을 실행 중에 바꾼다 (EmulatorJS 코어만. 없으면 다시 띄운다) */
+  setFastRatio?(ratio: number): void;
   pause(): void;
   resume(): void;
   reset(): void;
@@ -23,6 +26,7 @@ export interface RetroEmulator {
 
 /** fastRatio: 빨리가기 배속. RetroArch는 실행 중에 배속을 바꿀 수 없어서, 바꾸면 다시 띄운다(RetroPlayer) */
 export async function createRetro(system: RetroSystem, canvas: HTMLCanvasElement, rom: File, sram: Blob | null, fastRatio: number): Promise<RetroEmulator> {
+  if (system.backend === "ejs") return createEjs(system, canvas, rom, sram, fastRatio);
   const n = await Nostalgist.launch({
     element: canvas,
     core: system.core,

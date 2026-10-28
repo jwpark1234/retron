@@ -2,7 +2,7 @@
 // 게임 파일·세이브·설정은 원래 기기(OPFS·localStorage)에 있으므로 여기서는 "앱 자체"만 맡는다.
 // - 페이지(index.html): 네트워크 먼저(배포하면 바로 새 버전), 안 되면 기기에 둔 것
 // - assets/: 이름에 해시가 붙어 바뀌지 않는다 → 기기에 둔 것 먼저. 새 페이지가 안 쓰는 옛 파일은 지운다
-// - retroarch/v버전/: 폴더에 버전이 붙어 바뀌지 않는다 → 기기에 둔 것 먼저
+// - retroarch/v버전/, ejs/v버전/: 폴더에 버전이 붙어 바뀌지 않는다 → 기기에 둔 것 먼저
 // - emulators/(js-dos): 이름에 버전이 없다 → 기기에 둔 것을 바로 쓰고 뒤에서 새로 받아 둔다
 // 에뮬레이터는 처음 한 번 온라인에서 그 기종 게임을 실행해야 기기에 남는다 (모바일 데이터로 수십 MB를 미리 받지 않으려고).
 // 구글 로그인·드라이브 요청(다른 도메인)은 건드리지 않는다.
@@ -83,7 +83,7 @@ self.addEventListener("fetch", (e) => {
   // 앱 페이지(/, index.html)만 앱으로 저장한다. 다른 페이지(개인정보처리방침 등)를 앱으로 저장하면 오프라인에서 그 페이지가 떴다
   const appPage = /\/(index\.html)?$/.test(url.pathname);
   if (req.mode === "navigate") return e.respondWith(appPage ? page(req) : networkFirst(req));
-  if (url.pathname.includes("/assets/") || url.pathname.includes("/retroarch/")) return e.respondWith(cacheFirst(req));
+  if (url.pathname.includes("/assets/") || url.pathname.includes("/retroarch/") || url.pathname.includes("/ejs/")) return e.respondWith(cacheFirst(req));
   if (url.pathname.includes("/emulators/")) return e.respondWith(staleWhileRevalidate(req, (p) => e.waitUntil(p)));
   e.respondWith(networkFirst(req));
 });
