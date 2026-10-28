@@ -2,7 +2,7 @@
 import { HDD_DIR, splitConf } from "../platforms/dos/profiles";
 import { getFile, listDirs, readJson, removeDir, writeFile, writeJson } from "./store";
 
-export type Platform = "dos" | "sfc" | "gba" | "n64";
+export type Platform = "dos" | "sfc" | "gba" | "gbc" | "n64";
 
 /** 게임패드 버튼에 연결할 동작: DOS 키 코드 또는 마우스 버튼 */
 export type PadAction = number | "mouse-left" | "mouse-right";
@@ -26,7 +26,7 @@ export interface DosInfo {
   conf?: string; // 예전 형식 (normalize에서 위 필드로 옮긴다)
 }
 
-/** 롬 하나로 도는 기종(SFC, GBA) */
+/** 롬 하나로 도는 기종(SFC, GBA, GBC, N64) */
 export interface RomInfo {
   rom: string; // games/{id}/ 아래 ROM 파일 이름
 }

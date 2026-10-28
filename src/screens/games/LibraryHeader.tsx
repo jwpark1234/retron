@@ -70,7 +70,7 @@ function PersistLine() {
   return <p class="muted account-note">이 브라우저는 저장 공간이 모자라면 게임 파일을 지울 수 있습니다. 앱으로 설치하면 지우지 않고 보관합니다 (지워져도 드라이브에서 다시 받습니다).</p>;
 }
 
-/** 계정 창: 동기화 상태, 드라이브 다시 연결, 저장 공간, 업로드 설정, 앱 설치, 로그아웃 */
+/** 계정 창: 동기화 상태, 드라이브 다시 연결, 저장 공간, 업로드 설정, 앱 버전, 오픈소스 라이선스, 앱 설치, 로그아웃 */
 function AccountDialog({ onClose }: { onClose: () => void }) {
   const auth = useAuth();
   const sync = useSync();
@@ -110,6 +110,14 @@ function AccountDialog({ onClose }: { onClose: () => void }) {
             <PersistLine />
             <Row label="모바일 데이터로 게임 안 올리기">
               <Segmented value={wifiOnlyUpload ? "on" : "off"} options={[...ON_OFF]} onChange={(v) => setPrefs({ wifiOnlyUpload: v === "on" })} label="모바일 데이터로 게임 안 올리기" />
+            </Row>
+            <Row label="버전">
+              <small>{__APP_VERSION__}</small>
+            </Row>
+            <Row label="오픈소스 라이선스">
+              <a class="privacy-link" href="./licenses.html">
+                보기
+              </a>
             </Row>
           </section>
           <InstallRow />

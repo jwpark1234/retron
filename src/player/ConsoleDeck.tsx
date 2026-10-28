@@ -3,7 +3,7 @@
 // 램프·표시창·슬롯·카트리지·디스켓·스피커 구멍과 몸체에 인쇄하거나 새긴 글씨만 쓴다.
 // DOS: 옛날 PC 앞면(디스켓이 꽂히는 3.5인치 드라이브, 5.25인치 드라이브, 터보 표시창·램프)
 // SFC·N64: 게임기 윗면(카트리지 슬롯에 꽂힌 카트리지, 전원 램프)
-// GBA: 휴대용 게임기 아래쪽(전원 램프, 스피커 구멍)
+// GBA·GBC: 휴대용 게임기 아래쪽(전원 램프, 스피커 구멍)
 // 디스켓·카트리지 라벨에는 게임 이름을 쓴다 (카트리지 라벨 색은 이름마다 다르다). 재질과 버튼 모양은 console-skins.css가 기종마다 정한다
 import type { Platform } from "../library/library";
 import "./console-skins.css";
@@ -11,7 +11,13 @@ import "./console-skins.css";
 export function ConsoleDeck({ platform, title }: { platform: Platform; title: string }) {
   return (
     <div class={`deck deck-${platform}`} aria-hidden="true">
-      {platform === "dos" ? <PcFront title={title} /> : platform === "gba" ? <HandheldFront /> : <ConsoleTop title={title} />}
+      {platform === "dos" ? (
+        <PcFront title={title} />
+      ) : platform === "gba" || platform === "gbc" ? (
+        <HandheldFront bits={platform === "gba" ? "32" : "8"} />
+      ) : (
+        <ConsoleTop title={title} bits={platform === "n64" ? "64" : "16"} />
+      )}
     </div>
   );
 }
@@ -51,7 +57,14 @@ function PcFront({ title }: { title: string }) {
             HDD
           </span>
         </div>
-        <div class="pc-print">RETRON 486DX</div>
+        <div class="pc-stickers">
+          <span class="sticker cpu">
+            486DX2
+            <small>66MHz</small>
+          </span>
+          <span class="sticker svga">SVGA</span>
+        </div>
+        <div class="pc-print">RETRON PC</div>
       </div>
     </>
   );
@@ -83,7 +96,17 @@ function SevenSegment({ digits }: { digits: string }) {
   );
 }
 
-function ConsoleTop({ title }: { title: string }) {
+/** 몸체에 인쇄한 로고: 굵은 기울임 이름 + 사양 문구 */
+function Logo({ spec }: { spec: string }) {
+  return (
+    <div class="deck-logo">
+      <b>RETRON</b>
+      <small>{spec}</small>
+    </div>
+  );
+}
+
+function ConsoleTop({ title, bits }: { title: string; bits: string }) {
   return (
     <>
       <div class="deck-print">
@@ -98,12 +121,12 @@ function ConsoleTop({ title }: { title: string }) {
         </div>
         <span class="deck-slot" />
       </div>
-      <div class="deck-print engraved">RETRON</div>
+      <Logo spec={`${bits}-BIT VIDEO GAME SYSTEM`} />
     </>
   );
 }
 
-function HandheldFront() {
+function HandheldFront({ bits }: { bits: string }) {
   return (
     <>
       <div class="hh-name">
@@ -111,7 +134,7 @@ function HandheldFront() {
           <i class="led on" />
           POWER
         </span>
-        <strong class="engraved">RETRON</strong>
+        <Logo spec={`${bits}-BIT HANDHELD`} />
       </div>
       <div class="hh-speaker">
         {Array.from({ length: 6 }, (_, i) => (

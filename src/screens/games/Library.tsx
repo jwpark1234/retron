@@ -231,7 +231,7 @@ export function Library({ onPlay, onDownload }: { onPlay: (game: Game) => void; 
       {empty && (
         <div class="empty glass">
           <h2>게임을 추가하세요!</h2>
-          <p>.zip, .sfc .smc .gba .z64 .n64를 추가하세요.</p>
+          <p>.zip, .sfc .smc .gba .gbc .gb .z64 .n64를 추가하세요.</p>
           <button class="primary" onClick={picker.open}>
             + 게임 추가
           </button>

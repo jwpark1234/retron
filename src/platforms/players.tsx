@@ -3,7 +3,7 @@ import type { ComponentType } from "preact";
 import type { Game, Platform } from "../library/library";
 import { DosPlayer } from "./dos/DosPlayer";
 import { RetroPlayer } from "./retro/RetroPlayer";
-import { GBA, N64, SFC, type RetroSystem } from "./retro/systems";
+import { GBA, GBC, N64, SFC, type RetroSystem } from "./retro/systems";
 
 type Player = ComponentType<{ game: Game; onExit: () => void }>;
 
@@ -13,5 +13,6 @@ export const PLAYERS: Record<Platform, Player> = {
   dos: DosPlayer,
   sfc: retro(SFC),
   gba: retro(GBA),
+  gbc: retro(GBC),
   n64: retro(N64),
 };

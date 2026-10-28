@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RETRON 오픈소스 라이선스</title>
+    <style>
+      :root { color-scheme: dark; --text: #f5f5f7; --muted: rgba(245, 245, 247, 0.68); --line: rgba(255, 255, 255, 0.16); --tint: #ffb340; }
+      body { margin: 0; background: #07070c; color: var(--text); font: 15px/1.75 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", system-ui, sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; }
+      h1 { font-size: 26px; margin: 0 0 20px; text-align: center; }
+      h2 { font-size: 16.5px; margin: 34px 0 10px; }
+      p { margin: 8px 0; }
+      .box { border: 1px dashed var(--line); border-radius: 10px; padding: 12px 16px; margin: 10px 0; }
+      .box p:first-child { margin-top: 0; }
+      .box p:last-child { margin-bottom: 0; }
+      table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+      th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+      th { background: rgba(255, 255, 255, 0.06); font-weight: 600; white-space: nowrap; }
+      td a { word-break: break-all; }
+      .muted { color: var(--muted); font-size: 13.5px; }
+      pre { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; color: var(--muted); margin: 0; }
+      a { color: var(--tint); }
+      @media (max-width: 600px) { table { font-size: 13px; } th, td { padding: 6px 7px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>오픈소스 라이선스</h1>
+
+      <p>RETRON은 아래 오픈소스 소프트웨어를 사용합니다. 각 소프트웨어의 저작권은 해당 저작자에게 있으며, 각자의 라이선스를 따릅니다.</p>
+
+      <h2>화면과 앱</h2>
+      <div class="box">
+        <table>
+          <tr><th>이름</th><th>라이선스</th><th>저작권 · 소스</th></tr>
+          <tr><td>Preact 10.24.3</td><td>MIT</td><td>Copyright (c) 2015-present Jason Miller<br /><a href="https://github.com/preactjs/preact">github.com/preactjs/preact</a></td></tr>
+          <tr><td>fflate 0.8.2</td><td>MIT</td><td>Copyright (c) 2023 Arjun Barrett<br /><a href="https://github.com/101arrowz/fflate">github.com/101arrowz/fflate</a></td></tr>
+          <tr><td>Nostalgist.js 0.23.0</td><td>MIT</td><td>Copyright (c) 2023 arianrhodsandlot<br /><a href="https://github.com/arianrhodsandlot/nostalgist">github.com/arianrhodsandlot/nostalgist</a></td></tr>
+        </table>
+      </div>
+
+      <h2>에뮬레이터</h2>
+      <div class="box">
+        <table>
+          <tr><th>이름 (쓰는 곳)</th><th>라이선스</th><th>저작권 · 소스</th></tr>
+          <tr><td>js-dos emulators 8.4.1 (DOS)</td><td>GPL-2.0</td><td>Copyright (c) Alexander Guryanov<br /><a href="https://github.com/caiiiycuk/js-dos">github.com/caiiiycuk/js-dos</a></td></tr>
+          <tr><td>DOSBox-X (DOS, js-dos에 포함)</td><td>GPL-2.0</td><td>Copyright (c) The DOSBox Team, The DOSBox-X Team<br /><a href="https://github.com/joncampbell123/dosbox-x">github.com/joncampbell123/dosbox-x</a></td></tr>
+          <tr><td>RetroArch 1.22.2 웹 빌드 (SFC·GBA·GBC)</td><td>GPL-3.0</td><td>Copyright (c) The RetroArch Team<br /><a href="https://github.com/libretro/RetroArch">github.com/libretro/RetroArch</a><br />빌드: <a href="https://github.com/arianrhodsandlot/retroarch-emscripten-build">github.com/arianrhodsandlot/retroarch-emscripten-build</a></td></tr>
+          <tr><td>Snes9x (SFC)</td><td>Snes9x License (비상업적 이용)</td><td>Copyright (c) The Snes9x Team<br /><a href="https://github.com/libretro/snes9x">github.com/libretro/snes9x</a></td></tr>
+          <tr><td>mGBA (GBA·GBC)</td><td>MPL-2.0</td><td>Copyright (c) Jeffrey Pfau<br /><a href="https://github.com/mgba-emu/mgba">github.com/mgba-emu/mgba</a></td></tr>
+          <tr><td>parallel-n64 (N64)</td><td>GPL-2.0</td><td>Copyright (c) The libretro Team, Mupen64Plus 개발자들<br /><a href="https://github.com/libretro/parallel-n64">github.com/libretro/parallel-n64</a></td></tr>
+          <tr><td>EmulatorJS 4.2.3 코어 빌드 (N64)</td><td>GPL-3.0</td><td>Copyright (c) EmulatorJS 개발자들<br /><a href="https://github.com/EmulatorJS/EmulatorJS">github.com/EmulatorJS/EmulatorJS</a></td></tr>
+        </table>
+        <p class="muted">에뮬레이터는 위 소스에서 공개된 빌드를 그대로 받아 씁니다. 고친 곳은 하나입니다: js-dos의 <code>wdosbox-x.js</code>가 받은 파일을 메모리에 쓸 때 한 벌 더 복사하지 않도록 <code>FS.writeFile</code> 호출에 <code>{canOwn: true}</code>를 더했습니다 (큰 CD 이미지에서 메모리가 모자라지 않게).</p>
+      </div>
+
+      <h2>라이선스 전문</h2>
+      <div class="box">
+        <p>GPL·MPL 전문: <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL-2.0</a> · <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a> · <a href="https://www.mozilla.org/MPL/2.0/">MPL-2.0</a> · <a href="https://github.com/libretro/snes9x/blob/master/LICENSE">Snes9x License</a></p>
+        <p>MIT (Preact, fflate, Nostalgist.js):</p>
+        <pre>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+      </div>
+
+      <p class="muted" style="margin-top: 40px; text-align: center"><a href="./">RETRON으로 돌아가기</a></p>
+    </main>
+  </body>
+</html>

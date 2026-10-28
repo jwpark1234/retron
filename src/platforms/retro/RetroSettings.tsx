@@ -88,7 +88,7 @@ const SPOTS: Record<RetroSystem["face"], Spot[]> = {
     { button: "a", x: 89, y: 56, shape: "face" },
     { button: "b", x: 79, y: 76, shape: "face" },
   ],
-  // GBA: 가운데 화면, 그 아래 SELECT·START, 오른쪽 B(왼쪽 아래)·A(오른쪽 위)
+  // GBA·GBC: 가운데 화면, 그 아래 SELECT·START, 오른쪽 B(왼쪽 아래)·A(오른쪽 위). 기종에 없는 버튼(GBC의 L·R)은 빼고 그린다
   pair: [
     ...COMMON,
     { button: "select", x: 42.5, y: 84, shape: "pill" },
@@ -145,7 +145,7 @@ function PadKeyPopup({ system, capturing, onCapture, onClose }: { system: RetroS
         <div class={`padkey ${system.face}`}>
           <div class="padkey-body" />
           {system.face === "pair" && <div class="padkey-screen" />}
-          {SPOTS[system.face].map((s) => (
+          {SPOTS[system.face].filter((s) => system.buttons.some((b) => b.button === s.button)).map((s) => (
             <button
               key={s.button}
               class={`pk ${s.shape}${capturing === s.button ? " waiting" : ""}`}

@@ -1,5 +1,5 @@
 // 폴더, zip, 낱개 파일에서 게임을 찾아 라이브러리에 등록한다.
-// - SFC·GBA·N64: 롬(.sfc/.smc/.fig/.swc, .gba, .z64/.n64/.v64)마다 게임 하나
+// - SFC·GBA·GBC·N64: 롬(.sfc/.smc/.fig/.swc, .gba, .gb/.gbc, .z64/.n64/.v64)마다 게임 하나
 // - DOS: 실행 파일이 있는 폴더를 C:로, bin/cue나 iso가 있으면 D:(CD)로
 // 기기에서는 이렇게 풀어서 쓰고, 드라이브에는 고른 원본(zip, 롬)을 그대로 올린다 (game.source).
 // 다른 기기는 원본을 받아 같은 방식으로 다시 푼다 (reimportFiles)

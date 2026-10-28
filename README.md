@@ -1,6 +1,6 @@
 # retron
 
-옛날 DOS 게임, 슈퍼패미컴(SFC), 게임보이 어드밴스(GBA), 닌텐도 64(N64) 게임을 브라우저에서 하는 웹 런처입니다. 여러 게임을 등록해 두고 라이브러리에서 골라 플레이합니다.
+옛날 DOS 게임, 슈퍼패미컴(SFC), 게임보이 어드밴스(GBA), 게임보이·게임보이 컬러(GBC), 닌텐도 64(N64) 게임을 브라우저에서 하는 웹 런처입니다. 여러 게임을 등록해 두고 라이브러리에서 골라 플레이합니다.
 
 > 게임 파일은 이 저장소에 들어 있지 않습니다. 본인이 가진 게임 파일을 직접 등록해서 씁니다. 등록한 게임은 브라우저 저장소(OPFS)에 두고, 로그인하면 본인 구글 드라이브에만 올라갑니다. 다른 사용자와 공유되지 않습니다.
 
@@ -11,7 +11,7 @@
 - **게임 등록**: zip이나 ROM 파일을 고르거나 창에 끌어다 놓습니다. 고른 파일을 드라이브에 이름 그대로(zip은 zip, 롬은 롬) 올리는 것과 이 기기에서 풀어 실행 준비하는 것을 동시에 합니다 ("+ 게임 추가" 버튼 테두리에 진행률 고리, 화면 아래에 "압축 푸는 중 n% · 드라이브 n%"). 다 풀었는데 아직 올리는 중이면 원본을 기기에도 잠시 보관했다가 다 올리면 지웁니다. 지금 못 올리면(오프라인, 모바일 데이터에서 큰 파일) 원본을 보관해 두고 나중에 올립니다. zip 하나에 롬이 여럿이면 롬마다 게임 하나로, 드라이브에도 롬을 하나씩 올립니다. 드라이브에 풀린 파일을 하나씩 올리는 일은 없습니다: 원본이 기기에 없으면(원본을 보관하지 않던 때 추가한 게임, 저장 공간이 모자라 보관하지 못함) 롬은 롬 파일 그대로, DOS는 기기의 게임 폴더를 zip 하나로 묶어(기기에 사본을 만들지 않고) 올립니다.
   - 알려진 게임에 꼭 필요한 파일이 빠져 있으면 추가할 때 알립니다 (창세기전2: `BLACKBOX.DEF`가 없으면 "처음부터 시작"이 "blackbox.def read error!"로 끝납니다. 세이브 `BLACKBOX.SV1~SV5`·`BLACKBOX.DAT`와 이름이 비슷하지만 세이브가 아니라 새 게임 초기 데이터라 지우면 안 됩니다).
   - **DOS**: 실행 파일이 있는 폴더를 C:로 씁니다. bin/cue나 iso가 있으면 D:(CD)로 연결합니다. CD 음악(레드북 오디오)도 재생됩니다.
-  - **SFC**: .sfc, .smc, .fig, .swc / **GBA**: .gba / **N64**: .z64, .n64, .v64
+  - **SFC**: .sfc, .smc, .fig, .swc / **GBA**: .gba / **GBC**: .gb, .gbc / **N64**: .z64, .n64, .v64
   - **zip**: zip 끝의 파일 목록을 읽고 파일마다 잘라서 스트리밍으로 풉니다. 수백 MB짜리, macOS·iOS에서 압축한 zip, 4GB가 넘는 zip(zip64)도 되고, 한글(CP949) 파일명도 읽습니다.
 - **저장**
   - **게임 안 세이브**: 게임에서 저장하면 브라우저에 자동으로 보관됩니다.
@@ -111,7 +111,7 @@ Cloudflare Pages는 정적 파일 서빙과 드라이브 토큰 갱신(아래)�
 |---|---|
 | UI | Preact + Vite |
 | DOS | [js-dos 8](https://js-dos.com) `emulators` (DOSBox-X, Worker). js-dos 기본 UI는 쓰지 않고 화면, 소리, 입력을 직접 연결합니다 |
-| SFC·GBA | [Nostalgist.js](https://nostalgist.js.org) 0.23 (RetroArch snes9x·mgba 코어, `public/retroarch/`에 둡니다). 자체 UI는 쓰지 않습니다 |
+| SFC·GBA·GBC | [Nostalgist.js](https://nostalgist.js.org) 0.23 (RetroArch snes9x·mgba 코어, `public/retroarch/`에 둡니다. GBC도 mgba). 자체 UI는 쓰지 않습니다 |
 | N64 | [EmulatorJS](https://emulatorjs.org)가 빌드한 RetroArch parallel_n64 코어 4.2.3 (`public/ejs/`에 둡니다, `src/platforms/retro/create-ejs.ts`가 직접 띄웁니다). EmulatorJS 자체 UI는 쓰지 않습니다 |
 | 저장소 | OPFS (게임 파일, 세이브, 상태, 썸네일) |
 | 로그인·저장 | Google Identity Services, Google Drive API (`drive.file`) |

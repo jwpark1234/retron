@@ -8,7 +8,7 @@ export type RetroKeys = Partial<Record<RetroButton, string>>;
 
 export interface RetroSystem {
   platform: Platform;
-  label: string; // 카드 배지 (SFC, GBA, N64)
+  label: string; // 카드 배지 (SFC, GBA, GBC, N64)
   core: string; // RetroArch 코어 이름 (public/retroarch/, EmulatorJS 코어는 public/ejs/에 받아 둔다)
   /** nostalgist = RetroArch 웹 빌드(기본), ejs = EmulatorJS가 빌드한 코어 (RetroArch 웹 빌드에 없는 기종) */
   backend?: "nostalgist" | "ejs";
@@ -76,6 +76,22 @@ export const GBA: RetroSystem = {
   pad: [[0, "b"], [1, "a"], [2, "b"], [3, "a"], ...PAD_COMMON],
 };
 
+// 게임보이·게임보이 컬러: GBA와 같은 mgba 코어. L·R이 없다
+export const GBC: RetroSystem = {
+  platform: "gbc",
+  label: "GBC",
+  core: "mgba",
+  rom: /\.(gb|gbc)$/i,
+  width: 160,
+  height: 144,
+  aspect: "10 / 9",
+  coreConfig: { mgba_sgb_borders: "OFF" }, // 슈퍼 게임보이 테두리(256×224)를 그리지 않고 160×144 그대로
+  buttons: [...DPAD, { button: "a", label: "A" }, { button: "b", label: "B" }, { button: "select", label: "SELECT" }, { button: "start", label: "START" }],
+  defaultKeys: { ...ARROWS, a: "KeyX", b: "KeyZ" },
+  face: "pair",
+  pad: [[0, "b"], [1, "a"], [2, "b"], [3, "a"], [8, "select"], [9, "start"], [12, "up"], [13, "down"], [14, "left"], [15, "right"]],
+};
+
 // N64: RetroArch 웹 빌드에 N64 코어가 없어서 EmulatorJS가 빌드한 parallel_n64를 쓴다 (mupen64plus_next보다 빠르고 메모리를 덜 썼다)
 export const N64: RetroSystem = {
   platform: "n64",
@@ -111,7 +127,7 @@ export const N64: RetroSystem = {
   pad: [[0, "a"], [2, "b"], [1, "cdown"], [3, "cleft"], [4, "l"], [5, "r"], [6, "z"], [7, "r"], [9, "start"], [12, "up"], [13, "down"], [14, "left"], [15, "right"]],
 };
 
-export const RETRO_SYSTEMS = [SFC, GBA, N64];
+export const RETRO_SYSTEMS = [SFC, GBA, GBC, N64];
 
 /** 파일 이름으로 기종을 찾는다 (롬이 아니면 undefined) */
 export const systemForRom = (path: string) => RETRO_SYSTEMS.find((s) => s.rom.test(path));
