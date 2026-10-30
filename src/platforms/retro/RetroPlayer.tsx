@@ -161,9 +161,12 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
   };
 
   const showPad = touchDevice && prefs.virtualPad && !pad;
+  // 휴대폰 세로 화면: 윗줄 버튼 / 게임 화면 / 가상패드 세 칸을 게임기 몸체가 감싼다. 가로 화면은 게임 위에 버튼을 띄운다
+  const skinned = showPad && orientation.mode === "portrait";
 
   return (
-    <div class="game" data-platform={system.platform} style={rotatedStyle(orientation.rotation)}>
+    <div class={`game${skinned ? " skinned" : ""}`} data-platform={system.platform} style={rotatedStyle(orientation.rotation)}>
+      {skinned && <ControlTop menu={menu} bridge={bridge} />}
       <Screen canvasRef={canvas} filter={prefs.filter} aspect={system.aspect} />
       <GameMenu
         menu={menu}
@@ -180,12 +183,11 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
       {showPad && (
         <VirtualPad
           system={system}
-          title={game.title}
           press={input.set}
           axis={input.axis}
           rotation={orientation.rotation}
           style={prefs.stickStyle}
-          top={<ControlTop menu={menu} bridge={bridge} />}
+          top={skinned ? null : <ControlTop menu={menu} bridge={bridge} />}
         />
       )}
       {status && <BusyOverlay text={status} failed={failed} />}

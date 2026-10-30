@@ -4,16 +4,16 @@ import { signIn, useAuth } from "../cloud/google-auth";
 import { Logo } from "../ui/Logo";
 import { Spinner } from "../ui/Spinner";
 
-// 배경: 유명한 고전 게임 화면에 CRT를 씌운 콜라주 (scripts/art/landing-collage.html로 1920×1200으로 찍은 것)
-// 주소는 절대 주소로: CSS 변수 속 상대 주소는 CSS 파일(assets/) 기준으로 풀려서 그림을 못 찾는다 (BASE_URL이 "./"인 배포 빌드)
-const BG = { "--landing-bg": `url("${new URL(`${import.meta.env.BASE_URL}landing-bg.jpg`, document.baseURI).href}")` };
+/** 로고 아래 한 줄: 무엇을 하는 앱인지 */
+export const Tagline = () => <p class="tagline">DOS · SFC · GBA · GBC · N64</p>;
 
 export function Landing({ loading }: { loading?: boolean }) {
   const auth = useAuth();
   if (loading)
     return (
-      <div class="landing" style={BG}>
+      <div class="landing">
         <Logo />
+        <Tagline />
         <div class="landing-loading">
           <Spinner />
           <span>{auth.email ? `${auth.email} · 라이브러리 여는 중` : "여는 중"}</span>
@@ -21,8 +21,9 @@ export function Landing({ loading }: { loading?: boolean }) {
       </div>
     );
   return (
-    <div class="landing" style={BG}>
+    <div class="landing">
       <Logo />
+      <Tagline />
       <button class="google-signin" disabled={auth.busy} onClick={() => void signIn().catch(() => undefined)}>
         <svg viewBox="0 0 48 48" aria-hidden="true">
           <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z" />

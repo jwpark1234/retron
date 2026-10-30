@@ -21,7 +21,7 @@ import { attachAudio, attachVideo, createDos, dosFastForward, gameExited, loadDo
 import { nudgeCursor, useDosMouseKeyboard, type Cursor } from "./dos-input";
 import { DosTouchControls, DosTouchSettings, MouseSpeedSetting, useTouchLayout } from "./DosTouch";
 import { watchGamepad } from "./gamepad";
-import { CD_DIR, HDD_DIR, buildConf, withCycles } from "./profiles";
+import { CD_DIR, HDD_DIR, buildConf, phoneCycles, savePatternOf, withCycles } from "./profiles";
 import { watchSaves } from "./save-watch";
 
 /** 에뮬레이터 FS에 넣을 파일: 원본 HDD + 그 위에 덮는 세이브 + CD 이미지 */
@@ -62,7 +62,8 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     (async () => {
       const { files, saves } = await gameFiles(dir);
       setStatus("에뮬레이터 시작 중…");
-      const dos = await createDos(files, buildConf(withCycles(info.settings, info.cycles), info.exe, info.cd), (m) => !disposed && setStatus(m));
+      const cycles = info.cycles || (touchDevice ? phoneCycles(info.settings) : undefined);
+      const dos = await createDos(files, buildConf(withCycles(info.settings, cycles), info.exe, info.cd), (m) => !disposed && setStatus(m));
       if (disposed) return void dos.exit();
       ci.current = dos;
       cleanups.push(attachVideo(dos, canvas.current!), attachAudio(dos));
@@ -98,13 +99,13 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
 
       // 게임 안 세이브 파일이 바뀌면 기기에 저장하고 드라이브 동기화를 예약한다
       const saveWatch = await watchSaves(dos, {
-        pattern: info.savePattern,
+        pattern: savePatternOf(info),
         previous: [...saves.keys()],
-        onChange: async (now: FileMap) => {
+        onChange: async (now: FileMap, notice: boolean) => {
           for (const p of (await listFiles(`${dir}/saves`)).keys()) if (!now.has(p)) await removeFile(`${dir}/saves/${p}`);
           for (const [p, d] of now) await writeFile(`${dir}/saves/${p}`, d);
           markDirty(game.id, "saves");
-          showToast("저장되었습니다");
+          if (notice) showToast("저장되었습니다");
         },
       });
       if (disposed) return saveWatch.stop();
@@ -133,8 +134,12 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
     };
   }, [run]);
 
+  // 휴대폰 세로 화면: 윗줄 버튼 / 게임 화면 / 조작 세 칸을 PC 몸체가 감싼다. 가로 화면은 게임 위에 버튼을 띄운다
+  const skinned = touchDevice && orientation.mode === "portrait";
+
   return (
-    <div class={`game${touchDevice ? "" : " hide-cursor"}`} data-platform="dos" ref={stage} style={rotatedStyle(orientation.rotation)}>
+    <div class={`game${touchDevice ? "" : " hide-cursor"}${skinned ? " skinned" : ""}`} data-platform="dos" ref={stage} style={rotatedStyle(orientation.rotation)}>
+      {skinned && <ControlTop menu={menu} bridge={bridge} />}
       <Screen canvasRef={canvas} filter={prefs.filter} />
       <GameMenu
         menu={menu}
@@ -161,7 +166,6 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       />
       {touchDevice && (
         <DosTouchControls
-          title={game.title}
           keys={touch.keys}
           trackpad={touch.trackpad}
           rotation={orientation.rotation}
@@ -169,7 +173,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
           onKey={(k, p) => ci.current?.sendKeyEvent(k, p)}
           onMove={(dx, dy) => nudgeCursor(cursor.current, ci.current, dx, dy)}
           onButton={(b, p) => ci.current?.sendMouseButton(b, p)}
-          top={<ControlTop menu={menu} bridge={bridge} />}
+          top={skinned ? null : <ControlTop menu={menu} bridge={bridge} />}
         />
       )}
       {status && <BusyOverlay text={status} failed={failed} />}

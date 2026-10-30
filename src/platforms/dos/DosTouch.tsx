@@ -1,5 +1,5 @@
 // DOS 휴대폰 조작: 방향 패드(방향키) + 트랙패드(마우스, 게임마다 끌 수 있다) + 키 버튼, Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽).
-// 세로 화면: 조작 영역 맨 위에 Save·Load / 빨리가기·메뉴 줄, 화면 아래에 방향 패드·트랙패드 줄과 키 버튼 줄.
+// 세로 화면: 화면 아래에 방향 패드·트랙패드 줄과 키 버튼 줄 (Save·Load / 빨리가기·메뉴 줄은 DosPlayer가 게임 화면 위에 따로 둔다).
 //   트랙패드를 끄면 방향 패드 옆(오른쪽)에 키 버튼을 놓는다.
 // 가로 화면: 화면 위 양끝에 Save·Load / 빨리가기·메뉴, 화면 아래 왼쪽에 방향 패드, 오른쪽에 트랙패드와 그 위에 키 버튼.
 // 예전에는 세로 화면 트랙패드 위치·가로 화면 순서를 고를 수 있었는데, 왼손 방향·오른손 버튼으로 하나만 남겼다 (2026-10-20 사용자 요청)
@@ -58,7 +58,6 @@ export function useTouchLayout(game: Game) {
 }
 
 export function DosTouchControls({
-  title,
   keys,
   trackpad,
   rotation,
@@ -68,7 +67,6 @@ export function DosTouchControls({
   onButton,
   top,
 }: {
-  title: string; // 몸체 장식의 디스켓 라벨
   keys: number[];
   trackpad: boolean;
   rotation: number;
@@ -76,7 +74,7 @@ export function DosTouchControls({
   onKey: (key: number, pressed: boolean) => void;
   onMove: (dx: number, dy: number) => void;
   onButton: (button: 0 | 1, pressed: boolean) => void;
-  top: ComponentChildren; // Save·Load, 빨리가기·메뉴 줄
+  top: ComponentChildren; // Save·Load, 빨리가기·메뉴 줄 (가로 화면만)
 }) {
   const { stickStyle } = usePrefs();
   const buttons = orderKeys(keys.filter((k) => !isArrow(k)));
@@ -87,7 +85,7 @@ export function DosTouchControls({
   return (
     <div class={`vbar ${landscape ? "land" : ""} ${dpad ? "" : "no-dpad"} ${trackpad ? "" : "no-pad"}`}>
       {top}
-      {!landscape && <ConsoleDeck platform="dos" title={title} />}
+      {!landscape && <ConsoleDeck platform="dos" />}
       {buttons.length > 0 && <VirtualKeys keys={buttons.map((key) => ({ key, label: dosKeyLabel(key), wide: isWide(key) }))} cols={cols} onKey={onKey} />}
       {dpad && (
         <div class="vbar-dpad">

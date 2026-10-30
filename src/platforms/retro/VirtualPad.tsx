@@ -24,7 +24,7 @@ function Button({ button, label, press, class: cls }: { button: RetroButton; lab
 }
 
 /**
- * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 세로 화면은 조작 영역 맨 위, 가로 화면은 화면 맨 위(L·R 위)에 온다.
+ * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 가로 화면만 화면 맨 위(L·R 위)에 넣는다 (세로 화면은 RetroPlayer가 게임 화면 위에 따로 둔다).
  * rotation: 화면을 CSS로 돌렸을 때 각도. axis: 아날로그 스틱 기종(N64)의 스틱
  */
 export function VirtualPad({
@@ -34,10 +34,8 @@ export function VirtualPad({
   rotation,
   style,
   top,
-  title,
 }: {
   system: RetroSystem;
-  title: string;
   press: Press;
   axis: (source: string, x: number, y: number) => void;
   rotation: number;
@@ -49,7 +47,7 @@ export function VirtualPad({
   return (
     <div class="vpad">
       {top}
-      <ConsoleDeck platform={system.platform} title={title} />
+      <ConsoleDeck platform={system.platform} />
       {shoulders && (
         <div class="vpad-shoulders">
           {n64 ? (

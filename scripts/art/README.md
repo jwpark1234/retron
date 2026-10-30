@@ -1,6 +1,5 @@
 # 그림 원본
 
-- `icon-o.html`: 아이콘(주황 O + CRT). 랜딩 로고의 O와 같은 글꼴·같은 효과(src/style.css의 `.logo em`). 브라우저 창을 정사각형(120, 180, 192, 512)으로 맞춰 찍으면 `public/*.png`가 된다. `#round`를 붙이면 둥근 모서리
-- `landing-collage.html`: 첫 화면 배경(`public/landing-bg.jpg`). 유명한 고전 게임 화면 45개에 하나씩 CRT를 씌워 자리·크기·겹치는 순서만 뒤죽박죽으로 겹친 콜라주(기울이지 않음)(같은 화면 반복 없음). 화면 그림은 위키백과에서 받아 쓴다(목록은 `collage-sources.txt`, 저장소에는 넣지 않음). 1920×1200 창에서 열고 `build(그림 주소들)`을 부른 뒤 JPG(품질 72)로 찍는다. 움직이는 GIF는 첫 장면만 그려지므로 정지 그림을 쓴다
+- `icon-o.html`: 아이콘(주황 바탕 + 흰 고리). 로고(src/ui/Logo.tsx)의 O 자리 고리와 같은 모양. 브라우저 창을 정사각형으로 맞춰 찍으면 `public/*.png`가 된다: favicon 128·icon-192·icon-512는 `#round`(둥근 모서리), apple-touch-icon 180은 그대로(iOS가 깎는다), icon-maskable-512는 `#maskable`
 
 찍은 PNG는 꼭 열어서 그림이 보이는지 확인한다 (about:blank 페이지에서 file:// 이미지를 불러오면 깨진 그림이 찍힌다).

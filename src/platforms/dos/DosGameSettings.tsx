@@ -13,9 +13,10 @@ import { KeyPicker } from "./KeyPicker";
 import { HDD_DIR, exeCandidates } from "./profiles";
 
 const CYCLES = [
-  { value: "", label: "게임 기본값" },
-  { value: "auto", label: "자동" },
-  { value: "max", label: "최대" },
+  // 휴대폰에서 게임 기본값은 최대 속도의 절반까지만 쓴다 (profiles.ts phoneCycles). 자동·최대를 직접 고르면 제한 없이 쓴다
+  { value: "", label: touchDevice ? "게임 기본값 (발열 줄임)" : "게임 기본값" },
+  { value: "auto", label: touchDevice ? "자동 (발열 큼)" : "자동" },
+  { value: "max", label: touchDevice ? "최대 (발열 큼)" : "최대" },
   { value: "3000", label: "느리게 (3000)" },
   { value: "8000", label: "386급 (8000)" },
   { value: "20000", label: "486급 (20000)" },

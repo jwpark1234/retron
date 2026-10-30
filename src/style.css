@@ -119,8 +119,12 @@ ul.grid .thumb { aspect-ratio: 1; }
     radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.45) 100%);
   mix-blend-mode: multiply;
 }
-/* 휴대폰 조작 영역의 윗줄: 왼쪽 Save·Load, 오른쪽 빨리가기(켜고 끄기)·메뉴. PC는 같은 버튼을 화면 아래 가운데에 띄운다 */
+/* 휴대폰 윗줄: 왼쪽 Save·Load, 오른쪽 빨리가기(켜고 끄기)·메뉴. 세로 화면은 게임 화면 위, 가로 화면은 화면 위 양끝. PC는 같은 버튼을 화면 아래 가운데에 띄운다 */
 .ctl-top { grid-area: top; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+/* 휴대폰 세로 화면(skinned): 위에서부터 윗줄 버튼 / 게임 화면 / 조작 세 칸. 게임기 몸체가 위아래를 감싸고 게임 화면은 그 안에 박힌 창 (console-skins.css) */
+.game.skinned { justify-content: flex-start; }
+.game.skinned > .ctl-top { flex: none; width: 100%; box-sizing: border-box; padding: 10px 16px 0; opacity: var(--ctl-opacity, 1); }
+.game.skinned > .screen { flex: none; width: min(calc(100cqw - 44px), calc(100cqh * var(--aspect))); margin: 22px 0 12px; }
 .quick { display: flex; gap: 8px; }
 .quick .vpad-btn.pill { width: auto; min-width: calc(58px * var(--ctl-scale, 1)); height: calc(32px * var(--ctl-scale, 1)); padding: 0 calc(12px * var(--ctl-scale, 1)); font-size: calc(12.5px * var(--ctl-scale, 1)); letter-spacing: 0.02em; }
 .quick .vpad-btn.icon { min-width: calc(50px * var(--ctl-scale, 1)); display: grid; place-items: center; }
@@ -254,7 +258,8 @@ ul.grid .thumb { aspect-ratio: 1; }
   min-width: 0; padding: calc(10px * var(--ctl-scale, 1)) 4px; font-size: calc(14px * var(--ctl-scale, 1)); font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 14px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); touch-action: none;
+  /* 흐림(backdrop-filter)은 쓰지 않는다: 가로 화면에서는 키가 게임 화면 위에 있어서, 화면이 바뀔 때마다(초당 60번 넘게) 키마다 흐림을 다시 그려 휴대폰이 뜨거워졌다 */
+  touch-action: none;
 }
 .vkeys button.wide { grid-column: span 2; }
 .vkeys button:active { background: rgba(255, 179, 64, 0.45); border-color: var(--tint); }
@@ -271,6 +276,8 @@ ul.grid .thumb { aspect-ratio: 1; }
 .trackpad .pad:active { background: rgba(255, 255, 255, 0.03); }
 .overlay { position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--muted); font-size: 15px; }
 .toast { position: absolute; bottom: max(24px, var(--safe-bottom, env(safe-area-inset-bottom))); left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; z-index: 30; font-size: 14px; white-space: nowrap; }
+/* 게임 중 알림("저장되었습니다")은 흐리지 않는다: 움직이는 게임 화면 위의 흐림은 프레임마다 다시 그려야 해서 비싸다 (세이브를 자주 쓰는 게임은 몇 초마다 뜬다) */
+.game .toast { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 20, 26, 0.88); }
 /* 세로 화면: 게임은 위에, 컨트롤은 그 아래에 (CSS로 돌린 화면은 rotatedStyle이 정한다) */
 @media (orientation: portrait) { .game { justify-content: flex-start; } }
 
@@ -415,31 +422,14 @@ li.remote .card:disabled { opacity: 1; }
 .transfer .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 179, 64, 0.55); transition: width 0.3s; }
 .transfer span { position: relative; }
 
-/* 로고: RETRO 아래 줄 끝(O 밑)에 N */
-.logo { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 0.82; font-weight: 800; letter-spacing: -0.01em; user-select: none; }
-.logo em { font-style: normal; color: var(--tint); }
-/* 로고 글자 전체에 CRT 효과 — 가는 주사선, RGB 어긋남, 빛 번짐. 글자는 형광 흰색, O만 주황. 아이콘(scripts/art/icon-o.html)은 이 O를 브라운관 화면에 넣어 찍은 것 */
-.logo > span {
-  color: transparent; -webkit-background-clip: text; background-clip: text;
-  background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(180deg, #fff, #ecebe6 55%, #c9c6bf);
-  filter: drop-shadow(-0.014em 0 0 rgba(255, 42, 16, 0.55)) drop-shadow(0.014em 0 0 rgba(30, 200, 255, 0.45)) drop-shadow(0 0 0.1em rgba(225, 235, 255, 0.28));
-}
-.logo em i {
-  font-style: normal; display: inline-block; color: transparent; -webkit-background-clip: text; background-clip: text;
-  padding: 0.1em 0; margin: -0.1em 0; /* 줄 간격(0.82)보다 글자가 커서, 칠하는 영역을 위아래로 넓혀야 O 아래가 잘리지 않는다 */
-  background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px), linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e);
-  filter: drop-shadow(0 0 0.09em rgba(255, 154, 46, 0.8));
-}
-/* 위쪽 막대의 작은 로고: 주사선 간격을 좁혀 글자마다 줄이 여러 개 지나가게 */
-.logo.small > span { background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 2px), linear-gradient(180deg, #fff, #ecebe6 55%, #c9c6bf); }
-.logo.small em i { background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 2px), linear-gradient(180deg, #ffcf72, #ffb340 50%, #ff8a1e); filter: drop-shadow(0 0 0.12em rgba(255, 154, 46, 0.7)); }
-.logo.large { font-size: clamp(56px, 16vw, 112px); }
-.logo.small { font-size: 21px; }
-.logo .n { margin-top: 0.02em; }
+/* 로고: RETRON 한 줄, O 자리는 주황 고리 (아이콘과 같은 모양). 효과 없이 단색 */
+.logo { display: inline-flex; align-items: center; font-weight: 800; letter-spacing: 0.04em; line-height: 1; color: var(--text); user-select: none; white-space: nowrap; }
+.logo .ring { display: inline-block; flex: none; width: 0.66em; height: 0.66em; margin: 0 0.06em 0 0.04em; border: 0.15em solid var(--tint); border-radius: 50%; box-sizing: border-box; }
+.logo.large { font-size: clamp(40px, 12vw, 72px); }
+.logo.small { font-size: 19px; }
 
 /* 첫 화면 */
 .landing { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 24px 64px; box-sizing: border-box; text-align: center; }
-.landing .tagline { margin: 10px 0 18px; color: var(--muted); font-size: 16px; }
 .google-signin {
   display: inline-flex; align-items: center; gap: 12px; padding: 13px 26px; font-size: 16px; font-weight: 600;
   background: #fff; color: #1f1f1f; border: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
@@ -447,7 +437,8 @@ li.remote .card:disabled { opacity: 1; }
 .google-signin svg { width: 20px; height: 20px; }
 .landing .fineprint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
 .landing .error { max-width: 420px; }
-.landing .logo { margin-bottom: 36px; }
+.landing .logo { margin-bottom: 4px; }
+.landing .tagline { margin: 0 0 40px; color: var(--muted); font-size: 14px; letter-spacing: 0.08em; }
 /* 개인정보처리방침: 화면 맨 아래 */
 .landing .privacy-link { position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; white-space: nowrap; }
 
@@ -526,7 +517,7 @@ button.add { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 .overlay-body { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 0 24px; }
 .progress, .busy-line { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.landing-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 28px; color: var(--muted); font-size: 14px; }
+.landing-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 0; color: var(--muted); font-size: 14px; }
 
 /* 뒤 배경이 밝을 때(ui/adaptive-contrast.ts가 .on-light를 붙인다): 유리를 밝게, 글자를 검게.
    어두운 유리에 흰 글자는 밝은 화면 위에서 글자가 묻혔다 */
@@ -547,19 +538,8 @@ button.add { white-space: nowrap; }
 .vpad-stick.on-light .knob { background: radial-gradient(circle at 35% 30%, #fff, rgba(235, 235, 240, 0.9) 70%); border-color: rgba(0, 0, 0, 0.2); }
 .privacy-link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 
-/* 첫 화면 배경: CRT 고전 게임 콜라주(public/landing-bg.jpg)를 은은하게(살짝 흐리게, 가운데는 글자가 읽히게 어둡게) 깔고, 화면 전체에 주사선·가장자리 어둠을 한 겹 더 */
-.landing { position: relative; isolation: isolate; overflow: hidden; }
-.landing::before {
-  content: ""; position: absolute; inset: -3%; z-index: -2; pointer-events: none;
-  background: var(--landing-bg) center / cover no-repeat; opacity: 0.55; filter: blur(1px);
-  animation: landing-drift 60s ease-in-out infinite alternate;
-}
-.landing::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background: radial-gradient(ellipse at center, rgba(7, 7, 12, 0.5) 0%, rgba(7, 7, 12, 0.62) 45%, rgba(7, 7, 12, 0.88) 100%), repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px);
-}
-@keyframes landing-drift { to { transform: translate3d(-2%, -1.5%, 0) scale(1.04); } }
-@media (prefers-reduced-motion: reduce) { .landing::before { animation: none; } }
+/* 첫 화면 배경: 단색 위에 위쪽만 아주 옅은 주황빛. 예전 고전 게임 콜라주·주사선은 음산하고 어수선해서 뺐다 (2026-10-30) */
+.landing { position: relative; overflow: hidden; background: radial-gradient(90% 55% at 50% 0%, rgba(255, 179, 64, 0.09), transparent 70%), #07070c; }
 
 /* 게임 추가 중: 버튼 왼쪽에 진행 메시지, 버튼 테두리에 진행률 고리 (진행률을 모르면 도는 고리) */
 .actions { min-width: 0; }

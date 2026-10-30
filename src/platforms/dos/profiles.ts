@@ -43,7 +43,8 @@ export const PROFILES: DosProfile[] = [
     title: "창세기전2",
     entry: "GENE2.COM",
     icon: "GENESIS2.ICO",
-    savePattern: "^(BLACKBOX\\.SV\\d|GENESIS\\.QSV)$",
+    // BLACKBOX.DAT(진행 데이터)도 세이브와 같이 바뀐다. 크기가 그대로면 자동 추적에 안 걸려서 패턴에 넣는다
+    savePattern: "^(BLACKBOX\\.(SV\\d|DAT)|GENESIS\\.QSV)$",
     // 타이틀(TTL.EXE)의 "처음부터 시작"이 BLACKBOX.DEF(새 게임 초기 데이터)를 읽는다. 없으면 "blackbox.def read error!"로 끝난다.
     // 세이브(BLACKBOX.SV1~5)·진행 데이터(BLACKBOX.DAT)와 이름이 비슷해서 세이브를 지우면서 같이 지운 일이 있었다
     requires: { files: ["BLACKBOX.DEF"], what: "세이브가 아니라 새 게임 초기 데이터입니다. 세이브(BLACKBOX.SV1~SV5, BLACKBOX.DAT)는 지워도 됩니다", breaks: "'처음부터 시작'이" },
@@ -93,6 +94,10 @@ export function findProfile(fileNames: string[]): DosProfile | undefined {
   return PROFILES.find((p) => names.has(p.entry));
 }
 
+/** 세이브 패턴. 알려진 게임은 지금 프로필 것을 쓴다 (추가할 때 게임에 복사해 둔 예전 패턴은 빠뜨린 파일이 있을 수 있다) */
+export const savePatternOf = (dos: { exe: string; savePattern?: string }) =>
+  PROFILES.find((p) => p.entry === dos.exe.split("/").pop()!.toUpperCase())?.savePattern ?? dos.savePattern;
+
 /** cycles를 바꾼 settings (auto / max / 숫자). 비우면 그대로 */
 export function withCycles(settings: string, cycles?: string) {
   if (!cycles) return settings;
@@ -100,6 +105,19 @@ export function withCycles(settings: string, cycles?: string) {
   if (/^cycles=.*$/m.test(settings)) return settings.replace(/^cycles=.*$/m, line);
   const cpu = /^\[cpu\][ \t]*$/m;
   return cpu.test(settings) ? settings.replace(cpu, `[cpu]\n${line}`) : `${settings}\n[cpu]\n${line}\n`;
+}
+
+/**
+ * 휴대폰에서 쓸 cycles. max(창세기전2 기본값)와 auto(보호 모드 게임은 max로 바뀐다)는 CPU 한 코어를 쉬지 않고 써서
+ * 20분 남짓 하면 휴대폰이 뜨거워지다 꺼졌다. 최대 속도의 절반까지만 쓰게 한다 (기기 성능에 맞춰 늘고 준다).
+ * 사용자가 게임 설정에서 속도를 직접 골랐으면 그대로 둔다
+ */
+const PHONE_MAX = "50%";
+export function phoneCycles(settings: string): string | undefined {
+  const cycles = settings.match(/^cycles=(.*)$/m)?.[1].trim().toLowerCase() ?? "auto"; // 없으면 DOSBox-X 기본값 auto
+  if (cycles === "max") return `max ${PHONE_MAX}`;
+  if (cycles === "auto") return `auto 3000 ${PHONE_MAX}`; // 실제 모드는 auto 기본값(3000) 그대로
+  return undefined;
 }
 
 const BS = String.fromCharCode(92); // DOS 경로 구분자 '\'

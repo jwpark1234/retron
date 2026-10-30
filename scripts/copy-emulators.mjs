@@ -10,9 +10,22 @@ for (const f of ["emulators.js", "wdosbox-x.js", "wdosbox-x.wasm", "wlibzip.js",
 // 워커가 받은 파일을 메모리 FS에 쓸 때 한 벌 더 복사하지 않게 한다 (큰 CD 이미지에서 메모리가 모자라지 않도록)
 const worker = new URL("wdosbox-x.js", out);
 const FROM = 'Module.FS.writeFile(path+"/"+filename,body)';
-const code = readFileSync(worker, "utf8");
+let code = readFileSync(worker, "utf8");
 if (!code.includes(FROM)) throw new Error("wdosbox-x.js가 바뀌었습니다: FS.writeFile 패치를 확인하세요");
-writeFileSync(worker, code.replace(FROM, 'Module.FS.writeFile(path+"/"+filename,body,{canOwn:true})'));
+code = code.replace(FROM, 'Module.FS.writeFile(path+"/"+filename,body,{canOwn:true})');
+
+// DOSBox가 쉬는 동안(다음 1ms까지 할 일이 없을 때) 워커는 깰 시각이 될 때까지 메인 스레드와 메시지를 쉬지 않고 주고받는다
+// (초당 만 번 가까이). 게임이 CPU를 적게 써도 두 스레드가 늘 바빠서 휴대폰이 뜨거워지고, 메인 스레드가 밀려 화면·조작이 끊겼다.
+// 깰 시각까지 남은 만큼 setTimeout으로 기다리게 한다. 메시지 처리 중에 거는 타이머라 4ms로 늘어나지 않는다
+const SPIN = "if(Module.wakeUpAt!==undefined&&Date.now()<Module.wakeUpAt){postWakeUpMessage();return}";
+if (!code.includes(SPIN)) throw new Error("wdosbox-x.js가 바뀌었습니다: 쉬는 동안 기다리기 패치를 확인하세요");
+code = code.replace(SPIN, "if(Module.wakeUpAt!==undefined&&Date.now()<Module.wakeUpAt){setTimeout(postWakeUpMessage,Module.wakeUpAt-Date.now());return}");
+
+// 파일 목록(fsTree)에 고친 시각(mtime)도 넣는다. 크기는 그대로 덮어쓰는 세이브(대항해시대2)를 이름과 상관없이 알아채려고 (save-watch.ts)
+const TREE = "node.nodes=null;node.size=fsNode.usedBytes}";
+if (!code.includes(TREE)) throw new Error("wdosbox-x.js가 바뀌었습니다: fsTree mtime 패치를 확인하세요");
+code = code.replace(TREE, "node.nodes=null;node.size=fsNode.usedBytes;node.mtime=fsNode.mtime}");
+writeFileSync(worker, code);
 
 // SFC·GBA(Nostalgist.js = RetroArch 웹 빌드)의 코어도 같은 사이트에서 내려준다.
 // 기본값은 CDN에서 zip을 받아 매번 푸는데, 버전별 폴더에 풀어 두면 브라우저가 계속 캐시해 둔다.

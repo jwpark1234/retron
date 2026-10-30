@@ -3,14 +3,14 @@
 // 주소창 없이 전체 화면으로 써야 조작 영역이 넓다. PC는 브라우저 그대로 쓴다.
 import { ios, useInstall } from "../ui/install";
 import { Logo } from "../ui/Logo";
-
-const BG = { "--landing-bg": `url("${new URL(`${import.meta.env.BASE_URL}landing-bg.jpg`, document.baseURI).href}")` };
+import { Tagline } from "./Landing";
 
 export function InstallGate() {
   const install = useInstall();
   return (
-    <div class="landing install-gate" style={BG}>
+    <div class="landing install-gate">
       <Logo />
+      <Tagline />
       {install.kind === "prompt" && (
         <button class="primary" onClick={() => void install.install().catch(() => undefined)}>
           앱 설치
