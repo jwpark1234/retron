@@ -71,7 +71,8 @@ export function VirtualKeys<K>({
             class={k.wide ? "wide" : ""}
             onPointerDown={(e) => {
               e.preventDefault();
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+              // 누른 요소(아이폰은 버튼 위의 햅틱 스위치)에 붙잡는다. 버튼에 붙잡으면 탭이 버튼으로 옮겨 가서 스위치가 바뀌지 않는다
+              (e.target as Element).setPointerCapture(e.pointerId);
               onKey(k.key, true);
             }}
             onPointerUp={(e) => {

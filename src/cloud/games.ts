@@ -489,11 +489,16 @@ export function pendingDownloadIds(): Set<string> {
   return ids;
 }
 
-async function fetchChunk(fileId: string, start: number, end: number): Promise<Uint8Array> {
+async function fetchChunk(fileId: string, start: number, end: number, onBytes: (n: number) => void): Promise<Uint8Array> {
   for (let tries = 1; ; tries++) {
+    let got = 0;
     try {
-      return await downloadRange(fileId, start, end, DL_TIMEOUT_MS);
+      return await downloadRange(fileId, start, end, DL_TIMEOUT_MS, (n) => {
+        got += n;
+        onBytes(n);
+      });
     } catch (e) {
+      onBytes(-got); // 끊긴 시도에서 받은 만큼은 진행률에서 뺀다 (처음부터 다시 받는다)
       if (tries >= DL_TRIES) throw e;
       await sleep(1500 * tries);
       while (!navigator.onLine) await sleep(2000); // 연결이 돌아오면 이어 간다
@@ -508,7 +513,7 @@ async function downloadFile(fileId: string, size: number, path: string, onBytes:
     let next = 0;
     const fill = () => {
       for (; next < size && pending.length < DL_AHEAD; next += DL_CHUNK) {
-        const p = fetchChunk(fileId, next, Math.min(size, next + DL_CHUNK) - 1);
+        const p = fetchChunk(fileId, next, Math.min(size, next + DL_CHUNK) - 1, onBytes);
         p.catch(() => undefined); // 앞 조각이 실패하면 뒤 조각은 기다리지 않는다 (처리 안 된 오류로 남지 않게)
         pending.push(p);
       }
@@ -517,7 +522,6 @@ async function downloadFile(fileId: string, size: number, path: string, onBytes:
     while (pending.length) {
       const data = await pending.shift()!;
       await w.write(data);
-      onBytes(data.length);
       fill();
     }
     await w.close();

@@ -124,7 +124,8 @@ ul.grid .thumb { aspect-ratio: 1; }
 /* 휴대폰 세로 화면(skinned): 위에서부터 윗줄 버튼 / 게임 화면 / 조작 세 칸. 게임기 몸체가 위아래를 감싸고 게임 화면은 그 안에 박힌 창 (console-skins.css) */
 .game.skinned { justify-content: flex-start; }
 .game.skinned > .ctl-top { flex: none; width: 100%; box-sizing: border-box; padding: 10px 16px 0; opacity: var(--ctl-opacity, 1); }
-.game.skinned > .screen { flex: none; width: min(calc(100cqw - 44px), calc(100cqh * var(--aspect))); margin: 22px 0 12px; }
+/* 게임 화면은 폭을 꽉 채운다 (좌우에 몸체·테두리를 두르면 게임 화면이 작아진다) */
+.game.skinned > .screen { flex: none; width: min(100cqw, calc(100cqh * var(--aspect))); margin: 14px 0 6px; }
 .quick { display: flex; gap: 8px; }
 .quick .vpad-btn.pill { width: auto; min-width: calc(58px * var(--ctl-scale, 1)); height: calc(32px * var(--ctl-scale, 1)); padding: 0 calc(12px * var(--ctl-scale, 1)); font-size: calc(12.5px * var(--ctl-scale, 1)); letter-spacing: 0.02em; }
 .quick .vpad-btn.icon { min-width: calc(50px * var(--ctl-scale, 1)); display: grid; place-items: center; }
@@ -190,6 +191,9 @@ ul.grid .thumb { aspect-ratio: 1; }
 .vpad-face.pair .b { bottom: 15%; left: 2.5%; top: auto; }
 .vpad-btn.shoulder { width: calc(88px * var(--ctl-scale, 1)); height: calc(36px * var(--ctl-scale, 1)); border-radius: 12px; font-size: calc(16px * var(--ctl-scale, 1)); }
 .vpad-btn.pill { width: calc(76px * var(--ctl-scale, 1)); height: calc(30px * var(--ctl-scale, 1)); border-radius: 999px; font-size: calc(11px * var(--ctl-scale, 1)); letter-spacing: 0.08em; }
+/* 아이폰 햅틱: 버튼을 덮는 투명한 스위치 (ui/haptics.ts). 손가락이 이것을 직접 눌러야 iOS가 떤다. 모양(appearance)은 지우면 햅틱이 안 나서 투명하게만 */
+.haptic-switch { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; z-index: 1; cursor: inherit; }
+button:disabled > .haptic-switch, html.no-haptics .haptic-switch { display: none; }
 /* 게임 중 메뉴 → 조작의 버튼 투명도 */
 .vpad, .vbar { opacity: var(--ctl-opacity, 1); }
 /* 세로 화면 게임기 몸체(기종별 색·버튼·장식)는 player/console-skins.css */
@@ -422,11 +426,11 @@ li.remote .card:disabled { opacity: 1; }
 .transfer .bar { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 179, 64, 0.55); transition: width 0.3s; }
 .transfer span { position: relative; }
 
-/* 로고: RETRON 한 줄, O 자리는 주황 고리 (아이콘과 같은 모양). 효과 없이 단색 */
-.logo { display: inline-flex; align-items: center; font-weight: 800; letter-spacing: 0.04em; line-height: 1; color: var(--text); user-select: none; white-space: nowrap; }
-.logo .ring { display: inline-block; flex: none; width: 0.66em; height: 0.66em; margin: 0 0.06em 0 0.04em; border: 0.15em solid var(--tint); border-radius: 50%; box-sizing: border-box; }
-.logo.large { font-size: clamp(40px, 12vw, 72px); }
-.logo.small { font-size: 19px; }
+/* 로고: 화면에 RETRON이 켜진 CRT 모니터 (src/ui/Logo.tsx의 SVG) */
+.logo { display: inline-flex; user-select: none; }
+.logo svg { display: block; overflow: visible; }
+.logo.large svg { width: clamp(220px, 62vw, 340px); height: auto; }
+.logo.small svg { height: 34px; width: auto; }
 
 /* 첫 화면 */
 .landing { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 24px 64px; box-sizing: border-box; text-align: center; }
@@ -437,7 +441,7 @@ li.remote .card:disabled { opacity: 1; }
 .google-signin svg { width: 20px; height: 20px; }
 .landing .fineprint { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
 .landing .error { max-width: 420px; }
-.landing .logo { margin-bottom: 4px; }
+.landing .logo { margin-bottom: 10px; }
 .landing .tagline { margin: 0 0 40px; color: var(--muted); font-size: 14px; letter-spacing: 0.08em; }
 /* 개인정보처리방침: 화면 맨 아래 */
 .landing .privacy-link { position: absolute; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; white-space: nowrap; }

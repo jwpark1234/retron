@@ -12,7 +12,8 @@ type Press = (source: string, button: RetroButton, pressed: boolean) => void;
 function Button({ button, label, press, class: cls }: { button: RetroButton; label: string; press: Press; class?: string }) {
   const down = (e: PointerEvent) => {
     e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // 누른 요소(아이폰은 버튼 위의 햅틱 스위치)에 붙잡는다. 버튼에 붙잡으면 탭이 버튼으로 옮겨 가서 스위치가 바뀌지 않는다
+    (e.target as Element).setPointerCapture(e.pointerId);
     press(`btn${e.pointerId}`, button, true);
   };
   const up = (e: PointerEvent) => press(`btn${e.pointerId}`, button, false);
@@ -25,10 +26,11 @@ function Button({ button, label, press, class: cls }: { button: RetroButton; lab
 
 /**
  * top: Save·Load(왼쪽)와 빨리가기·메뉴(오른쪽) 줄. 가로 화면만 화면 맨 위(L·R 위)에 넣는다 (세로 화면은 RetroPlayer가 게임 화면 위에 따로 둔다).
- * rotation: 화면을 CSS로 돌렸을 때 각도. axis: 아날로그 스틱 기종(N64)의 스틱
+ * rotation: 화면을 CSS로 돌렸을 때 각도. axis: 아날로그 스틱 기종(N64)의 스틱. title: 세로 화면 몸체 가운데에 인쇄할 게임 이름
  */
 export function VirtualPad({
   system,
+  title,
   press,
   axis,
   rotation,
@@ -36,6 +38,7 @@ export function VirtualPad({
   top,
 }: {
   system: RetroSystem;
+  title: string;
   press: Press;
   axis: (source: string, x: number, y: number) => void;
   rotation: number;
@@ -47,7 +50,7 @@ export function VirtualPad({
   return (
     <div class="vpad">
       {top}
-      <ConsoleDeck platform={system.platform} />
+      <ConsoleDeck platform={system.platform} title={title} />
       {shoulders && (
         <div class="vpad-shoulders">
           {n64 ? (

@@ -183,6 +183,7 @@ export function RetroPlayer({ system, game, onExit }: { system: RetroSystem; gam
       {showPad && (
         <VirtualPad
           system={system}
+          title={game.title}
           press={input.set}
           axis={input.axis}
           rotation={orientation.rotation}

@@ -16,6 +16,9 @@ export function preventZoom() {
   document.addEventListener(
     "touchstart",
     (e) => {
+      // 아이폰 햅틱용 투명 스위치(ui/haptics.ts)는 막지 않는다: 막으면 스위치가 바뀌지 않아 떨지 않는다.
+      // 그 위에서 두 손가락이 겹쳐도 핀치 확대는 위의 gesture 이벤트가 막는다
+      if ((e.target as Element | null)?.classList?.contains("haptic-switch")) return;
       // 두 번째 손가락이 닿는 순간 막아야 핀치가 시작되지 않는다 (움직일 때 막으면 늦을 때가 있다)
       if (e.touches.length > 1 || (e.target as Element | null)?.closest?.(CONTROLS)) e.preventDefault();
     },

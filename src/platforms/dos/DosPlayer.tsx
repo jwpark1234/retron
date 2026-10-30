@@ -166,6 +166,7 @@ export function DosPlayer({ game, onExit }: { game: Game; onExit: () => void }) 
       />
       {touchDevice && (
         <DosTouchControls
+          title={game.title}
           keys={touch.keys}
           trackpad={touch.trackpad}
           rotation={orientation.rotation}

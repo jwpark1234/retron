@@ -230,12 +230,32 @@ export async function download(fileId: string): Promise<Response> {
   return call(`${API}/files/${fileId}?alt=media`);
 }
 
-/** 파일의 한 구간(start~end, 끝 포함)을 받는다. timeoutMs 안에 다 못 받으면 끊고 오류 (화면이 꺼져 연결이 멈춘 경우) */
-export async function downloadRange(fileId: string, start: number, end: number, timeoutMs: number): Promise<Uint8Array> {
+/**
+ * 파일의 한 구간(start~end, 끝 포함)을 받는다. timeoutMs 안에 다 못 받으면 끊고 오류 (화면이 꺼져 연결이 멈춘 경우).
+ * onBytes: 도착하는 대로 받은 양을 알린다. 구간을 다 받은 뒤에만 알리면 16MB 조각 몇 개가 끝날 때까지 진행률이 멈춰 있다가 한꺼번에 찼다
+ */
+export async function downloadRange(fileId: string, start: number, end: number, timeoutMs: number, onBytes?: (n: number) => void): Promise<Uint8Array> {
   const signal = AbortSignal.timeout(timeoutMs);
   const res = await call(`${API}/files/${fileId}?alt=media`, { headers: { Range: `bytes=${start}-${end}` }, signal });
-  const data = new Uint8Array(await res.arrayBuffer());
-  if (data.length !== end - start + 1) throw new Error("받은 크기가 맞지 않습니다");
+  const size = end - start + 1;
+  if (!res.body) {
+    const data = new Uint8Array(await res.arrayBuffer());
+    if (data.length !== size) throw new Error("받은 크기가 맞지 않습니다");
+    onBytes?.(size);
+    return data;
+  }
+  const data = new Uint8Array(size);
+  const reader = res.body.getReader();
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (got + value.length > size) throw new Error("받은 크기가 맞지 않습니다");
+    data.set(value, got);
+    got += value.length;
+    onBytes?.(value.length);
+  }
+  if (got !== size) throw new Error("받은 크기가 맞지 않습니다");
   return data;
 }
 
